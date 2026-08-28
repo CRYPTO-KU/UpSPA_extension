@@ -35,6 +35,10 @@ jobs:
         with:
           path: build/xcframework
           key: xcf-${{ hashFiles('crates/upspa-core/**', 'crates/upspa-ffi/**', 'rust-toolchain.toml') }}
+      # Git does not preserve the executable bit unless the file is committed
+      # with mode 100755, and a checkout on a fresh runner then cannot run it.
+      # Setting it here means the workflow works either way.
+      - run: chmod +x ./scripts/*.sh
       - run: ./scripts/build-xcframework.sh
       # NOT YET TRUSTED. A check is trusted only once the defect it names has
       # been injected and the check has been seen to fail on it. No divergence
