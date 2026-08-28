@@ -1,3 +1,19 @@
+# Replaces the current file, which pins only channel = "stable".
+#
+# Two problems with that. It records no version, so a fresh checkout builds with
+# whatever stable is current, while the dependency set needs at least 1.81
+# (ed25519-dalek 2.2). And a directory toolchain file OVERRIDES `rustup default`,
+# so on Windows "stable" silently resolves to the msvc host even for a developer
+# who has deliberately selected another one. On a machine whose Visual Studio
+# lacks the Windows SDK that makes the project unbuildable with no explanation.
+#
+# See FINDINGS O-12 and Exp-4 finding F-5.
+#
+# Windows contributors without the Windows SDK: use the gnu host instead, either
+#   rustup default stable-x86_64-pc-windows-gnu
+#   rustup component add rust-mingw --toolchain stable-x86_64-pc-windows-gnu
+# or by setting RUSTUP_TOOLCHAIN, which overrides this file.
+
 [toolchain]
-channel = "stable"
+channel = "1.98.0"
 components = ["rustfmt", "clippy"]
