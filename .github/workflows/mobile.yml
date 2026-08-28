@@ -35,31 +35,39 @@ jobs:
         with:
           path: build/xcframework
           key: xcf-${{ hashFiles('crates/upspa-core/**', 'crates/upspa-ffi/**', 'rust-toolchain.toml') }}
-      # Git does not preserve the executable bit unless the file is committed
-      # with mode 100755, and a checkout on a fresh runner then cannot run it.
-      # Setting it here means the workflow works either way.
-      - run: chmod +x ./scripts/*.sh
-      - run: ./scripts/build-xcframework.sh
-      # This gate cannot pass yet: scripts/vectors.sh calls Swift and Kotlin
-      # harnesses that have not been written. It is kept so the wiring is
-      # reviewable, and skipped until the harnesses exist, because a check that
-      # is permanently red teaches everyone to ignore red checks.
+      # This whole job is wiring, not a working gate yet. Three things are
+      # missing: scripts/vectors.sh calls Swift and Kotlin harnesses that have
+      # not been written, and build-xcframework.sh calls `cargo run --bin
+      # uniffi-bindgen`, which needs the uniffi "cli" feature and a [[bin]]
+      # target that crates/upspa-ffi does not declare. It is kept so the shape
+      # is reviewable, and skipped until those exist, because a permanently red
+      # check teaches everyone to ignore red checks.
       #
       # NOT YET TRUSTED even once it runs. A check is trusted only after the
       # defect it names has been injected and the check has been seen to fail
       # on it. No divergence has ever been injected between these three
       # bindings. Before relying on this gate, perturb one binding by a single
       # byte and confirm the diff fails.
-      - name: Check whether the vector harnesses exist
+      - name: Check whether the toolchain and harnesses exist
         id: harnesses
         run: |
-          if [ -f scripts/vectors/run_wasm.mjs ] && [ -d mobile/iosApp ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Vector harnesses not present yet, skipping the cross-binding gate."
+          ready=true
+          grep -q 'name = "uniffi-bindgen"' crates/upspa-ffi/Cargo.toml || ready=false
+          [ -f scripts/vectors/run_wasm.mjs ] || ready=false
+          [ -d mobile/iosApp ] || ready=false
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$ready" = "false" ]; then
+            echo "Cross-binding prerequisites not present yet, skipping this gate."
           fi
 
+      # Git does not preserve the executable bit unless the file is committed
+      # with mode 100755, and a checkout on a fresh runner then cannot run it.
+      # Setting it here means the workflow works either way.
+      - if: steps.harnesses.outputs.ready == 'true'
+        run: chmod +x ./scripts/*.sh
+
+      - if: steps.harnesses.outputs.ready == 'true'
+        run: ./scripts/build-xcframework.sh
       - name: One vector set, three bindings
         if: steps.harnesses.outputs.ready == 'true'
         run: |
