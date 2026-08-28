@@ -83,10 +83,29 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: cd mobile && ./gradlew :shared:allTests
+
+      # mobile/ is the Exp-1 Compose Multiplatform project. It does not exist
+      # yet: creating it needs a Mac, which is what the whole experiment is
+      # blocked on. Skipped rather than failed, for the same reason as the
+      # cross-binding job: a permanently red check teaches everyone to ignore
+      # red checks.
+      - name: Check whether the mobile project exists
+        id: mobileproj
+        run: |
+          if [ -f mobile/settings.gradle.kts ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "mobile/ not present yet, skipping the shared test run."
+          fi
+
+      - if: steps.mobileproj.outputs.ready == 'true'
+        run: cd mobile && ./gradlew :shared:allTests
+
       # Exp-1 tripwire: PRE-REGISTRATION section 1 falsifies H1 on the cost limb
       # above 25 minutes of clean build wall time. Measured, not asserted.
-      - run: echo "clean build wall time recorded by the runner, compared in the report"
+      - if: steps.mobileproj.outputs.ready == 'true'
+        run: echo "clean build wall time recorded by the runner, compared in the report"
 
   ios:
     needs: cross-binding-vectors
