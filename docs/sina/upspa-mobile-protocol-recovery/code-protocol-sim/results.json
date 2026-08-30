@@ -1,0 +1,229 @@
+{
+  "model": {
+    "total_storage_providers": 3,
+    "threshold": 2,
+    "login_server_modified": false
+  },
+  "results": [
+    {
+      "name": "registration_0_of_3_sp_success",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "sp_successes": 0,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "not_durable",
+      "recovery_action": "Keep pending and retry Storage Provider writes. Do not show final success.",
+      "requires_new_api": false,
+      "atomicity_note": "The LS succeeded, but fewer than threshold SPs succeeded."
+    },
+    {
+      "name": "registration_1_of_3_sp_success",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "fail",
+        "fail"
+      ],
+      "sp_successes": 1,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "not_durable",
+      "recovery_action": "Keep pending and retry Storage Provider writes. Do not show final success.",
+      "requires_new_api": false,
+      "atomicity_note": "The LS succeeded, but fewer than threshold SPs succeeded."
+    },
+    {
+      "name": "registration_2_of_3_sp_success",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "success",
+        "fail"
+      ],
+      "sp_successes": 2,
+      "threshold": 2,
+      "threshold_met": true,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "committed_but_degraded",
+      "recovery_action": "Show success only as threshold-committed. Reconcile missing Storage Providers in the background.",
+      "requires_new_api": false,
+      "atomicity_note": "The operation is recoverable with 2/3 SPs, but not fully replicated."
+    },
+    {
+      "name": "registration_3_of_3_sp_success",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "success",
+        "success"
+      ],
+      "sp_successes": 3,
+      "threshold": 2,
+      "threshold_met": true,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "fully_committed",
+      "recovery_action": "Clear pending operation.",
+      "requires_new_api": false,
+      "atomicity_note": "All Storage Providers succeeded."
+    },
+    {
+      "name": "process_death_before_ls_submission",
+      "operation_type": "registration",
+      "ls_result": "none",
+      "sp_results": [
+        "none",
+        "none",
+        "none"
+      ],
+      "sp_successes": 0,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "before_ls_submission",
+      "divergent_cid": false,
+      "client_visible_result": "safe_to_cancel_or_restart",
+      "recovery_action": "No external Login Server effect exists yet. The client can cancel or restart the operation from the journal.",
+      "requires_new_api": false,
+      "atomicity_note": "No distributed atomicity problem yet because no external side effect has happened."
+    },
+    {
+      "name": "process_death_after_ls_submission_timeout",
+      "operation_type": "registration",
+      "ls_result": "timeout",
+      "sp_results": null,
+      "sp_successes": null,
+      "threshold": 2,
+      "threshold_met": "unknown",
+      "crash_point": "after_ls_submission",
+      "divergent_cid": false,
+      "client_visible_result": "ambiguous",
+      "recovery_action": "The client cannot know whether the Login Server applied the request. Keep the pending operation and require LS status/idempotency API or manual confirmation.",
+      "requires_new_api": true,
+      "atomicity_note": "This cannot be made atomic with an unmodified Login Server."
+    },
+    {
+      "name": "process_death_before_sp_commit",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "none",
+        "none",
+        "none"
+      ],
+      "sp_successes": 0,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "before_sp_commit",
+      "divergent_cid": false,
+      "client_visible_result": "ls_changed_but_sp_not_durable",
+      "recovery_action": "Retry Storage Provider writes using the same operation ID. Do not show final success until the SP threshold is reached.",
+      "requires_new_api": false,
+      "atomicity_note": "The LS may already be updated while SP state is missing, so rollback is not reliable."
+    },
+    {
+      "name": "process_death_after_partial_sp_commit",
+      "operation_type": "registration",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "fail",
+        "timeout"
+      ],
+      "sp_successes": 1,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "after_partial_sp_commit",
+      "divergent_cid": false,
+      "client_visible_result": "not_durable",
+      "recovery_action": "Keep pending and retry Storage Provider writes. Do not show final success.",
+      "requires_new_api": false,
+      "atomicity_note": "The LS succeeded, but fewer than threshold SPs succeeded."
+    },
+    {
+      "name": "partial_master_password_update_2_of_3",
+      "operation_type": "master_password_update",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "success",
+        "fail"
+      ],
+      "sp_successes": 2,
+      "threshold": 2,
+      "threshold_met": true,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "committed_but_version_divergent",
+      "recovery_action": "Allow recovery only with version checks. Reconcile missing Storage Providers before relying on the new version everywhere.",
+      "requires_new_api": false,
+      "atomicity_note": "Partial master-password updates are dangerous because SPs may hold different versions."
+    },
+    {
+      "name": "partial_master_password_update_1_of_3",
+      "operation_type": "master_password_update",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "fail",
+        "timeout"
+      ],
+      "sp_successes": 1,
+      "threshold": 2,
+      "threshold_met": false,
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "unsafe_partial_update",
+      "recovery_action": "Keep pending. Do not consider the master-password update durable. Retry or require manual recovery.",
+      "requires_new_api": false,
+      "atomicity_note": "Less than threshold success means the new state is not safely recoverable."
+    },
+    {
+      "name": "login_server_timeout_after_submission",
+      "operation_type": "secret_update",
+      "ls_result": "timeout",
+      "sp_results": null,
+      "sp_successes": null,
+      "threshold": 2,
+      "threshold_met": "unknown",
+      "crash_point": "none",
+      "divergent_cid": false,
+      "client_visible_result": "ambiguous",
+      "recovery_action": "Keep pending. Without an LS status or idempotency API, the client cannot know whether the LS applied the operation.",
+      "requires_new_api": true,
+      "atomicity_note": "Timeout after submission is not distinguishable from success with lost response."
+    },
+    {
+      "name": "divergent_cid_values",
+      "operation_type": "reconciliation",
+      "ls_result": "success",
+      "sp_results": [
+        "success",
+        "success",
+        "success"
+      ],
+      "sp_successes": 3,
+      "threshold": 2,
+      "threshold_met": true,
+      "crash_point": "none",
+      "divergent_cid": true,
+      "client_visible_result": "committed_but_divergent",
+      "recovery_action": "Do not treat the state as fully healthy. Compare versions/cid values, select the newest valid threshold state, and reconcile divergent Storage Providers.",
+      "requires_new_api": false,
+      "atomicity_note": "All Storage Providers may respond successfully while still holding divergent cid/version values. Success count alone is not enough."
+    }
+  ]
+}

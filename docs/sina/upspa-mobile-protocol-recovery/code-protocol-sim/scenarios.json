@@ -1,0 +1,139 @@
+[
+  {
+    "name": "registration_0_of_3_sp_success",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "fail",
+      "fail",
+      "fail"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "registration_1_of_3_sp_success",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "fail",
+      "fail"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "registration_2_of_3_sp_success",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "success",
+      "fail"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "registration_3_of_3_sp_success",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "success",
+      "success"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "process_death_before_ls_submission",
+    "operation_type": "registration",
+    "ls_result": "none",
+    "sp_results": [
+      "none",
+      "none",
+      "none"
+    ],
+    "crash_point": "before_ls_submission",
+    "threshold": 2
+  },
+  {
+    "name": "process_death_after_ls_submission_timeout",
+    "operation_type": "registration",
+    "ls_result": "timeout",
+    "sp_results": null,
+    "crash_point": "after_ls_submission",
+    "threshold": 2
+  },
+  {
+    "name": "process_death_before_sp_commit",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "none",
+      "none",
+      "none"
+    ],
+    "crash_point": "before_sp_commit",
+    "threshold": 2
+  },
+  {
+    "name": "process_death_after_partial_sp_commit",
+    "operation_type": "registration",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "fail",
+      "timeout"
+    ],
+    "crash_point": "after_partial_sp_commit",
+    "threshold": 2
+  },
+  {
+    "name": "partial_master_password_update_2_of_3",
+    "operation_type": "master_password_update",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "success",
+      "fail"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "partial_master_password_update_1_of_3",
+    "operation_type": "master_password_update",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "fail",
+      "timeout"
+    ],
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "login_server_timeout_after_submission",
+    "operation_type": "secret_update",
+    "ls_result": "timeout",
+    "sp_results": null,
+    "crash_point": "none",
+    "threshold": 2
+  },
+  {
+    "name": "divergent_cid_values",
+    "operation_type": "reconciliation",
+    "ls_result": "success",
+    "sp_results": [
+      "success",
+      "success",
+      "success"
+    ],
+    "crash_point": "none",
+    "threshold": 2,
+    "divergent_cid": true
+  }
+]
