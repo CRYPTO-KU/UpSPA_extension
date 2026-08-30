@@ -141,3 +141,12 @@ grep -R "pending" -n packages/extension/src packages/upspa-js/src | head -n 80
 grep -R "registration\|register" -n packages/extension/src packages/upspa-js/src | head -n 100
 grep -R "storage.local\|storage.session" -n packages/extension/src | head -n 100
 grep -R "fetch(\|axios\|POST\|PUT" -n packages/extension/src packages/upspa-js/src | head -n 100
+```
+
+### Inspection summary
+
+The current extension already contains pending registration and pending secret update logic. It also checks registration confirmation through a registration-status endpoint.
+
+This supports the mobile recommendation that protocol operations should use pending-operation records, confirmation/status checks, idempotency rules, and recovery logic instead of assuming one atomic operation across the Login Server and Storage Providers.
+
+The inspection also found Storage Provider communication through HTTP-style calls in `spClient.ts`. This supports the simulator assumption that each Storage Provider can independently succeed, fail, or time out.
