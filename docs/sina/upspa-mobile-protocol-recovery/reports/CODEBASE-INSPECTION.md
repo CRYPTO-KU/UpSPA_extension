@@ -121,3 +121,23 @@ Final codebase choices must include:
 - No real credentials or secrets should be used in experiments.
 - No copied GPL code should be inserted into UpSPA artifacts.
 - Codebase findings should be recorded as prose unless license compatibility is explicitly checked.
+
+---
+
+## 6. Actual local inspection: current UpSPA extension repository
+
+Inspection date: 2026-08-30  
+Branch: `intern/sina`  
+Commit: `78535ca`  
+Working tree before inspection: clean
+
+### Commands used
+
+```bash
+git status
+git branch --show-current
+git rev-parse --short HEAD
+grep -R "pending" -n packages/extension/src packages/upspa-js/src | head -n 80
+grep -R "registration\|register" -n packages/extension/src packages/upspa-js/src | head -n 100
+grep -R "storage.local\|storage.session" -n packages/extension/src | head -n 100
+grep -R "fetch(\|axios\|POST\|PUT" -n packages/extension/src packages/upspa-js/src | head -n 100

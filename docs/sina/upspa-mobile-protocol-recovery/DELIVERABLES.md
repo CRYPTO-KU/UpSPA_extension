@@ -17,7 +17,7 @@ This file maps the research-task requirements to the files in this package.
 | 4 | Reproducible evidence artifact | `code-protocol-sim/simulator.py` | done, runs successfully |
 | 5 | Recommendation for each assigned architectural question | `FINDINGS.md`, Section 10 | initial draft done |
 | 6 | Newly discovered risks and open problems | `FINDINGS.md`, Section 9 | initial draft done |
-| 7 | Short presentation | `reports/Goktug-protocol-recovery-briefing.pptx` | not started |
+| 7 | Short presentation | `presentation.pptx` | not started |
 
 ---
 
