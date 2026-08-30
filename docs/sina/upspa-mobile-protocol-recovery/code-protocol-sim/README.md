@@ -7,4 +7,5 @@ The simulator evaluates how the client should classify operations when the Login
 ## Run
 
 ```bash
-python3 simulator.py EOF
+python3 simulator.py
+```
