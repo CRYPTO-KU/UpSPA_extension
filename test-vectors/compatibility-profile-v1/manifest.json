@@ -1,0 +1,14 @@
+{
+  "profileVersion": 1,
+  "status": "bootstrap-pending-vector-generation",
+  "canonicalRepository": "UpSPA_extension",
+  "bootstrapBaseCommit": "7580597b148895ae1816561d1966ed8a2039d425",
+  "protocolCore": "crates/upspa-core",
+  "passwordEncoder": "packages/extension/src/shared/passwordPolicy.ts",
+  "passwordEncoderIdentifier": "upspa-password-encoding-v2",
+  "vectorCorpus": null,
+  "notes": [
+    "Record the reviewed post-bootstrap commit before declaring this profile stable.",
+    "Generate vectors from this repository; external study repositories are evidence only."
+  ]
+}

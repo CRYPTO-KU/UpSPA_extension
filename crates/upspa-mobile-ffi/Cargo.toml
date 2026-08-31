@@ -1,0 +1,13 @@
+[package]
+name = "upspa-mobile-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Native UniFFI boundary for the UpSPA mobile clients"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+uniffi = "0.28"
+upspa-core = { path = "../upspa-core" }

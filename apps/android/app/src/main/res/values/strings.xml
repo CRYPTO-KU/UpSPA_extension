@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">UpSPA Mobile Bootstrap</string>
+    <string name="autofill_service_label">UpSPA Mobile (template credentials only)</string>
+    <string name="credential_provider_service_label">UpSPA Mobile Credential Provider (stub)</string>
+    <string name="locked_entry">Unlock UpSPA Mobile (template)</string>
+    <string name="template_entry">Use synthetic UpSPA template credential</string>
+</resources>

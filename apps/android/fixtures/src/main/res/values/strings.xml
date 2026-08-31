@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">UpSPA Login Fixture</string>
+    <string name="fixture_title">Controlled login fixture</string>
+    <string name="fixture_username">Username</string>
+    <string name="fixture_password">Password</string>
+    <string name="fixture_submit">Submit test form</string>
+</resources>
