@@ -1,0 +1,22 @@
+[package]
+name = "upspa-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "UniFFI bindings for the UpSPA client-side cryptographic core"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "lib"]
+name = "upspa_ffi"
+
+[dependencies]
+upspa-core = { path = "../upspa-core" }
+# Default features only. The "cli" feature pulls uniffi_bindgen -> cargo_metadata
+# -> cargo-platform, which requires rustc 1.78+. Binding GENERATION needs that
+# toolchain; the binding SURFACE does not. Generation runs in CI via
+# scripts/build-xcframework.sh with a pinned newer toolchain.
+uniffi = "0.27"
+rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"

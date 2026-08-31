@@ -4,4 +4,5 @@ members = [
   "crates/upspa-core",
   "crates/upspa-wasm",
   "crates/upspa-cli",
+  "crates/upspa-ffi",
 ]
