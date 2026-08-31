@@ -9,6 +9,7 @@
 // password update. Getting this byte layout wrong silently breaks every update.
 
 package crypto
+
 import (
 	"encoding/binary"
 )
@@ -38,10 +39,6 @@ func BuildPwdUpdateSigMsg(
 	// Encode the timestamp as 8 little-endian bytes.
 	tsBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tsBytes, tsU64LE)
-	spIDBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(spIDBytes, spIDU32LE)
-	totalLen := len(cidNonce) + len(cidCt) + len(cidTag) + len(kINew) + 8 + 4
-	msg := make([]byte, 0, totalLen)
 
 	// Encode the SP id as 4 little-endian bytes.
 	spIDBytes := make([]byte, 4)
