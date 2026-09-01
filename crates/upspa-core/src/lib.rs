@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 pub mod aead;
 pub mod hash;
+pub mod password_encoder;
 pub mod protocol;
 pub mod sign;
 pub mod toprf;

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "echo 'add eslint if desired'"
+    "lint": "echo 'add eslint if desired'",
+    "test": "vitest run"
   },
   "dependencies": {
     "upspa-js": "file:../upspa-js"
@@ -14,8 +15,10 @@
   "devDependencies": {
     "@crxjs/vite-plugin": "^1.0.14",
     "@types/chrome": "^0.0.268",
+    "tsx": "^4.23.13",
     "typescript": "^5.6.3",
     "vite": "2.9.18",
-    "vite-plugin-wasm": "^3.5.0"
+    "vite-plugin-wasm": "^3.5.0",
+    "vitest": "^2.1.9"
   }
 }
