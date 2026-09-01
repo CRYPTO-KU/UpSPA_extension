@@ -1,7 +1,10 @@
+//! Compatibility test suite for password encoding vectors.
+
 use serde::Deserialize;
 use std::fs;
 use upspa_core::password_encoder::{encode_secret_as_password, PasswordPolicy};
 
+/// Test vector loaded from the compatibility profile corpus.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CorpusVector {
@@ -15,6 +18,7 @@ struct CorpusVector {
     reject: bool,
 }
 
+/// Loads the test vectors from the JSON corpus file.
 fn load_corpus() -> Vec<CorpusVector> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../test-vectors/compatibility-profile-v1/vectors.json");

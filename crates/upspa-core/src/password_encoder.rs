@@ -1,8 +1,15 @@
+//! Deterministic password encoder.
+//!
+//! This module turns a raw secret into a password that matches a site policy.
+//! It uses SHA-256 hashing to generate characters deterministically so the same
+//! input always produces the same password.
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroizing;
 
+/// Errors that can happen when encoding a password.
 #[derive(Debug, Error)]
 pub enum PasswordEncoderError {
     #[error("Password policy is impossible: more required classes than maximum length.")]
@@ -15,6 +22,7 @@ pub enum PasswordEncoderError {
     InvalidPolicyJson(#[from] serde_json::Error),
 }
 
+/// Rules that a generated password must follow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PasswordPolicy {
@@ -35,11 +43,13 @@ const DIGIT: &str = "0123456789";
 const DEFAULT_SYMBOLS: &str = "!@#$%^&*";
 const MAX_ATTEMPTS: u32 = 128;
 
+/// Removes duplicate characters from a string while keeping character order.
 fn unique_chars(s: &str) -> String {
     let mut seen = std::collections::BTreeSet::new();
     s.chars().filter(|c| seen.insert(*c)).collect()
 }
 
+/// Normalizes policy bounds and cleans up symbol sets and forbidden substrings.
 fn normalize_policy(policy: &PasswordPolicy) -> PasswordPolicy {
     let requested_max = policy.max_len.min(64);
     let min_len = policy.min_len.max(8);
@@ -74,6 +84,7 @@ fn normalize_policy(policy: &PasswordPolicy) -> PasswordPolicy {
     }
 }
 
+/// Returns the list of character sets required by the policy.
 fn required_charsets(policy: &PasswordPolicy) -> Vec<&str> {
     let mut sets: Vec<&str> = Vec::new();
     if policy.require_lower { sets.push(LOWER); }
@@ -83,6 +94,7 @@ fn required_charsets(policy: &PasswordPolicy) -> Vec<&str> {
     sets
 }
 
+/// Combines all allowed character sets into a single pool of unique characters.
 fn build_pool(policy: &PasswordPolicy) -> String {
     let mut raw = String::new();
     if policy.require_lower { raw.push_str(LOWER); }
@@ -92,12 +104,14 @@ fn build_pool(policy: &PasswordPolicy) -> String {
     unique_chars(&raw)
 }
 
+/// Computes the SHA-256 hash of the input string.
 fn sha256_bytes(input: &str) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(input.as_bytes());
     h.finalize().into()
 }
 
+/// Expands a seed into a stream of pseudo-random bytes.
 fn expand_bytes(seed: &str, length: usize) -> Zeroizing<Vec<u8>> {
     let mut chunks = Zeroizing::new(Vec::with_capacity(length + 32));
     let mut block = 0u32;
@@ -109,11 +123,13 @@ fn expand_bytes(seed: &str, length: usize) -> Zeroizing<Vec<u8>> {
     chunks
 }
 
+/// Picks a character from a charset using a byte value.
 fn pick_char(charset: &str, byte: u8) -> char {
     let chars: Vec<char> = charset.chars().collect();
     chars[byte as usize % chars.len()]
 }
 
+/// Shuffles characters using a byte slice to form a candidate password.
 fn build_candidate(chars: &[char], shuffle_bytes: &[u8]) -> String {
     let mut out = chars.to_vec();
     for i in (1..out.len()).rev() {
@@ -122,6 +138,7 @@ fn build_candidate(chars: &[char], shuffle_bytes: &[u8]) -> String {
     out.iter().collect()
 }
 
+/// Checks if a candidate password satisfies all rules in the policy.
 fn password_satisfies_policy(password: &str, policy: &PasswordPolicy, account_id: &str) -> bool {
     let len = password.chars().count() as u32;
     if len < policy.min_len || len > policy.max_len { return false; }
@@ -142,6 +159,7 @@ fn password_satisfies_policy(password: &str, policy: &PasswordPolicy, account_id
     true
 }
 
+/// Formats a policy into a canonical JSON string matching the TypeScript format.
 fn canonical_policy(policy: &PasswordPolicy) -> String {
     // JSON.stringify preserves insertion order; serde_json::json!{} sorts keys.
     // This format! mirrors the exact field order of the TypeScript object literal.
@@ -168,6 +186,10 @@ fn canonical_policy(policy: &PasswordPolicy) -> String {
     )
 }
 
+/// Encodes a secret into a password that matches the given policy.
+///
+/// The generation is deterministic based on the secret, the policy,
+/// the account identifier, and the counter value.
 pub fn encode_secret_as_password(
     secret_b64: &str,
     policy: &PasswordPolicy,
@@ -220,6 +242,7 @@ pub fn encode_secret_as_password(
     Err(PasswordEncoderError::ExhaustedAttempts)
 }
 
+/// Parses a JSON policy string and encodes a secret into a password.
 pub fn encode_secret_as_password_json(
     secret_b64: &str,
     policy_json: &str,
