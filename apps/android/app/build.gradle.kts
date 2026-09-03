@@ -43,6 +43,13 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    testOptions {
+        // The classifier tests reference Android types in signatures only. Default return values
+        // turn an accidental call into a benign result instead of a stub exception, which keeps a
+        // future mistake visible as a failed assertion rather than as an unrelated crash.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -57,4 +64,6 @@ dependencies {
     implementation(libs.material)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
 }

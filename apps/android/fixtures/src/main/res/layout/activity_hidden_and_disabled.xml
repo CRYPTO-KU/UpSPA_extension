@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/hidden_disabled_title"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:text="@string/hidden_disabled_expectation" />
+
+        <!--
+          The three traps below all carry valid autofill hints. They must never receive a value,
+          because a user cannot see or reach them to notice what was written.
+        -->
+        <EditText
+            android:id="@+id/hidden_gone_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="password"
+            android:hint="@string/hidden_gone_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/hidden_invisible_username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="username"
+            android:hint="@string/hidden_invisible_username"
+            android:importantForAutofill="yes"
+            android:inputType="text"
+            android:visibility="invisible" />
+
+        <EditText
+            android:id="@+id/hidden_disabled_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="password"
+            android:enabled="false"
+            android:hint="@string/hidden_disabled_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/hidden_visible_username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="username"
+            android:hint="@string/hidden_visible_username"
+            android:importantForAutofill="yes"
+            android:inputType="text">
+
+            <!-- Focus on launch, so the fill request is raised without a synthetic tap. -->
+            <requestFocus />
+        </EditText>
+
+        <EditText
+            android:id="@+id/hidden_visible_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="password"
+            android:hint="@string/hidden_visible_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword" />
+
+        <Button
+            android:id="@+id/fixture_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fixture_submit" />
+    </LinearLayout>
+</ScrollView>

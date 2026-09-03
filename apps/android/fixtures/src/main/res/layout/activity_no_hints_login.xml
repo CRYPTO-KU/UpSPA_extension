@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/no_hints_title"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:text="@string/no_hints_expectation" />
+
+        <!--
+          Both ids and hints are deliberately meaningless so that no attribute-corpus rule can
+          match. Only the screen topology can identify the identifier field here.
+        -->
+        <EditText
+            android:id="@+id/field_alpha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/no_hints_alpha"
+            android:importantForAutofill="yes"
+            android:inputType="text"
+            tools:ignore="Autofill">
+
+            <!-- Focus on launch, so the fill request is raised without a synthetic tap. -->
+            <requestFocus />
+        </EditText>
+
+        <EditText
+            android:id="@+id/field_beta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/no_hints_beta"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword"
+            tools:ignore="Autofill" />
+
+        <Button
+            android:id="@+id/fixture_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fixture_submit" />
+    </LinearLayout>
+</ScrollView>
