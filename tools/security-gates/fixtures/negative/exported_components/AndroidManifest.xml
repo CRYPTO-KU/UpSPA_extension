@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Seeded-negative fixture for gates/exported_components.py
+
+The ONLY intended failure here: SecretSettingsActivity is exported="true"
+with no android:permission and no MAIN/LAUNCHER intent-filter; reachable
+by any other installed app with no authorization check.
+
+Everything else in this manifest is deliberately clean (allowBackup=false,
+no cleartext, no Accessibility) so this fixture is isolated to exactly one
+gate, not a grab-bag of unrelated failures.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="fixture">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SecretSettingsActivity"
+            android:exported="true" />
+
+    </application>
+
+</manifest>

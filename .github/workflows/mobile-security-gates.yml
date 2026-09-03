@@ -1,0 +1,34 @@
+name: Mobile Security Gates
+
+# Runs on every push/PR that touches the Android app, the mobile FFI crate, or the gates themselves.
+# Scoped with `paths:` rather than running on every push in the whole monorepo,
+# since these gates only ever look at apps/android and crates/upspa-mobile-ffi.
+on:
+  push:
+    paths:
+      - "apps/android/**"
+      - "crates/upspa-mobile-ffi/**"
+      - "tools/security-gates/**"
+      - ".github/workflows/mobile-security-gates.yml"
+  pull_request:
+    paths:
+      - "apps/android/**"
+      - "crates/upspa-mobile-ffi/**"
+      - "tools/security-gates/**"
+      - ".github/workflows/mobile-security-gates.yml"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run gates against the real app
+        run: python3 tools/security-gates/run_gates.py .
+
+      - name: Verify every seeded-negative fixture fails for the right reason, and only the right reason
+        run: python3 tools/security-gates/test_negative_fixtures.py

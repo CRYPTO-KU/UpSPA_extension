@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Seeded-negative fixture for gates/accessibility_clipboard.py (manifest half)
+
+The ONLY intended failure here: a <service> declaring
+BIND_ACCESSIBILITY_SERVICE. UpSPA has no legitimate use for the
+Accessibility API and Google Play now policy-prohibits this class of
+automation for an app like this regardless.
+
+allowBackup is explicitly false and the activity is a correctly-configured
+launcher, so this fixture doesn't also trip backup_config or
+exported_components.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="fixture">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".BadAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>
