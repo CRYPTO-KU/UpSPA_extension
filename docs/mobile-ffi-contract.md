@@ -78,7 +78,7 @@ cannot leave a stale file behind.
 ```
 apps/android/ffi/
   build.gradle.kts
-  src/main/java/uniffi/upspa_mobile_ffi/    # GENERATED — do not edit, do not hand-patch
+  src/main/generated/uniffi/upspa_mobile_ffi/    # GENERATED — do not edit, do not hand-patch
   src/main/java/com/upspa/mobile/ffi/fakes/ # hand-written fake adapters
   src/main/jniLibs/
     arm64-v8a/libupspa_mobile_ffi.so        # aarch64-linux-android
