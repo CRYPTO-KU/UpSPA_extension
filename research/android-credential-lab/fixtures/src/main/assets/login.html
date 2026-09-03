@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fixture Web Login</title>
+  <style>
+    body { font-family: sans-serif; margin: 16px; }
+    label { display: block; margin-top: 8px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { margin-top: 12px; padding: 8px 16px; }
+    .note { color: #666; font-size: 12px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h2>Spec-compliant form (Tier 1: autocomplete attributes)</h2>
+  <form action="#" onsubmit="return false">
+    <label>Username
+      <input type="text" name="username" autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password">
+    </label>
+    <button type="submit">Sign in</button>
+  </form>
+
+  <h2>Heuristic-only form (Tier 2/3: no autocomplete attributes)</h2>
+  <form action="#" onsubmit="return false">
+    <label>User
+      <input type="text" name="usr">
+    </label>
+    <label>Pass
+      <input type="password" name="pwd">
+    </label>
+    <button type="submit">Login</button>
+  </form>
+
+  <p class="note">Research fixture — never enter real credentials.</p>
+</body>
+</html>

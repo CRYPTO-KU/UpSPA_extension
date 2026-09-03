@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/home_title"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/home_subtitle"
+            android:textSize="12sp" />
+
+        <Switch
+            android:id="@+id/hintSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/home_hint_switch" />
+
+        <Button
+            android:id="@+id/openLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/home_login" />
+
+        <Button
+            android:id="@+id/openRegistration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_registration" />
+
+        <Button
+            android:id="@+id/openPasswordChange"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_password_change" />
+
+        <Button
+            android:id="@+id/openSplitLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_split_login" />
+
+        <Button
+            android:id="@+id/openWebView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_webview" />
+
+        <Button
+            android:id="@+id/openComposeLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_compose" />
+
+        <Button
+            android:id="@+id/openCustomView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_custom_view" />
+
+        <Button
+            android:id="@+id/openNoAutofill"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/home_no_autofill" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Autofill service metadata. compatibility-package entries opt listed browsers into the
+     platform's accessibility-based compat bridge when they do not call the Autofill Framework
+     natively — this is deliberately included as an experiment surface for research topic 5
+     (WebView and browser behavior). -->
+<autofill-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.upspa.research.provider.MainActivity">
+    <compatibility-package android:name="com.android.chrome" />
+    <compatibility-package android:name="org.mozilla.firefox" />
+</autofill-service>

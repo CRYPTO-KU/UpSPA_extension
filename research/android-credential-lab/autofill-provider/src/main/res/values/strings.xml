@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">UpSPA Research Provider</string>
+    <string name="autofill_service_label">UpSPA Research Autofill (fake credentials only)</string>
+    <string name="credential_service_label">UpSPA Research Credential Provider (stub)</string>
+
+    <!-- Locked entry shown in the autofill dropdown before authentication. -->
+    <string name="locked_entry_text">UpSPA Research — locked, tap to authenticate</string>
+    <string name="entry_label">Fill as %1$s (fake)</string>
+
+    <!-- AuthActivity -->
+    <string name="auth_title">Unlock UpSPA Research</string>
+    <string name="auth_subtitle">Research build: only FAKE credentials are ever filled</string>
+    <string name="auth_status_waiting">Waiting for authentication…</string>
+    <string name="auth_status_deriving">Simulating credential derivation…</string>
+    <string name="auth_unavailable">No biometric or device credential is enrolled on this device/emulator. Use the research bypass below (allowed only in this research artifact).</string>
+    <string name="auth_retry">Retry authentication</string>
+    <string name="auth_bypass">Research bypass (no lock screen)</string>
+
+    <!-- MainActivity -->
+    <string name="main_title">UpSPA Android Credential Research Lab</string>
+    <string name="main_status_checking">Checking autofill service status…</string>
+    <string name="main_enable_autofill">Set as autofill service</string>
+    <string name="main_latency_label">Simulated derivation latency (ms) — models TOPRF round-trips</string>
+    <string name="main_save_latency">Save latency</string>
+    <string name="main_note">Isolated research artifact. It never stores or transmits credentials; every filled value is deterministic, clearly FAKE-prefixed test data. Latency evidence: adb logcat -s UpSpaLatency</string>
+</resources>
