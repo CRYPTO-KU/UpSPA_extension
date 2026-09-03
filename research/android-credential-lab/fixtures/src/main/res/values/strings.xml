@@ -1,0 +1,53 @@
+<resources>
+    <string name="app_name">UpSPA Fixture Apps</string>
+
+    <!-- Home -->
+    <string name="home_title">Controlled autofill fixtures</string>
+    <string name="home_subtitle">Mock screens for the UpSPA Android credential research. Never enter real credentials.</string>
+    <string name="home_hint_switch">Use spec-compliant autofill hints (Tier 1 variant)</string>
+    <string name="home_login">Login (single screen)</string>
+    <string name="home_registration">Registration</string>
+    <string name="home_password_change">Password change</string>
+    <string name="home_split_login">Split login (username, then password)</string>
+    <string name="home_webview">WebView login (HTML form)</string>
+    <string name="home_compose">Login (Jetpack Compose)</string>
+    <string name="home_custom_view">Custom view (virtual fields)</string>
+    <string name="home_no_autofill">Autofill-disabled screen</string>
+
+    <!-- Shared -->
+    <string name="fixture_submit_note">Fixture only — nothing is submitted. AutofillManager.commit() was signaled.</string>
+
+    <!-- Login -->
+    <string name="login_title">Sign in</string>
+    <string name="login_user_hint">Username or email</string>
+    <string name="login_password_hint">Password</string>
+    <string name="login_submit">Sign in</string>
+
+    <!-- Registration -->
+    <string name="reg_title">Create your account</string>
+    <string name="reg_email_hint">Email address</string>
+    <string name="reg_password_hint">Choose a password</string>
+    <string name="reg_confirm_hint">Repeat password</string>
+    <string name="reg_submit">Create account</string>
+
+    <!-- Password change -->
+    <string name="pc_title">Change password</string>
+    <string name="pc_current_hint">Current password</string>
+    <string name="pc_new_hint">New password</string>
+    <string name="pc_confirm_hint">Repeat new password</string>
+    <string name="pc_submit">Update password</string>
+
+    <!-- Split login -->
+    <string name="split_user_title">Sign in — step 1 of 2</string>
+    <string name="split_user_hint">Username</string>
+    <string name="split_next">Next</string>
+    <string name="split_password_title">Sign in — step 2 of 2</string>
+    <string name="split_password_hint">Password</string>
+    <string name="split_submit">Sign in</string>
+
+    <!-- Custom view -->
+    <string name="custom_title">Custom-drawn login (virtual autofill children)</string>
+
+    <!-- No autofill -->
+    <string name="na_title">This screen opts out of autofill (importantForAutofill=noExcludeDescendants)</string>
+</resources>
