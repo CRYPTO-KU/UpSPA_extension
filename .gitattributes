@@ -1,0 +1,5 @@
+# Shell scripts must stay LF or bash fails with `\r': command not found,
+# on Linux CI as well as Git Bash. See scripts/generate_mobile_bindings.sh.
+*.sh text eol=lf
+gradlew text eol=lf
+.gitattributes text eol=lf
