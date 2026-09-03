@@ -4,7 +4,7 @@
 //! older contract is rejected with a typed error instead of silently misinterpreting a payload.
 //! No type in this module carries a plaintext secret in a `String`.
 
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::Zeroize;
 
 /// Version of the mobile host/engine contract, independent of the protocol version.
 pub const MOBILE_CONTRACT_VERSION: u32 = 2;
@@ -51,7 +51,13 @@ impl Deadline {
 /// Deliberately a byte buffer, not a `String`: this keeps the value out of the Kotlin/Java string
 /// interning pool, out of `toString()` output, and zeroizable on the Rust side. On the Kotlin side
 /// this surfaces as `ByteArray`, which the host is expected to overwrite after use.
-#[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop, uniffi::Record)]
+///
+/// Note the absence of `ZeroizeOnDrop`. A UniFFI record cannot implement `Drop`, because the
+/// generated lowering code has to move the fields out of the struct, and Rust forbids moving out of
+/// a type with a `Drop` impl (E0509). The type is therefore `Zeroize` but not `ZeroizeOnDrop`, and
+/// erasure is the caller's responsibility: every engine path that consumes a secret calls
+/// `.zeroize()` on it explicitly. See `engine.rs::submit`.
+#[derive(Clone, PartialEq, Eq, Zeroize, uniffi::Record)]
 pub struct SecretBytes {
     pub bytes: Vec<u8>,
 }

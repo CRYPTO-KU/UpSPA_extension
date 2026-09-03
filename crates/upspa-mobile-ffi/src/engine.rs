@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use zeroize::Zeroize;
+
 use crate::contract::*;
 use crate::ports::*;
 
@@ -92,15 +94,17 @@ impl MobileEngine {
             ),
             CommandBody::DeriveCredential {
                 selector,
-                master_secret,
+                mut master_secret,
             } => {
                 if master_secret.is_empty() {
                     return Err(MobileError::IdentityRejected {
                         reason_code: "empty-master-secret".to_owned(),
                     });
                 }
-                // The secret is consumed here and dropped (zeroized) at the end of this scope.
+                // Only the length reaches the payload; no secret byte is copied into the effect.
                 let payload = derivation_request_payload(&selector, &master_secret);
+                // Explicit, because SecretBytes cannot carry a Drop impl (see contract.rs).
+                master_secret.zeroize();
                 (
                     PendingKind::Request,
                     EffectBody::SendRequest {
