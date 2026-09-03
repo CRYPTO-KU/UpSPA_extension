@@ -28,7 +28,7 @@ case "$(uname -s)" in
 esac
 
 case "$LANGUAGE" in
-  kotlin) OUT_DIR="$REPO_ROOT/apps/android/ffi/src/main/java" ;;
+  kotlin) OUT_DIR="$REPO_ROOT/apps/android/ffi/src/main/generated" ;;
   swift)  OUT_DIR="$REPO_ROOT/build/xcframework/swift" ;;
   *) echo "unsupported language: $LANGUAGE (expected kotlin or swift)" >&2; exit 2 ;;
 esac

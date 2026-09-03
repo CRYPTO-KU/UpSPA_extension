@@ -22,7 +22,7 @@ android {
 
     sourceSets {
         // Generated bindings land here; see scripts/generate_mobile_bindings.sh.
-        getByName("main").java.srcDirs("src/main/java")
+        getByName("main").java.srcDirs("src/main/java", "src/main/generated")
         // Built .so artifacts land here; see docs/mobile-ffi-contract.md.
         getByName("main").jniLibs.srcDirs("src/main/jniLibs")
     }
