@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use rand_chacha::ChaCha20Rng;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::SeedableRng;
 use upspa_core::protocol::{authenticate, password_update, register, secret_update, setup};
 use upspa_core::toprf::{toprf_server_eval, ToprfClient, ToprfPartial};
 use upspa_core::types::{b64_encode, CtBlobB64};

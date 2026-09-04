@@ -1,7 +1,12 @@
 import { beforeAll, describe, expect, test } from 'vitest';
-// Test-only Node WebCrypto shim for Vitest's node environment.
-// @ts-ignore Node types are not part of the extension tsconfig.
+// @ts-ignore
 import { webcrypto } from 'node:crypto';
+// @ts-ignore
+import { readFileSync } from 'node:fs';
+// @ts-ignore
+import { join } from 'node:path';
+// @ts-ignore
+import { fileURLToPath } from 'node:url';
 import {
   defaultPasswordPolicy,
   encodeSecretAsPassword,
@@ -137,5 +142,52 @@ describe('deterministic encoder (Task 6 guarantees)', () => {
       }
     }
     expect(passwordSatisfiesPolicy(out.password, policy, 'alice')).toBe(true);
+  });
+});
+
+type CorpusVector = {
+  id: string;
+  description: string;
+  secretB64: string;
+  policy: import('./passwordPolicy').PasswordPolicy;
+  accountId: string;
+  counter: number;
+  expected: string;
+  reject: boolean;
+};
+
+describe('compatibility-profile-v1 corpus', () => {
+  let vectors: CorpusVector[] = [];
+
+  beforeAll(() => {
+    const repoRoot = join(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
+    const corpusPath = join(repoRoot, 'test-vectors/compatibility-profile-v1/vectors.json');
+    vectors = JSON.parse(readFileSync(corpusPath, 'utf8')) as CorpusVector[];
+  });
+
+  test('corpus has at least 20 accepted vectors', () => {
+    expect(vectors.filter((v) => !v.reject).length).toBeGreaterThanOrEqual(20);
+  });
+
+  test('corpus has exactly 1 reject vector', () => {
+    expect(vectors.filter((v) => v.reject).length).toBe(1);
+  });
+
+  test('all accepted vectors produce exact expected output', async () => {
+    for (const v of vectors.filter((v) => !v.reject)) {
+      const result = await encodeSecretAsPassword(v.secretB64, v.policy, v.accountId, v.counter);
+      if (result.password !== v.expected) {
+        throw new Error(`${v.id}: password mismatch`);
+      }
+    }
+  });
+
+  test('reject vector expected value does not match real encoder output', async () => {
+    for (const v of vectors.filter((v) => v.reject)) {
+      const result = await encodeSecretAsPassword(v.secretB64, v.policy, v.accountId, v.counter);
+      if (result.password === v.expected) {
+        throw new Error(`${v.id}: password mismatch`);
+      }
+    }
   });
 });
