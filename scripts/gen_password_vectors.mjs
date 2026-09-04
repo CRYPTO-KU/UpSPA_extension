@@ -33,7 +33,7 @@ const cases = [
     secret: SECRET, policy: normalizePasswordPolicy({}), accountId: 'alice@example.com', counter: 3 },
   { id: 'v004', description: 'maxLen 16',
     secret: SECRET, policy: normalizePasswordPolicy({ maxLen: 16 }), accountId: 'alice@example.com', counter: 0 },
-  { id: 'v005', description: 'maxLen 12 (minLen clamps to 8)',
+  { id: 'v005', description: 'maxLen 12 (normalized minLen is 12)',
     secret: SECRET, policy: normalizePasswordPolicy({ maxLen: 12 }), accountId: 'alice@example.com', counter: 0 },
   { id: 'v006', description: 'no symbol required',
     secret: SECRET, policy: normalizePasswordPolicy({ requireSymbol: false, allowedSymbols: '' }), accountId: 'alice@example.com', counter: 0 },

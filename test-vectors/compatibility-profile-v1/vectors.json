@@ -81,7 +81,7 @@
   },
   {
     "id": "v005",
-    "description": "maxLen 12 (minLen clamps to 8)",
+    "description": "maxLen 12 (normalized minLen is 12)",
     "secretB64": "raw-upspa-secret-for-tests",
     "policy": {
       "minLen": 12,

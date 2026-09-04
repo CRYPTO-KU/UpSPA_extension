@@ -57,7 +57,10 @@ fn normalize_policy(policy: &PasswordPolicy) -> PasswordPolicy {
 
     let mut allowed_symbols = policy.allowed_symbols.clone();
     if policy.forbid_whitespace {
-        allowed_symbols = allowed_symbols.chars().filter(|c| !c.is_whitespace()).collect();
+        allowed_symbols = allowed_symbols
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
     }
     allowed_symbols = unique_chars(&allowed_symbols);
     if policy.require_symbol && allowed_symbols.is_empty() {
@@ -87,20 +90,36 @@ fn normalize_policy(policy: &PasswordPolicy) -> PasswordPolicy {
 /// Returns the list of character sets required by the policy.
 fn required_charsets(policy: &PasswordPolicy) -> Vec<&str> {
     let mut sets: Vec<&str> = Vec::new();
-    if policy.require_lower { sets.push(LOWER); }
-    if policy.require_upper { sets.push(UPPER); }
-    if policy.require_digit { sets.push(DIGIT); }
-    if policy.require_symbol { sets.push(policy.allowed_symbols.as_str()); }
+    if policy.require_lower {
+        sets.push(LOWER);
+    }
+    if policy.require_upper {
+        sets.push(UPPER);
+    }
+    if policy.require_digit {
+        sets.push(DIGIT);
+    }
+    if policy.require_symbol {
+        sets.push(policy.allowed_symbols.as_str());
+    }
     sets
 }
 
 /// Combines all allowed character sets into a single pool of unique characters.
 fn build_pool(policy: &PasswordPolicy) -> String {
     let mut raw = String::new();
-    if policy.require_lower { raw.push_str(LOWER); }
-    if policy.require_upper { raw.push_str(UPPER); }
-    if policy.require_digit { raw.push_str(DIGIT); }
-    if policy.require_symbol { raw.push_str(&policy.allowed_symbols); }
+    if policy.require_lower {
+        raw.push_str(LOWER);
+    }
+    if policy.require_upper {
+        raw.push_str(UPPER);
+    }
+    if policy.require_digit {
+        raw.push_str(DIGIT);
+    }
+    if policy.require_symbol {
+        raw.push_str(&policy.allowed_symbols);
+    }
     unique_chars(&raw)
 }
 
@@ -141,21 +160,37 @@ fn build_candidate(chars: &[char], shuffle_bytes: &[u8]) -> String {
 /// Checks if a candidate password satisfies all rules in the policy.
 fn password_satisfies_policy(password: &str, policy: &PasswordPolicy, account_id: &str) -> bool {
     let len = password.chars().count() as u32;
-    if len < policy.min_len || len > policy.max_len { return false; }
-    if policy.require_upper && !password.chars().any(|c| c.is_ascii_uppercase()) { return false; }
-    if policy.require_lower && !password.chars().any(|c| c.is_ascii_lowercase()) { return false; }
-    if policy.require_digit && !password.chars().any(|c| c.is_ascii_digit()) { return false; }
+    if len < policy.min_len || len > policy.max_len {
+        return false;
+    }
+    if policy.require_upper && !password.chars().any(|c| c.is_ascii_uppercase()) {
+        return false;
+    }
+    if policy.require_lower && !password.chars().any(|c| c.is_ascii_lowercase()) {
+        return false;
+    }
+    if policy.require_digit && !password.chars().any(|c| c.is_ascii_digit()) {
+        return false;
+    }
     if policy.require_symbol {
         let sym_chars: Vec<char> = policy.allowed_symbols.chars().collect();
-        if !password.chars().any(|c| sym_chars.contains(&c)) { return false; }
+        if !password.chars().any(|c| sym_chars.contains(&c)) {
+            return false;
+        }
     }
-    if policy.forbid_whitespace && password.chars().any(|c| c.is_whitespace()) { return false; }
+    if policy.forbid_whitespace && password.chars().any(|c| c.is_whitespace()) {
+        return false;
+    }
     let lower_password = password.to_lowercase();
     for forbidden in &policy.forbidden_substrings {
-        if !forbidden.is_empty() && lower_password.contains(forbidden.as_str()) { return false; }
+        if !forbidden.is_empty() && lower_password.contains(forbidden.as_str()) {
+            return false;
+        }
     }
     let clean_account_id = account_id.trim().to_lowercase();
-    if !clean_account_id.is_empty() && lower_password.contains(&clean_account_id) { return false; }
+    if !clean_account_id.is_empty() && lower_password.contains(&clean_account_id) {
+        return false;
+    }
     true
 }
 
@@ -208,10 +243,12 @@ pub fn encode_secret_as_password(
         return Err(PasswordEncoderError::EmptyPool);
     }
 
-    let length = policy
-        .max_len
-        .min(policy.min_len.max(policy.max_len.min(32)).max(required.len() as u32))
-        as usize;
+    let length = policy.max_len.min(
+        policy
+            .min_len
+            .max(policy.max_len.min(32))
+            .max(required.len() as u32),
+    ) as usize;
 
     let account_key = account_id.trim().to_lowercase();
     let canon = canonical_policy(&policy);
@@ -274,23 +311,57 @@ mod tests {
     #[test]
     fn satisfies_default_policy() {
         let policy = default_policy();
-        let pw = encode_secret_as_password("raw-upspa-secret-for-tests", &policy, "alice@example.com", 0).unwrap();
-        assert!(password_satisfies_policy(&pw, &normalize_policy(&policy), "alice@example.com"));
+        let pw = encode_secret_as_password(
+            "raw-upspa-secret-for-tests",
+            &policy,
+            "alice@example.com",
+            0,
+        )
+        .unwrap();
+        assert!(password_satisfies_policy(
+            &pw,
+            &normalize_policy(&policy),
+            "alice@example.com"
+        ));
     }
 
     #[test]
     fn deterministic_same_counter() {
         let policy = default_policy();
-        let a = encode_secret_as_password("raw-upspa-secret-for-tests", &policy, "alice@example.com", 3).unwrap();
-        let b = encode_secret_as_password("raw-upspa-secret-for-tests", &policy, "alice@example.com", 3).unwrap();
+        let a = encode_secret_as_password(
+            "raw-upspa-secret-for-tests",
+            &policy,
+            "alice@example.com",
+            3,
+        )
+        .unwrap();
+        let b = encode_secret_as_password(
+            "raw-upspa-secret-for-tests",
+            &policy,
+            "alice@example.com",
+            3,
+        )
+        .unwrap();
         assert_eq!(a, b);
     }
 
     #[test]
     fn different_counter_different_password() {
         let policy = default_policy();
-        let a = encode_secret_as_password("raw-upspa-secret-for-tests", &policy, "alice@example.com", 1).unwrap();
-        let b = encode_secret_as_password("raw-upspa-secret-for-tests", &policy, "alice@example.com", 2).unwrap();
+        let a = encode_secret_as_password(
+            "raw-upspa-secret-for-tests",
+            &policy,
+            "alice@example.com",
+            1,
+        )
+        .unwrap();
+        let b = encode_secret_as_password(
+            "raw-upspa-secret-for-tests",
+            &policy,
+            "alice@example.com",
+            2,
+        )
+        .unwrap();
         assert_ne!(a, b);
     }
 }

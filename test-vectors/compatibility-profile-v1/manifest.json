@@ -21,6 +21,7 @@
   "notes": [
     "Vectors generated from passwordPolicy.ts at commit fd00014 (mobile-dev branch).",
     "Algorithm: upspa-password-encoding-v2 (SHA-256 block-counter expansion, NOT HKDF).",
-    "v022 is the deliberately mutated rejection vector."
+    "v022 is the deliberately mutated rejection vector.",
+    "Rust parity currently expects fully normalized policies. Rust and TypeScript do not normalize every raw policy identically; partial-policy support remains future integration work."
   ]
 }

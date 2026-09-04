@@ -176,14 +176,18 @@ describe('compatibility-profile-v1 corpus', () => {
   test('all accepted vectors produce exact expected output', async () => {
     for (const v of vectors.filter((v) => !v.reject)) {
       const result = await encodeSecretAsPassword(v.secretB64, v.policy, v.accountId, v.counter);
-      expect(result.password, `${v.id}: ${v.description}`).toBe(v.expected);
+      if (result.password !== v.expected) {
+        throw new Error(`${v.id}: password mismatch`);
+      }
     }
   });
 
   test('reject vector expected value does not match real encoder output', async () => {
     for (const v of vectors.filter((v) => v.reject)) {
       const result = await encodeSecretAsPassword(v.secretB64, v.policy, v.accountId, v.counter);
-      expect(result.password, `${v.id}: ${v.description}`).not.toBe(v.expected);
+      if (result.password === v.expected) {
+        throw new Error(`${v.id}: password mismatch`);
+      }
     }
   });
 });
