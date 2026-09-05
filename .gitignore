@@ -10,3 +10,6 @@ dist/
 packages/upspa-js/wasm-pkg/
 
 .DS_Store
+
+__pycache__/
+*.pyc
