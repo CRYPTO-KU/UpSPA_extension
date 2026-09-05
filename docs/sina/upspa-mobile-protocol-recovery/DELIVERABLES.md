@@ -25,7 +25,7 @@ This file maps the research-task requirements to the files in this package.
 
 | Requirement | Evidence | State |
 |---|---|---|
-| Five primary sources | `reports/SOURCE-LEDGER.md` | to be completed |
+| Five primary sources | `reports/SOURCE-LEDGER.md` | preliminary evidence included|
 | Two credible security or engineering analyses | `reports/SOURCE-LEDGER.md` | to be completed |
 | Two inspected example codebases | `reports/CODEBASE-INSPECTION.md` | to be completed |
 | One reproducible experiment or prototype | `code-protocol-sim/simulator.py` and `code-protocol-sim/results.json` | done |
