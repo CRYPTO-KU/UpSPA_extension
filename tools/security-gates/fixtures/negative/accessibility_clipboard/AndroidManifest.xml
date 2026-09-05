@@ -7,9 +7,14 @@ BIND_ACCESSIBILITY_SERVICE. UpSPA has no legitimate use for the
 Accessibility API and Google Play now policy-prohibits this class of
 automation for an app like this regardless.
 
+Deliberately exported="false": accessibility_clipboard.py's manifest check
+doesn't look at exported status at all, but exported_components.py's fixed
+permission check WOULD otherwise also fire here; BIND_ACCESSIBILITY_SERVICE
+isn't in its recognized system-bound-service allowlist. Setting exported to
+false keeps this fixture isolated to one gate.
+
 allowBackup is explicitly false and the activity is a correctly-configured
-launcher, so this fixture doesn't also trip backup_config or
-exported_components.
+launcher, so this fixture doesn't also trip backup_config.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -28,7 +33,7 @@ exported_components.
 
         <service
             android:name=".BadAccessibilityService"
-            android:exported="true"
+            android:exported="false"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

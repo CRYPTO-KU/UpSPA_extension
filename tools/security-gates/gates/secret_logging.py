@@ -71,7 +71,12 @@ def _scan(repo_root: Path, call_pattern: re.Pattern, gate_label: str) -> list[Fi
                 findings.append(Finding(
                     gate=gate_label, severity=Severity.FAIL,
                     file=rel, line=i + 1,
-                    detail=f"{line.strip()[:150]}",
+                    detail=(
+                        f"rule=secret-identifier-proximity: a secret-shaped "
+                        f"identifier appears within {WINDOW_LINES} line(s) of "
+                        f"this call; please see the file/line for the actual "
+                        f"expression rather than reproducing it here."
+                    ),
                 ))
     return findings
 

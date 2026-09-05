@@ -32,3 +32,6 @@ jobs:
 
       - name: Verify every seeded-negative fixture fails for the right reason, and only the right reason
         run: python3 tools/security-gates/test_negative_fixtures.py
+
+      - name: Verify every seeded-positive fixture stays clean
+        run: python3 tools/security-gates/test_positive_fixtures.py

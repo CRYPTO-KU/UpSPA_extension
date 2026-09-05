@@ -2,19 +2,37 @@
 <!--
 Seeded-negative fixture for gates/exported_components.py
 
-The ONLY intended failure here: SecretSettingsActivity is exported="true"
-with no android:permission and no MAIN/LAUNCHER intent-filter; reachable
-by any other installed app with no authorization check.
+Two intended failures:
+  1. SecretSettingsActivity is exported="true" with no android:permission
+     and no MAIN/LAUNCHER intent-filter; reachable by any other installed
+     app with no authorization check.
+  2. LeakyStatusService is exported="true" and declares a permission
+     (android.permission.INTERNET), but that permission provides no real
+     caller authorization; every app on the device already holds it,
+     the same way any "normal"-tier platform permission would. This is a
+     regression case for a real review finding: an earlier version of the
+     gate accepted any non-empty android:permission value as sufficient
+     protection, which meant an exported sensitive component "protected"
+     only by an unrelated normal permission was silently treated as safe.
+
+DemoSignedActionReceiver + the accompanying <permission> declaration are
+present to prove the fix's other half also works: a permission the app
+itself declares with a signature-tier protectionLevel is accepted, since
+that is a real structurally-verified restriction, not just any string.
 
 Everything else in this manifest is deliberately clean (allowBackup=false,
-no cleartext, no Accessibility) so this fixture is isolated to exactly one
-gate, not a grab-bag of unrelated failures.
+no cleartext, no Accessibility) so this fixture is isolated to exactly
+this gate, not a grab-bag of unrelated failures.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
         android:allowBackup="false"
         android:label="fixture">
+
+        <permission
+            android:name=".SIGNED_ACTION_PERMISSION"
+            android:protectionLevel="signature" />
 
         <activity
             android:name=".MainActivity"
@@ -28,6 +46,16 @@ gate, not a grab-bag of unrelated failures.
         <activity
             android:name=".SecretSettingsActivity"
             android:exported="true" />
+        
+        <service
+            android:name=".LeakyStatusService"
+            android:exported="true"
+            android:permission="android.permission.INTERNET" />
+            
+        <receiver
+            android:name=".DemoSignedActionReceiver"
+            android:exported="true"
+            android:permission=".SIGNED_ACTION_PERMISSION" />
 
     </application>
 

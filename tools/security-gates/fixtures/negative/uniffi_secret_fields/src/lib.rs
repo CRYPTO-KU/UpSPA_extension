@@ -15,6 +15,7 @@ pub struct BadUnlockRequest {
     pub contract_version: u32,
     pub request_id: String,
     pub master_password: String,
+    pub state_key: String,
 }
 
 #[uniffi::export]

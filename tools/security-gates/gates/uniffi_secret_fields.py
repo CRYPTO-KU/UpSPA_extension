@@ -23,15 +23,16 @@ this gate intentionally avoids): a two-pass regex approach.
     flag it if:
     - the name matches a secret-identifier pattern (password, secret, key,
       token, ssk, credential, ...), AND
-    - the type is `String`, `&str`, `Option<String>`, or a bare `Vec<u8>`
-      with no wrapping newtype, i.e. no type-level signal that this value
-      needs special handling. A field named `session_token` typed as
-      `SecretBytes` or `Zeroizing<Vec<u8>>` or any other non-primitive
-      wrapper type is NOT flagged, on the theory that a custom type is where
-      zeroize-on-drop and redaction-on-Debug would actually be implemented;
-      this gate does not verify that the wrapper type itself does those
-      things (that would need to inspect the type's own definition and
-      trait impls, out of scope for a manifest/source-pattern gate).
+    - the type is `String`, `&str`, or `Option<String>`; i.e. an ordinary
+      string with no type-level signal that this value needs special
+      handling. `Vec<u8>`/`Option<Vec<u8>>` are not flagged: byte buffers
+      are allowed as an acceptable secret representation, so a bare byte
+      buffer already satisfies the rule. A field named `session_token`
+      typed as `SecretBytes` or `Zeroizing<Vec<u8>>` or any other
+      non-primitive wrapper type is also not flagged, on the theory that
+      a custom type is where zeroize-on-drop and redaction-on-Debug would
+      actually be implemented; this gate does not verify that the wrapper
+      type itself does those things.
 
 Known limitation: this will not catch a secret field with a non-obvious
 name (e.g. `blob`, `payload`, `data`) that nonetheless carries secret
@@ -56,12 +57,15 @@ FIELD_LINE = re.compile(r"pub\s+(\w+)\s*:\s*([^,\n]+),?")
 PARAM = re.compile(r"(\w+)\s*:\s*([^,()]+)")
 
 SECRET_NAME = re.compile(
-    r"password|secret|\bkey\b|token|credential|\bssk\b|\bpwd\b|master",
+    r"password|secret|(?<![A-Za-z0-9])key(?![A-Za-z0-9])|token|credential|"
+    r"(?<![A-Za-z0-9])ssk(?![A-Za-z0-9])|(?<![A-Za-z0-9])pwd(?![A-Za-z0-9])|master",
     re.IGNORECASE,
 )
-# Primitive/unwrapped types that carry no type-level "careful handle"
-# signal. A type is flagged only if it reduces to exactly one of these.
-BARE_TYPES = {"String", "&str", "str", "Option<String>", "Vec<u8>", "Option<Vec<u8>>"}
+# Primitive or unwrapped STRING types that carry no type-level "careful handle" signal.
+# A type is flagged only if it reduces to exactly one of these.
+# Vec<u8>/Option<Vec<u8>> are deliberately NOT here; byte buffers are acceptable form
+# for secret representation, so a bare Vec<u8> already satisfies the contract on its own.
+BARE_TYPES = {"String", "&str", "str", "Option<String>"}
 
 def _extract_block(text: str, start: int) -> str:
     """From a struct/fn header's opening brace/paren,
@@ -119,9 +123,9 @@ def run(repo_root: Path) -> list[Finding]:
                         file=rel, line=line_no,
                         detail=(
                             f"struct {struct_match.group(1)} field "
-                            f"`{fname}: {ftype.strip()}` looks secret-shaped "
-                            f"by name but is a bare String/Vec<u8> with no "
-                            f"protective wrapper type; represent this as "
+                            f"`{fname}: {ftype.strip()}` looks secret-shaped by name "
+                            f"but is a bare String type (String/&str/Option<String>) "
+                            f"with no protective wrapper type; represent this as "
                             f"an explicit secret/opaque byte type instead."
                         ),
                     ))
@@ -147,8 +151,8 @@ def run(repo_root: Path) -> list[Finding]:
                         file=rel, line=line_no,
                         detail=(
                             f"exported fn {fn_match.group(1)} parameter "
-                            f"`{pname}: {ptype.strip()}` looks secret-shaped "
-                            f"by name but is a bare String/Vec<u8>."
+                            f"`{pname}: {ptype.strip()}` looks secret-shaped by name "
+                            f"but is a bare string type (String/&str/Option<String>)."
                         ),
                     ))
 

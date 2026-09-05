@@ -104,7 +104,8 @@ def _check_sources(repo_root: Path) -> list[Finding]:
                 findings.append(Finding(
                     gate="accessibility_clipboard", severity=Severity.FAIL,
                     file=rel, line=i,
-                    detail=f"Accessibility API referenced: {line.strip()[:140]}",
+                    detail="rule=accessibility-api-reference: an Accessibility "
+                           "API type is referenced at this location.",
                 ))
 
         for i, line in enumerate(lines, start=1):
@@ -114,9 +115,9 @@ def _check_sources(repo_root: Path) -> list[Finding]:
                     findings.append(Finding(
                         gate="accessibility_clipboard", severity=Severity.FAIL,
                         file=rel, line=i,
-                        detail=(
-                            f"clipboard write near a credential-shaped identifier: {line.strip()[:140]}"
-                        ),
+                        detail="rule=clipboard-credential-proximity: a clipboard "
+                               "write appears near a credential-shaped identifier "
+                               "at this location.",
                     ))
     return findings
 
