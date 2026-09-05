@@ -2,6 +2,7 @@
 pub mod aead;
 pub mod hash;
 pub mod protocol;
+pub mod recovery_engine;
 pub mod sign;
 pub mod toprf;
 pub mod types;
