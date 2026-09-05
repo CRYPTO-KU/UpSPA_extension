@@ -8,6 +8,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.upspa.assetlinks.crypto.CertificateUtils
 import org.upspa.assetlinks.model.AndroidPackageName
 import org.upspa.assetlinks.model.AppSigningInfo
+import org.upspa.assetlinks.model.AssetLinkEvidence
 import org.upspa.assetlinks.model.AssetLinkStatement
 import org.upspa.assetlinks.model.Origin
 import org.upspa.assetlinks.result.VerificationResult
@@ -17,15 +18,17 @@ import org.upspa.assetlinks.result.VerificationResult
  *
  * Guarantees:
  * - **Zero Network I/O**: Operates purely on pre-fetched/injected statement evidence in-memory.
+ * - **Origin Binding**: Prevents cross-origin replay attacks by enforcing that evidence matches requested origin.
  * - **Fail-Closed Security**: Any ambiguity, malformed evidence, or mismatch produces an explicit typed rejection.
  * - **Strict HTTPS Enforcement**: Rejects non-HTTPS schemes by default (§1.2).
  * - **Exact Identity Matching**: Strictly exact, case-sensitive matching on package name (no prefix/suffix/substring matching).
  * - **Rotation Lineage Support**: Validates single certs, multiple historical certs (APK v3 key rotation),
  *   while rejecting unsupported multi-signer states (§7.2, §10.3).
  */
-class PureAssetLinkVerifier(
-    private val allowInsecureHttp: Boolean = false
+class PureAssetLinkVerifier internal constructor(
+    private val allowInsecureHttp: Boolean
 ) {
+    constructor() : this(allowInsecureHttp = false)
 
     private val moshi: Moshi = Moshi.Builder()
         .addLast(KotlinJsonAdapterFactory())
@@ -35,13 +38,43 @@ class PureAssetLinkVerifier(
         moshi.adapter(Types.newParameterizedType(List::class.java, AssetLinkStatement::class.java))
 
     /**
+     * Primary verification entry point enforcing origin-bound evidence matching (§1.2, §1.4).
+     *
+     * Validates that [evidence] was explicitly issued by or intended for [requestedOrigin]
+     * to prevent cross-origin replay and injection attacks.
+     */
+    fun verify(
+        requestedOrigin: Origin,
+        appSigningInfo: AppSigningInfo,
+        evidence: AssetLinkEvidence,
+        requiredRelation: String = AssetLinkVerifier.DEFAULT_RELATION
+    ): VerificationResult {
+        // Enforce exact origin binding
+        if (requestedOrigin != evidence.sourceOrigin) {
+            return VerificationResult.Rejected.OriginMismatch(
+                requestedOrigin = requestedOrigin,
+                evidenceOrigin = evidence.sourceOrigin
+            )
+        }
+
+        return verifyStatementsInternal(
+            origin = requestedOrigin,
+            appSigningInfo = appSigningInfo,
+            statements = evidence.statements,
+            requiredRelation = requiredRelation
+        )
+    }
+
+    /**
      * Verifies relationship from raw JSON statement evidence.
+     *
+     * Parses the JSON and wraps it into an [AssetLinkEvidence] bound to [origin].
      */
     fun verifyRawJson(
         origin: Origin,
         appSigningInfo: AppSigningInfo,
         rawJson: String,
-        requiredRelation: String? = null
+        requiredRelation: String = AssetLinkVerifier.DEFAULT_RELATION
     ): VerificationResult {
         val statements = try {
             statementsAdapter.fromJson(rawJson)
@@ -52,17 +85,43 @@ class PureAssetLinkVerifier(
             return VerificationResult.Rejected.InvalidJsonFormat("Failed to parse assetlinks.json: ${e.message}")
         }
 
-        return verifyStatements(origin, appSigningInfo, statements, requiredRelation)
+        val evidence = AssetLinkEvidence(sourceOrigin = origin, statements = statements)
+        return verify(
+            requestedOrigin = origin,
+            appSigningInfo = appSigningInfo,
+            evidence = evidence,
+            requiredRelation = requiredRelation
+        )
     }
 
     /**
-     * Purely verifies relationship directly from structured statements evidence.
+     * Legacy verification entry point directly taking bare statements list.
+     *
+     * Wraps statements into an [AssetLinkEvidence] bound to [origin] and delegates to [verify].
      */
+    @Deprecated(
+        message = "Use verify(requestedOrigin, appSigningInfo, evidence, requiredRelation) to enforce origin binding",
+        replaceWith = ReplaceWith("verify(origin, appSigningInfo, AssetLinkEvidence(origin, statements), requiredRelation)")
+    )
     fun verifyStatements(
         origin: Origin,
         appSigningInfo: AppSigningInfo,
         statements: List<AssetLinkStatement>,
-        requiredRelation: String? = null
+        requiredRelation: String = AssetLinkVerifier.DEFAULT_RELATION
+    ): VerificationResult {
+        return verify(
+            requestedOrigin = origin,
+            appSigningInfo = appSigningInfo,
+            evidence = AssetLinkEvidence(sourceOrigin = origin, statements = statements),
+            requiredRelation = requiredRelation
+        )
+    }
+
+    private fun verifyStatementsInternal(
+        origin: Origin,
+        appSigningInfo: AppSigningInfo,
+        statements: List<AssetLinkStatement>,
+        requiredRelation: String
     ): VerificationResult {
         // Step 0: Enforce secure HTTPS origin (§1.2)
         if (!origin.isHttps && !allowInsecureHttp) {
@@ -79,14 +138,27 @@ class PureAssetLinkVerifier(
             return VerificationResult.Rejected.MultipleSignersUnsupported(appSigningInfo.packageName)
         }
 
+        // Fail-closed on corrupted or unparseable raw certificates
+        if (!appSigningInfo.validateCertificates()) {
+            return VerificationResult.Rejected.MalformedCertificateEvidence(
+                reason = "AppSigningInfo contains corrupted or unparseable raw certificate bytes for package '${appSigningInfo.packageName}'."
+            )
+        }
+
         val claimedFingerprints = appSigningInfo.getAllSha256Fingerprints()
         if (claimedFingerprints.isEmpty()) {
             return VerificationResult.Rejected.NoSigningCertificatesFound(appSigningInfo.packageName)
         }
 
-        val normalizedClaimedFingerprints = claimedFingerprints.mapNotNull { CertificateUtils.normalizeFingerprintOrNull(it) }
-        if (normalizedClaimedFingerprints.isEmpty()) {
-            return VerificationResult.Rejected.NoSigningCertificatesFound(appSigningInfo.packageName)
+        // Strictly inspect all claimed certificate digests fail-closed without lossy transform
+        val normalizedClaimedFingerprints = mutableListOf<String>()
+        for (fp in claimedFingerprints) {
+            val normalized = CertificateUtils.normalizeFingerprintOrNull(fp)
+                ?: return VerificationResult.Rejected.MalformedCertificateEvidence(
+                    rawFingerprint = fp,
+                    reason = "Malformed certificate fingerprint in claimed evidence: '$fp'."
+                )
+            normalizedClaimedFingerprints.add(normalized)
         }
 
         // Step 3: Exact match filtering for statements targeting android_app with matching package_name (§1.4)
@@ -101,6 +173,15 @@ class PureAssetLinkVerifier(
             return VerificationResult.Rejected.PackageNotFound(appSigningInfo.packageName)
         }
 
+        // Pre-validate all target fingerprints across matching statements before matching
+        for (statement in matchingPackageStatements) {
+            for (fp in statement.target?.sha256CertFingerprints.orEmpty()) {
+                if (!CertificateUtils.isValidSha256Fingerprint(fp)) {
+                    return VerificationResult.Rejected.MalformedCertificateFingerprint(fp)
+                }
+            }
+        }
+
         // Step 4: Validate certificates and relations across matching statements
         val authorizedFingerprints = mutableListOf<String>()
         val availableRelations = mutableListOf<String>()
@@ -112,10 +193,6 @@ class PureAssetLinkVerifier(
 
             val targetFingerprints = statement.target?.sha256CertFingerprints.orEmpty()
             for (fp in targetFingerprints) {
-                if (!CertificateUtils.isValidSha256Fingerprint(fp)) {
-                    return VerificationResult.Rejected.MalformedCertificateFingerprint(fp)
-                }
-
                 val normalizedFp = CertificateUtils.normalizeFingerprintOrNull(fp) ?: continue
                 authorizedFingerprints.add(normalizedFp)
 
@@ -124,7 +201,7 @@ class PureAssetLinkVerifier(
                     certificateMatchedAnyStatement = true
 
                     // Check required relation
-                    if (requiredRelation == null || statementRelations.contains(requiredRelation)) {
+                    if (statementRelations.contains(requiredRelation)) {
                         return VerificationResult.Verified(
                             origin = origin,
                             packageName = appSigningInfo.packageName,
@@ -137,7 +214,7 @@ class PureAssetLinkVerifier(
         }
 
         // If certificate matched but required relation was not satisfied -> fail-closed with MissingRequiredRelation
-        if (certificateMatchedAnyStatement && requiredRelation != null) {
+        if (certificateMatchedAnyStatement) {
             return VerificationResult.Rejected.MissingRequiredRelation(
                 packageName = appSigningInfo.packageName,
                 requiredRelation = requiredRelation,
@@ -146,7 +223,7 @@ class PureAssetLinkVerifier(
         }
 
         // Otherwise, certificate did not match authorized statement certificates
-        val primaryClaimed = normalizedClaimedFingerprints.firstOrNull() ?: claimedFingerprints.first()
+        val primaryClaimed = normalizedClaimedFingerprints.first()
         return VerificationResult.Rejected.CertificateMismatch(
             packageName = appSigningInfo.packageName,
             claimedFingerprint = primaryClaimed,

@@ -9,20 +9,23 @@ import org.upspa.assetlinks.result.VerificationResult
  */
 interface AssetLinkVerifier {
 
+    companion object {
+        const val DEFAULT_RELATION: String = "delegate_permission/common.handle_all_urls"
+    }
+
     /**
      * Verifies that the specified [origin] authorizes the given [appSigningInfo]
      * to act on its behalf according to Digital Asset Links specification (§1.5).
      *
      * @param origin Validated web origin (scheme + host + port).
      * @param appSigningInfo Claimed Android app package name and certificate signing history.
-     * @param requiredRelation Optional relation string (e.g. "delegate_permission/common.handle_all_urls").
-     *                         If null, any valid permission relation for the target package is accepted.
+     * @param requiredRelation Required relation string (defaults to "delegate_permission/common.handle_all_urls").
      * @return [VerificationResult] exhaustive sealed class representing verification outcome.
      */
     fun verify(
         origin: Origin,
         appSigningInfo: AppSigningInfo,
-        requiredRelation: String? = null
+        requiredRelation: String = DEFAULT_RELATION
     ): VerificationResult
 
     /**
@@ -31,7 +34,7 @@ interface AssetLinkVerifier {
     fun verify(
         rawOriginUrl: String,
         appSigningInfo: AppSigningInfo,
-        requiredRelation: String? = null
+        requiredRelation: String = DEFAULT_RELATION
     ): VerificationResult
 
     /**
@@ -43,6 +46,6 @@ interface AssetLinkVerifier {
     ): VerificationResult = verify(
         requestedIdentity.origin,
         appSigningInfo,
-        requestedIdentity.requiredRelation
+        requestedIdentity.requiredRelation ?: DEFAULT_RELATION
     )
 }

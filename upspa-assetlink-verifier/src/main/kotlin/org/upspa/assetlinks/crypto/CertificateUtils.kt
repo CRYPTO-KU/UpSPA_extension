@@ -1,7 +1,10 @@
 package org.upspa.assetlinks.crypto
 
+import java.io.ByteArrayInputStream
 import java.security.MessageDigest
+import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.util.Base64
 import java.util.Locale
 
 /**
@@ -13,6 +16,43 @@ import java.util.Locale
 object CertificateUtils {
 
     private const val SHA256_ALGORITHM = "SHA-256"
+
+    const val SAMPLE_X509_CERT_BASE64 =
+        "MIICzzCCAbegAwIBAgIIFNvu1j4yS8EwDQYJKoZIhvcNAQELBQAwFjEUMBIGA1UE" +
+        "AxMLZXhhbXBsZS5jb20wHhcNMjYwOTA1MTQwNDExWhcNMjcwOTA1MTQwNDExWjAW" +
+        "MRQwEgYDVQQDEwtleGFtcGxlLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC" +
+        "AQoCggEBALFXFZokSVwpSIWYkrvH6CBMKvNws374lkEILlfeYxmnnRWcmomY3MJd" +
+        "QiRtyNJHjz0xU7FjMI5g5iGCbbt1VnHz0GuZVRfI1MtFuPyrg/Y6+289x2R3UfH1" +
+        "8CWuzOz7sU6K3LQr1KVLPhQlM+FF6Ef3/9tvrcbQJGia5LXEtA+8oskXGjgIFie0" +
+        "mPcyR7ycsf2RkXDsMZm5yaXl6UjeFV4SzNNpAVEX86pXswna9H5BeG6R3E9oHAEE" +
+        "XJPSP2tmHazeGsp5Z93oFt9hQKjD++lLQFoQ0FU/8XpuEJMXUZfuWK02h/y2+CF3" +
+        "QNkc0AG4sJrTfFpUuTAfjnLpiLXTOgkCAwEAAaMhMB8wHQYDVR0OBBYEFCNmmaLi" +
+        "8u6/yMT2Pegxwio6oJBrMA0GCSqGSIb3DQEBCwUAA4IBAQBGfBgdGJPqtyPHK7ad" +
+        "T7OK/k0IbZAAX48Ze2nTOUjQtWIEbExLdy+Hv9u5fR9TFdyhbxgOM0X/rimZTqKd" +
+        "QqyU0/jm7Rx6C0k/fQwXukZanZtj+odr5pLwkgA86wqoF41+OTw5yzT/Jhm28y92" +
+        "ZmxrQiIF9Rp/TzymJYkTWGgawCoGwc5X0+277GEgDOdSTaeyRt193dKRubQt7/pz" +
+        "RP4d4aSH/1DZVN/HExE6obNZjMdJVlZTUIPrJHowVoJd13yKQBRUgp+GpG7WuRAg" +
+        "5tBhZpgIrgqD0S52CkAZKylGKvoTdOhwkrblFZxwvltTxspys3pvOlLUKFu4OKcX" +
+        "T7Cv"
+
+    @JvmStatic
+    val sampleX509CertificateBytes: ByteArray by lazy {
+        Base64.getDecoder().decode(SAMPLE_X509_CERT_BASE64)
+    }
+
+    /**
+     * Validates whether [certificateBytes] forms a syntactically valid DER or PEM encoded X.509 certificate.
+     */
+    @JvmStatic
+    fun isValidX509Certificate(certificateBytes: ByteArray): Boolean {
+        if (certificateBytes.isEmpty()) return false
+        return try {
+            val factory = CertificateFactory.getInstance("X.509")
+            factory.generateCertificate(ByteArrayInputStream(certificateBytes)) != null
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     /**
      * Computes the SHA-256 digest of the given binary certificate/signature bytes

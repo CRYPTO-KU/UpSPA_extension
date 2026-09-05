@@ -49,4 +49,19 @@ class OriginTest {
 
         assertNull(Origin.parseOrNull("android:apk-key-hash:abc"))
     }
+
+    @Test
+    fun `test direct constructor normalizes scheme and host casing`() {
+        val upper = Origin("HTTPS", "EXAMPLE.COM", 443)
+        val lower = Origin("https", "example.com", 443)
+        val mixed = Origin("HtTps", "ExAmPle.CoM", 443)
+
+        assertEquals(lower, upper)
+        assertEquals(lower, mixed)
+        assertEquals(lower.hashCode(), upper.hashCode())
+        assertEquals(lower.hashCode(), mixed.hashCode())
+        assertEquals("https", upper.scheme)
+        assertEquals("example.com", upper.host)
+        assertEquals("https://example.com", upper.toOriginString())
+    }
 }

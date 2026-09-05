@@ -9,14 +9,17 @@ import java.security.cert.X509Certificate
  * Guaranteed to be formatted as standard uppercase colon-separated hex:
  * `14:6D:E9:A1:B2:C3:...:17` (95 characters, 32 bytes).
  */
-@JvmInline
-value class CertificateDigest(val value: String) {
+class CertificateDigest(rawDigest: String) {
 
-    init {
-        require(CertificateUtils.isValidSha256Fingerprint(value)) {
-            "Invalid SHA-256 certificate digest: '$value'. Must be a 32-byte hex digest."
-        }
+    val value: String = CertificateUtils.normalizeFingerprint(rawDigest)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is CertificateDigest) return false
+        return value == other.value
     }
+
+    override fun hashCode(): Int = value.hashCode()
 
     override fun toString(): String = value
 
@@ -25,18 +28,18 @@ value class CertificateDigest(val value: String) {
          * Parses and normalizes a hex string (with or without colons/spaces) into a [CertificateDigest].
          */
         @JvmStatic
-        fun fromHex(rawFingerprint: String): CertificateDigest {
-            val normalized = CertificateUtils.normalizeFingerprint(rawFingerprint)
-            return CertificateDigest(normalized)
-        }
+        fun fromHex(rawFingerprint: String): CertificateDigest = CertificateDigest(rawFingerprint)
 
         /**
          * Safely parses and normalizes a hex string into a [CertificateDigest], returning null on failure.
          */
         @JvmStatic
         fun fromHexOrNull(rawFingerprint: String): CertificateDigest? {
-            val normalized = CertificateUtils.normalizeFingerprintOrNull(rawFingerprint) ?: return null
-            return CertificateDigest(normalized)
+            return try {
+                CertificateDigest(rawFingerprint)
+            } catch (_: Exception) {
+                null
+            }
         }
 
         /**

@@ -49,6 +49,21 @@ class TypedValuesTest {
         val normalizedDigest = CertificateDigest.fromHex(rawNoColons)
         assertEquals(validFingerprintHex, normalizedDigest.value)
 
+        // Direct constructor normalization and invariant checks
+        val directUpper = CertificateDigest(validFingerprintHex)
+        val directLower = CertificateDigest(validFingerprintHex.lowercase())
+        val directNoColons = CertificateDigest(rawNoColons)
+        val directSpaces = CertificateDigest(validFingerprintHex.replace(":", " "))
+        assertEquals(directUpper, directLower)
+        assertEquals(directUpper, directNoColons)
+        assertEquals(directUpper, directSpaces)
+        assertEquals(directUpper.hashCode(), directLower.hashCode())
+        assertEquals(directUpper.hashCode(), directNoColons.hashCode())
+        assertEquals(directUpper.hashCode(), directSpaces.hashCode())
+        assertEquals(validFingerprintHex, directLower.value)
+        assertEquals(validFingerprintHex, directNoColons.value)
+        assertEquals(validFingerprintHex, directSpaces.value)
+
         // Invalid length throws
         assertThrows(IllegalArgumentException::class.java) {
             CertificateDigest.fromHex("14:6D:E9:SHORT")

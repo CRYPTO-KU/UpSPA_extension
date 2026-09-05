@@ -149,11 +149,36 @@ sealed interface VerificationResult {
         ) : Rejected
 
         /**
+         * A certificate fingerprint in the claimed app evidence or statement list is not a valid 32-byte SHA-256 digest.
+         * Fails closed immediately without lossy transformation (§1.4, §1.5).
+         */
+        data class MalformedCertificateEvidence(
+            val rawFingerprint: String? = null,
+            override val reason: String = if (rawFingerprint != null) {
+                "Malformed certificate fingerprint in evidence: '$rawFingerprint'."
+            } else {
+                "Malformed certificate evidence encountered."
+            }
+        ) : Rejected {
+            constructor(reason: String) : this(null, reason)
+        }
+
+        /**
          * A certificate fingerprint in the statement list is not a valid 32-byte SHA-256 digest.
          */
         data class MalformedCertificateFingerprint(
             val rawFingerprint: String,
             override val reason: String = "Malformed certificate fingerprint in assetlinks statement: '$rawFingerprint'."
+        ) : Rejected
+
+        /**
+         * Requested origin does not match the authoritative origin bound to the evidence.
+         * Mitigates cross-origin statement injection and replay attacks (§1.2, §1.4).
+         */
+        data class OriginMismatch(
+            val requestedOrigin: Origin,
+            val evidenceOrigin: Origin,
+            override val reason: String = "Requested origin '$requestedOrigin' does not match evidence origin '$evidenceOrigin'."
         ) : Rejected
     }
 }

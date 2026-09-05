@@ -10,18 +10,43 @@ import java.net.URL
  * origins are sensitive to exact subdomains and ports.
  * `https://www.example.com` is distinct from `https://example.com`.
  */
-data class Origin(
-    val scheme: String,
-    val host: String,
+class Origin(
+    scheme: String,
+    host: String,
     val port: Int
 ) {
+    val scheme: String = scheme.lowercase()
+    val host: String = host.lowercase()
+
     init {
-        val normalizedScheme = scheme.lowercase()
-        require(normalizedScheme == "https" || normalizedScheme == "http") {
+        require(this.scheme == "https" || this.scheme == "http") {
             "Only HTTP and HTTPS schemes are supported, got: '$scheme'"
         }
-        require(host.isNotBlank()) { "Host must not be blank" }
+        require(this.host.isNotBlank()) { "Host must not be blank" }
         require(port in 1..65535) { "Port must be in range 1..65535, got: $port" }
+    }
+
+    operator fun component1(): String = scheme
+    operator fun component2(): String = host
+    operator fun component3(): Int = port
+
+    fun copy(
+        scheme: String = this.scheme,
+        host: String = this.host,
+        port: Int = this.port
+    ): Origin = Origin(scheme, host, port)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Origin) return false
+        return scheme == other.scheme && host == other.host && port == other.port
+    }
+
+    override fun hashCode(): Int {
+        var result = scheme.hashCode()
+        result = 31 * result + host.hashCode()
+        result = 31 * result + port.hashCode()
+        return result
     }
 
     val isHttps: Boolean

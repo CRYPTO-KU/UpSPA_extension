@@ -30,10 +30,27 @@ data class AppSigningInfo(
         get() = AndroidPackageName.of(packageName)
 
     /**
+     * Validates that all raw certificate byte arrays (if present) are valid, parseable X.509 certificates (§1.3, §1.4).
+     *
+     * Returns true if no raw certificates are configured, or if all configured raw certificates parse successfully.
+     */
+    fun validateCertificates(): Boolean {
+        val certs = if (signingCertificateHistory.isNotEmpty()) {
+            signingCertificateHistory
+        } else {
+            signingCertificates
+        }
+        if (certs.isEmpty()) return true
+        return certs.all { CertificateUtils.isValidX509Certificate(it) }
+    }
+
+    /**
      * Extracts all SHA-256 fingerprints (formatted as uppercase AA:BB:CC:... hex).
      *
      * If [directFingerprints] are provided, returns them directly (preventing double-hashing).
      * Otherwise, computes SHA-256 digests from [signingCertificateHistory] or [signingCertificates].
+     *
+     * Guarantees non-lossy transformation: does not silently drop corrupted raw certificates.
      */
     fun getAllSha256Fingerprints(): List<String> {
         if (directFingerprints.isNotEmpty()) {
@@ -44,21 +61,56 @@ data class AppSigningInfo(
         } else {
             signingCertificates
         }
-        return certs.mapNotNull { CertificateUtils.computeSha256FingerprintOrNull(it) }
+        return certs.map { certBytes ->
+            if (CertificateUtils.isValidX509Certificate(certBytes)) {
+                CertificateUtils.computeSha256FingerprintOrNull(certBytes) ?: "MALFORMED_CERTIFICATE_HASH"
+            } else {
+                "MALFORMED_CERTIFICATE_BYTES"
+            }
+        }
+    }
+
+    /**
+     * Safely extracts all certificates as strongly-typed [CertificateDigest] instances,
+     * or returns null if any certificate is malformed, corrupted, or unparseable.
+     */
+    fun getAllCertificateDigestsOrNull(): List<CertificateDigest>? {
+        if (!validateCertificates()) return null
+        if (directFingerprints.isNotEmpty()) {
+            val digests = mutableListOf<CertificateDigest>()
+            for (fp in directFingerprints) {
+                val digest = CertificateDigest.fromHexOrNull(fp) ?: return null
+                digests.add(digest)
+            }
+            return digests
+        }
+        val certs = if (signingCertificateHistory.isNotEmpty()) {
+            signingCertificateHistory
+        } else {
+            signingCertificates
+        }
+        if (certs.isEmpty()) return emptyList()
+        val digests = mutableListOf<CertificateDigest>()
+        for (certBytes in certs) {
+            val fp = CertificateUtils.computeSha256FingerprintOrNull(certBytes) ?: return null
+            val digest = CertificateDigest.fromHexOrNull(fp) ?: return null
+            digests.add(digest)
+        }
+        return digests
     }
 
     /**
      * Extracts all certificates as strongly-typed [CertificateDigest] instances.
      */
     fun getAllCertificateDigests(): List<CertificateDigest> {
-        return getAllSha256Fingerprints().mapNotNull { CertificateDigest.fromHexOrNull(it) }
+        return getAllCertificateDigestsOrNull().orEmpty()
     }
 
     /**
-     * Returns the primary (latest) signing certificate fingerprint, or null if multi-signer / empty.
+     * Returns the primary (latest) signing certificate fingerprint, or null if multi-signer / empty / corrupted.
      */
     fun getLatestSha256FingerprintOrNull(): String? {
-        if (hasMultipleSigners) {
+        if (hasMultipleSigners || !validateCertificates()) {
             return null
         }
         if (directFingerprints.isNotEmpty()) {
@@ -69,7 +121,7 @@ data class AppSigningInfo(
     }
 
     /**
-     * Returns the primary (latest) signing certificate digest, or null if multi-signer / empty.
+     * Returns the primary (latest) signing certificate digest, or null if multi-signer / empty / corrupted.
      */
     fun getLatestCertificateDigestOrNull(): CertificateDigest? {
         return getLatestSha256FingerprintOrNull()?.let { CertificateDigest.fromHexOrNull(it) }
@@ -118,7 +170,7 @@ data class AppSigningInfo(
             return AppSigningInfo(
                 packageName = packageName,
                 hasMultipleSigners = hasMultipleSigners,
-                directFingerprints = fingerprints.mapNotNull { CertificateUtils.normalizeFingerprintOrNull(it) }
+                directFingerprints = fingerprints.map { CertificateUtils.normalizeFingerprintOrNull(it) ?: it }
             )
         }
 
@@ -150,7 +202,7 @@ data class AppSigningInfo(
             return AppSigningInfo(
                 packageName = packageName,
                 hasMultipleSigners = true,
-                directFingerprints = fingerprints.mapNotNull { CertificateUtils.normalizeFingerprintOrNull(it) }
+                directFingerprints = fingerprints.map { CertificateUtils.normalizeFingerprintOrNull(it) ?: it }
             )
         }
 
@@ -165,7 +217,7 @@ data class AppSigningInfo(
             return AppSigningInfo(
                 packageName = packageName,
                 hasMultipleSigners = false,
-                directFingerprints = historyFingerprints.mapNotNull { CertificateUtils.normalizeFingerprintOrNull(it) }
+                directFingerprints = historyFingerprints.map { CertificateUtils.normalizeFingerprintOrNull(it) ?: it }
             )
         }
 

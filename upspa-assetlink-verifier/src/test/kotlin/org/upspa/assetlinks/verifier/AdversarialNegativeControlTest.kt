@@ -4,11 +4,15 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.upspa.assetlinks.crypto.CertificateUtils
 import org.upspa.assetlinks.fetcher.FakeAssetLinkFetcher
 import org.upspa.assetlinks.model.AppSigningInfo
+import org.upspa.assetlinks.model.AssetLinkEvidence
+import org.upspa.assetlinks.model.AssetLinkStatement
 import org.upspa.assetlinks.model.CanonicalWebOrigin
 import org.upspa.assetlinks.model.CertificateDigest
 import org.upspa.assetlinks.model.Origin
+import org.upspa.assetlinks.model.Target
 import org.upspa.assetlinks.result.VerificationResult
 
 /**
@@ -306,6 +310,201 @@ class AdversarialNegativeControlTest {
 
         val result = verifier.verify(origin, rotatedApp)
         val verified = assertInstanceOf(VerificationResult.Verified::class.java, result)
+        assertEquals(certA, verified.matchedFingerprint)
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // PR Review Regression Tests: Fail-Closed Strictness & Value Invariant Guarantees
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun `testEvidenceWithOneValidAndOneMalformedFingerprintFailsClosed`() {
+        val statementJson = createStatementJson(samplePackageName, listOf(certA))
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, statementJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        // Claimed evidence contains 1 valid matching fingerprint (certA) and 1 malformed fingerprint
+        val malformedFp = "MALFORMED:HEX:FINGERPRINT:XX"
+        val claimedApp = AppSigningInfo.fromFingerprints(
+            packageName = samplePackageName,
+            fingerprints = listOf(certA, malformedFp)
+        )
+
+        val result = verifier.verify(origin, claimedApp)
+
+        // Must strictly fail closed with typed MalformedCertificateEvidence, never Verified
+        val rejected = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateEvidence::class.java, result)
+        assertTrue(rejected.reason.contains(malformedFp))
+    }
+
+    @Test
+    fun `testCanonicalValueTypesEqualityAndCaseInsensitivity`() {
+        // Origin equality and casing normalization
+        val originUpper = Origin("HTTPS", "AUTH.EXAMPLE.COM", 443)
+        val originLower = Origin("https", "auth.example.com", 443)
+        assertEquals(originUpper, originLower)
+        assertEquals(originUpper.hashCode(), originLower.hashCode())
+        assertEquals("https", originUpper.scheme)
+        assertEquals("auth.example.com", originUpper.host)
+
+        // CertificateDigest equality and casing/formatting normalization
+        val digestUpper = CertificateDigest(certA.uppercase())
+        val digestLower = CertificateDigest(certA.lowercase())
+        val digestNoColons = CertificateDigest(certA.replace(":", "").lowercase())
+        val digestSpaces = CertificateDigest(certA.replace(":", " "))
+        assertEquals(digestUpper, digestLower)
+        assertEquals(digestUpper, digestNoColons)
+        assertEquals(digestUpper, digestSpaces)
+        assertEquals(digestUpper.hashCode(), digestLower.hashCode())
+        assertEquals(digestUpper.hashCode(), digestNoColons.hashCode())
+        assertEquals(digestUpper.hashCode(), digestSpaces.hashCode())
+        assertEquals(certA.uppercase(), digestUpper.value)
+        assertEquals(certA.uppercase(), digestLower.value)
+
+        // CanonicalWebOrigin and EnrolledOrigin equality with differently-cased origins
+        val canonicalUpper = CanonicalWebOrigin(originUpper)
+        val canonicalLower = CanonicalWebOrigin(originLower)
+        assertEquals(canonicalUpper, canonicalLower)
+        assertEquals(canonicalUpper.hashCode(), canonicalLower.hashCode())
+
+        // DAL verification succeeds identically with uppercase origin and lowercase fingerprint
+        val statementJson = createStatementJson(samplePackageName, listOf(certA))
+        val fetcher = FakeAssetLinkFetcher.withJson(originLower, statementJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        val appWithLower = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA.lowercase()))
+        val verified = verifier.verify(originUpper, appWithLower)
+        assertInstanceOf(VerificationResult.Verified::class.java, verified)
+    }
+
+    @Test
+    fun `testEmptyRelationFailsClosedWithMissingRequiredRelation`() {
+        val emptyRelationJson = """
+            [
+              {
+                "relation": [],
+                "target": {
+                  "namespace": "android_app",
+                  "package_name": "$samplePackageName",
+                  "sha256_cert_fingerprints": ["$certA"]
+                }
+              }
+            ]
+        """.trimIndent()
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, emptyRelationJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+
+        val result = verifier.verify(origin, claimedApp)
+        val rejected = assertInstanceOf(VerificationResult.Rejected.MissingRequiredRelation::class.java, result)
+        assertEquals(samplePackageName, rejected.packageName)
+        assertEquals(AssetLinkVerifier.DEFAULT_RELATION, rejected.requiredRelation)
+        assertTrue(rejected.availableRelations.isEmpty())
+    }
+
+    @Test
+    fun `testInsecureHttpRejectedByDefaultInPublicVerifier`() {
+        val fetcher = FakeAssetLinkFetcher.empty()
+        // Public constructor does not allow allowInsecureHttp parameter; strictly enforces HTTPS
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+        val insecureOrigin = Origin.parse("http://auth.example.com")
+
+        val result = verifier.verify(insecureOrigin, claimedApp)
+        val rejected = assertInstanceOf(VerificationResult.Rejected.NonHttpsOrigin::class.java, result)
+        assertEquals("http://auth.example.com", rejected.rawOrigin)
+        assertTrue(fetcher.recordedRequests.isEmpty())
+    }
+
+    @Test
+    fun `testRawCertificateCorruptionFailsClosed`() {
+        val statementJson = createStatementJson(samplePackageName, listOf(certA))
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, statementJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        val validCert = CertificateUtils.sampleX509CertificateBytes
+        val corruptedCert = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05)
+
+        val claimedApp = AppSigningInfo(
+            packageName = samplePackageName,
+            signingCertificates = listOf(validCert, corruptedCert)
+        )
+
+        val result = verifier.verify(origin, claimedApp)
+        val rejected = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateEvidence::class.java, result)
+        assertTrue(rejected.reason.contains("corrupted") || rejected.reason.contains("Malformed"))
+    }
+
+    @Test
+    fun `testCrossOriginEvidenceReplayRejected`() {
+        val authorizedOrigin = Origin.parse("https://example.com")
+        val attackerOrigin = Origin.parse("https://evil-example.com")
+
+        val statements = listOf(
+            AssetLinkStatement(
+                relation = listOf(AssetLinkVerifier.DEFAULT_RELATION),
+                target = Target(
+                    namespace = "android_app",
+                    packageName = samplePackageName,
+                    sha256CertFingerprints = listOf(certA)
+                )
+            )
+        )
+
+        // Evidence is explicitly bound to authorizedOrigin
+        val evidence = AssetLinkEvidence(
+            sourceOrigin = authorizedOrigin,
+            statements = statements
+        )
+
+        val pureVerifier = PureAssetLinkVerifier()
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+
+        // Attacker attempts to verify under attackerOrigin using evidence from authorizedOrigin
+        val result = pureVerifier.verify(
+            requestedOrigin = attackerOrigin,
+            appSigningInfo = claimedApp,
+            evidence = evidence
+        )
+
+        val rejected = assertInstanceOf(VerificationResult.Rejected.OriginMismatch::class.java, result)
+        assertEquals(attackerOrigin, rejected.requestedOrigin)
+        assertEquals(authorizedOrigin, rejected.evidenceOrigin)
+    }
+
+    @Test
+    fun `testSameOriginEvidenceVerified`() {
+        val authorizedOrigin = Origin.parse("https://example.com")
+
+        val statements = listOf(
+            AssetLinkStatement(
+                relation = listOf(AssetLinkVerifier.DEFAULT_RELATION),
+                target = Target(
+                    namespace = "android_app",
+                    packageName = samplePackageName,
+                    sha256CertFingerprints = listOf(certA)
+                )
+            )
+        )
+
+        val evidence = AssetLinkEvidence(
+            sourceOrigin = authorizedOrigin,
+            statements = statements
+        )
+
+        val pureVerifier = PureAssetLinkVerifier()
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+
+        // Matching requestedOrigin == evidence.sourceOrigin succeeds
+        val result = pureVerifier.verify(
+            requestedOrigin = authorizedOrigin,
+            appSigningInfo = claimedApp,
+            evidence = evidence
+        )
+
+        val verified = assertInstanceOf(VerificationResult.Verified::class.java, result)
+        assertEquals(authorizedOrigin, verified.origin)
+        assertEquals(samplePackageName, verified.packageName)
         assertEquals(certA, verified.matchedFingerprint)
     }
 }
