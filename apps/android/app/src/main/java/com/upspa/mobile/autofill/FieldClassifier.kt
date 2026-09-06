@@ -12,11 +12,14 @@ import androidx.autofill.HintConstants
  *
  * It never reads node text. A node can only become a fill target when it is a visible, enabled,
  * autofill-important text node that the platform gave an autofill id, and when its attribute
- * corpus does not match a poison term.
+ * corpus does not match a poison term. The poison check is a true veto: it is evaluated before
+ * any other signal, including an explicit platform hint or HTML `autocomplete` token, so a
+ * poisoned field (e.g. a payment CVC that claims `autofillHints="password"`) can never be
+ * classified as fillable.
  *
- * Confidence tiers, highest first:
+ * Confidence tiers, highest first, once the poison veto has passed:
  *  - tier 1: an explicit platform autofill hint or an HTML `autocomplete` token;
- *  - tier 2: the poison-filtered attribute corpus plus the input type;
+ *  - tier 2: the attribute corpus plus the input type;
  *  - tier 3: screen topology, used only to repair an otherwise incomplete form.
  */
 class FieldClassifier @VisibleForTesting internal constructor(private val policy: Policy) {
@@ -112,6 +115,14 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
     }
 
     private fun classifyField(field: Field) {
+        // The poison veto is evaluated first and unconditionally. A field whose attribute corpus
+        // matches a poison term (e.g. a payment CVC) must never be offered a value, regardless of
+        // what a platform hint or HTML autocomplete token claims about it. Checking this before
+        // tier 1 is what makes it a veto rather than a tie-breaker: an app-supplied hint is not a
+        // trusted enough signal to override it, because the hint and the poisoned attribute corpus
+        // can both be present on the same node (see FieldClassifierTest, "poison outranks...").
+        if (policy.poison.containsMatchIn(field.attributeCorpus)) return
+
         field.hints.firstNotNullOfOrNull { PLATFORM_HINTS[it] }?.let { role ->
             field.role = role
             field.tier = 1
@@ -126,10 +137,6 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
                 field.tier = 1
                 return
             }
-
-        // The poison veto applies below tier 1 only: an explicit hint is a stronger statement of
-        // intent than a name that happens to contain a poison term.
-        if (policy.poison.containsMatchIn(field.attributeCorpus)) return
 
         if (field.passwordInput) {
             field.role = when {

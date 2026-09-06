@@ -231,15 +231,53 @@ class FieldClassifierTest {
     }
 
     @Test
-    fun `an explicit hint still wins over a poison term`() {
-        // Tier 1 is a deliberate statement by the application, so it is trusted over a name that
-        // happens to contain a poison term. Recorded here so the precedence cannot drift silently.
+    fun `a poison term outranks a platform autofill hint on the same node`() {
+        // The veto runs before tier 1 so a node cannot buy its way past it by also carrying a
+        // trusted-looking hint. A masked checkout CVC that (incorrectly) declares
+        // autofillHints="password" must still be refused, not returned as PASSWORD_CURRENT.
         val result = classifier.classifyScreen(
-            TestNodes.field("account_search_box", hints = listOf(View.AUTOFILL_HINT_USERNAME)),
+            TestNodes.password(
+                "checkout_card_cvc",
+                label = "Card security code",
+                hints = listOf(View.AUTOFILL_HINT_PASSWORD),
+            ),
         )
 
-        assertEquals(Role.USERNAME, result.rolesByKey()["account_search_box"])
-        assertEquals(1, result.tierOf("account_search_box"))
+        assertEquals(Role.UNKNOWN, result.rolesByKey()["checkout_card_cvc"])
+        assertEquals(emptyList<String>(), result.fillableKeys())
+    }
+
+    @Test
+    fun `a poison term outranks an HTML autocomplete hint on the same node`() {
+        val result = classifier.classifyScreen(
+            TestNodes.field(
+                "checkout_card_cvc_web",
+                label = "Card security code",
+                html = mapOf("autocomplete" to "current-password", "type" to "password"),
+            ),
+        )
+
+        assertEquals(Role.UNKNOWN, result.rolesByKey()["checkout_card_cvc_web"])
+        assertEquals(emptyList<String>(), result.fillableKeys())
+    }
+
+    @Test
+    fun `a poison hit on an unrelated field does not affect a genuine hinted field on the same screen`() {
+        // The veto is per-node: a poisoned CVC field must not suppress a legitimate, separately
+        // hinted sign-in field on the same screen.
+        val result = classifier.classifyScreen(
+            TestNodes.password(
+                "checkout_card_cvc",
+                label = "Card security code",
+                hints = listOf(View.AUTOFILL_HINT_PASSWORD),
+            ),
+            TestNodes.field("checkout_login_username", hints = listOf(View.AUTOFILL_HINT_USERNAME)),
+        )
+
+        assertEquals(Role.UNKNOWN, result.rolesByKey()["checkout_card_cvc"])
+        assertEquals(Role.USERNAME, result.rolesByKey()["checkout_login_username"])
+        assertEquals(1, result.tierOf("checkout_login_username"))
+        assertEquals(listOf("checkout_login_username"), result.fillableKeys())
     }
 
     // --- Collection gate --------------------------------------------------------------------------

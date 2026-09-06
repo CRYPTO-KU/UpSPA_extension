@@ -95,18 +95,26 @@ HTML `name`, `id`, `placeholder`, and `label` attributes. It never includes fiel
 
 ### The poison veto
 
-Below tier 1, a field whose corpus matches
+A field whose corpus matches
 `search|captcha|coupon|promo|gift|card.?number|cvv|cvc|expir|amount|city|zip|postal|street|address`
 is refused outright and cannot be promoted by the topology stage either.
 
-The veto runs **before** the input-type rule. That ordering is what stops a card security code,
-which is a masked numeric input and therefore looks exactly like a password, from being filled with
-a credential. `FieldClassifierTest.a masked payment field is refused even though it looks like a
-password` pins this, and NC-1 proves it is load-bearing.
+The veto runs **before every other signal, including tier 1**. `classifyField` checks it first,
+ahead of the platform-hint lookup and the HTML `autocomplete` lookup, so it is a true veto rather
+than a tie-breaker. A node cannot buy its way past it by also carrying a hint: a masked checkout
+CVC field that declares `android:autofillHints="password"`, or a WebView node whose corpus mentions
+"security code" while its HTML `autocomplete` says `current-password`, is still classified as
+`UNKNOWN` and never returned as fillable. This is what stops a card security code, which is a
+masked numeric input and therefore looks exactly like a password, from being filled with a
+credential even when the surrounding markup misdeclares it — `FieldClassifierTest.a masked payment
+field is refused even though it looks like a password`, `a poison term outranks a platform autofill
+hint on the same node`, and `a poison term outranks an HTML autocomplete hint on the same node` pin
+this, and NC-1 proves the guard is load-bearing by removing it and observing the poisoned field
+become fillable.
 
-An explicit tier-1 hint still wins over a poison term, because a hint is a deliberate statement by
-the application while a name containing `search` is a coincidence. This precedence is recorded in
-`an explicit hint still wins over a poison term` so it cannot drift unnoticed.
+The veto is per-node: a poisoned field on a screen does not suppress a genuine, separately hinted
+field elsewhere on the same screen (`a poison hit on an unrelated field does not affect a genuine
+hinted field on the same screen`).
 
 ## 4. The locked response
 
