@@ -4,8 +4,8 @@ This is the first production-repository template, not the earlier research lab.
 
 It currently proves only the Android platform boundary:
 
-1. A controlled fixture exposes username and password fields.
-2. `UpspaAutofillService` returns one locked UpSPA entry.
+1. A controlled fixture app exposes nine Autofill scenarios.
+2. `UpspaAutofillService` classifies the screen and returns one locked UpSPA entry, or nothing.
 3. Selection opens a screenshot-protected UpSPA Activity.
 4. The Activity returns clearly synthetic values through the system Autofill contract.
 
@@ -19,29 +19,61 @@ The template intentionally:
 
 ## Modules
 
-- `:app` — containing app, Autofill service, API 34 provider stub, secure Activity, and fake engine.
-- `:fixtures` — a separate-package controlled login form; it never submits or logs values.
+- `:app` — containing app, Autofill service, field classifier, API 34 provider stub, secure
+  Activity, and fake engine.
+- `:fixtures` — a separate-package set of controlled forms; no screen reads, submits, logs, or
+  stores what is typed into it.
 
 The Android code stays in these two modules until the G1 vertical slice stabilizes the package
 boundaries. Security-critical cross-platform boundaries are already separate Rust crates.
 
 ## Prerequisites
 
-- JDK 17
+- JDK 17 or newer
 - Android SDK 35
 - Android build tools accepted by AGP 8.7.3
+- `ANDROID_HOME` pointing at the SDK, or a `local.properties` containing `sdk.dir`
 
-## Build
+### Windows: the checkout path must be ASCII
 
-From this directory:
+The Android Gradle Plugin refuses to build when the project path contains non-ASCII characters,
+and the check cannot be disabled from the command line. On Windows, clone to a path such as
+`C:\src\UpSPA_extension`. A path containing characters such as `ü` or `İ` fails with:
 
-```bash
-./gradlew :app:assembleDebug :fixtures:assembleDebug
+```
+Your project path contains non-ASCII characters.
 ```
 
-Install both debug APKs, open UpSPA Mobile Bootstrap, enable its Autofill service, then open the
-fixture and focus a field. Every filled value contains `UPSPA-TEMPLATE` or the reserved
-`.invalid` domain and must never be used as a credential.
+## Build and test
+
+All commands are written to run from the repository root.
+
+```bash
+# Unit tests: the classifier rules and the locked-response policy
+./apps/android/gradlew -p apps/android :app:testDebugUnitTest
+
+# Both debug APKs
+./apps/android/gradlew -p apps/android :app:assembleDebug :fixtures:assembleDebug
+```
+
+On Windows PowerShell, use the batch wrapper:
+
+```powershell
+.\apps\android\gradlew.bat -p apps\android :app:testDebugUnitTest
+.\apps\android\gradlew.bat -p apps\android :app:assembleDebug :fixtures:assembleDebug
+```
+
+The HTML test report is written to
+`apps/android/app/build/reports/tests/testDebugUnitTest/index.html`.
+
+## Verify on a device
+
+Install both debug APKs, enable the UpSPA Autofill service, then walk the fixture screens by hand.
+The full procedure, expected decisions, and API 26 / 30 / 34 results are in
+[docs/emirhan-android-autofill-fixtures-classifier.md](../../docs/emirhan-android-autofill-fixtures-classifier.md).
+
+Every value UpSPA fills contains `UPSPA-TEMPLATE` or the reserved `.invalid` domain and must never
+be used as a credential.
 
 ## Next implementation step
 
