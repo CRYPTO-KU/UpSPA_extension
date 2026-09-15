@@ -31,11 +31,18 @@ it is credential-related in either of two ways:
    for a password manager (e.g. MainActivity's "does not collect a master
    password" disclaimer) and would flag nearly every screen in the app.
 
-For each in-scope Activity, the file must contain FLAG_SECURE (window flag)
-or setRecentsScreenshotEnabled(false). Missing either is a FAIL. An in-scope
-Activity that also lacks android:excludeFromRecents in the manifest gets a
-separate INFO (defense-in-depth, not required if FLAG_SECURE is present,
-since FLAG_SECURE alone already blocks the recents thumbnail content).
+For each in-scope Activity, the file must contain FLAG_SECURE (the actual
+window flag that blocks screenshots and other capture contexts); this is
+a hard requirement, not satisfiable by any substitute. An in-scope Activity
+that also lacks android:excludeFromRecents in the manifest gets a separate
+INFO (defense-in-depth, not required if FLAG_SECURE is present, since
+FLAG_SECURE alone already blocks the recents thumbnail content).
+
+setRecentsScreenshotEnabled(false) is checked SEPARATELY and does NOT
+satisfy the FLAG_SECURE requirement on its own. It only prevents the
+Overview or recents-switcher thumbnail from showing real content;
+it does nothing to stop an actual screenshot, screen recording,
+or other capture context.
 
 Known limitation: this is per-file regex matching, so a credential Activity
 split across multiple files (e.g. flag set in a shared base class) will be
@@ -57,7 +64,8 @@ CREDENTIAL_NAME_PATTERN = re.compile(
 CREDENTIAL_CONTENT_PATTERN = re.compile(
     r"\bRlsj\b|\bRsp\b|\bssk\b|\bK0\b|masterKey|master_key",
 )
-FLAG_SECURE_PATTERN = re.compile(r"FLAG_SECURE|setRecentsScreenshotEnabled\s*\(\s*false\s*\)")
+FLAG_SECURE_PATTERN = re.compile(r"FLAG_SECURE")
+RECENTS_ONLY_PATTERN = re.compile(r"setRecentsScreenshotEnabled\s*\(\s*false\s*\)")
 ACTIVITY_CLASS_PATTERN = re.compile(r"class\s+(\w+)\s*:\s*\w*Activity")
 
 def _looks_like_credential_activity(path: Path, text: str) -> bool:
@@ -98,19 +106,28 @@ def run(repo_root: Path) -> list[Finding]:
             continue
 
         rel = str(path.relative_to(repo_root))
-        has_flag = bool(FLAG_SECURE_PATTERN.search(text))
-        if not has_flag:
-            findings.append(Finding(
-                gate="screenshot_recents", severity=Severity.FAIL, file=rel,
-                detail=(
-                    "this Activity looks credential-related (by name or "
-                    "by referencing secret-shaped values) but does not set "
-                    "FLAG_SECURE or setRecentsScreenshotEnabled(false); "
-                    "its content can be captured in a screenshot or the "
-                    "recents thumbnail."
-                ),
-            ))
-            continue  # don't also emit the INFO below if the FAIL already fires
+        has_screenshot_protection = bool(FLAG_SECURE_PATTERN.search(text))
+        has_recents_only = bool(RECENTS_ONLY_PATTERN.search(text))
+        
+        if not has_screenshot_protection:
+            if has_recents_only:
+                findings.append(Finding(
+                    gate="screenshot_recents", severity=Severity.FAIL, file=rel,
+                    detail=("this Activity sets setRecentsScreenshotEnabled(false) "
+                            "but that only prevents the Overview/recents thumbnail "
+                            "from showing content; it does NOT prevent an actual "
+                            "screenshot or other capture context. FLAG_SECURE is "
+                            "still required for that."),
+                ))
+            else:
+                findings.append(Finding(
+                    gate="screenshot_recents", severity=Severity.FAIL, file=rel,
+                    detail=("this Activity looks credential-related (by name or by "
+                            "referencing secret-shaped values) but does not set "
+                            "FLAG_SECURE; its content can be captured in a "
+                            "screenshot or the recents thumbnail."),
+                ))
+            continue  # don't also emit the INFO below if a FAIL already fired
 
         class_match = ACTIVITY_CLASS_PATTERN.search(text)
         class_name = class_match.group(1) if class_match else path.stem

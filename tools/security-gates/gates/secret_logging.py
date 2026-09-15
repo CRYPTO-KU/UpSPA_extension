@@ -11,7 +11,10 @@ same design (logging-call detection + secret-identifier proximity match,
 conservative regex, not a taint analysis), retargeted at this repo's
 actual logging and persistence idioms:
 
-  - Logging calls checked: Log.d/i/w/e/v(...), println!/eprintln!/dbg! (Rust).
+  - Logging calls checked: Log.d/i/w/e/v(...) (Android); println!/eprintln!/
+    dbg! (Rust); bare println(...) and System.out.println(...)/System.err.
+    println(...) (ordinary JVM stdout/stderr; Kotlin/Java code that bypasses
+    Android's Log API entirely still needs to be caught).
   - Persistence calls checked: SharedPreferences .putString/.edit(),
     Rust std::fs::write / File::create (a plaintext-file write is exactly
     the pattern the chrome.storage.session bug matches, ported to what a
@@ -20,6 +23,20 @@ actual logging and persistence idioms:
 Secret identifiers matched: password, pwd, ssk, Rsp, K0, Rlsj, masterKey,
 signing_key, toprf, private_key; same list used in the browser-extension
 checks, for consistency across the whole security-gates effort.
+
+`password`/`pwd`/`ssk`/`key` are matched as plain substrings, not
+word-bounded (`Rsp`/`K0`/`Rlsj` keep `\b` boundaries, since those are
+distinctive protocol symbols unlikely to appear embedded in an unrelated
+identifier). This is a deliberate and disclosed trade-off, not an oversight:
+a strict `\bpassword\b` silently fails to match `masterPassword` or
+`userPwd`; camelCase compounds have no word-boundary character between
+the two halves, the identical failure mode `uniffi_secret_fields`
+`SECRET_NAME` had for underscore-separated names, fixed the same way
+there. Rather than build a camelCase-aware boundary, this gate accepts
+the wider substring match and its noisier false-positive risk (a stray
+"keyboard" reference would now also trigger the window check); for a
+security gate, a missed real secret is a worse outcome than an extra
+line a reviewer has to glance at and dismiss.
 
 Known, disclosed limitation (carried over from the earlier work):
 This is a literal call-site pattern match. A secret value passed through an
@@ -39,14 +56,15 @@ from pathlib import Path
 from .common import Finding, Severity, iter_files
 
 LOG_CALL = re.compile(
-    r"Log\.(d|i|w|e|v)\s*\(|println!|eprintln!|dbg!|log::(info|debug|warn|error|trace)"
+    r"Log\.(d|i|w|e|v)\s*\(|println!|eprintln!|dbg!|log::(info|debug|warn|error|trace)|"
+    r"\bprintln\s*\(|System\.(out|err)\.println\s*\("
 )
 PERSIST_CALL = re.compile(
     r"\.putString\s*\(|\.edit\s*\(\s*\)|std::fs::write|File::create"
 )
 SECRET_IDENTIFIER = re.compile(
-    r"\bpassword\b|\bpwd\b|\bssk\b|\bRsp\b|\bK0\b|\bRlsj\b|masterKey|master_key|"
-    r"signing[_ ]?key|\btoprf\b|private[_ ]?key",
+    r"password|pwd|ssk|\bRsp\b|\bK0\b|\bRlsj\b|masterkey|master_key|"
+    r"signing[_ ]?key|toprf|private[_ ]?key|key",
     re.IGNORECASE,
 )
 
