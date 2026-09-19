@@ -1,7 +1,9 @@
 package org.upspa.assetlinks.verifier
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.upspa.assetlinks.crypto.CertificateUtils
@@ -325,9 +327,9 @@ class AdversarialNegativeControlTest {
 
         // Claimed evidence contains 1 valid matching fingerprint (certA) and 1 malformed fingerprint
         val malformedFp = "MALFORMED:HEX:FINGERPRINT:XX"
-        val claimedApp = AppSigningInfo.fromFingerprints(
+        val claimedApp = AppSigningInfo.fromRotationHistory(
             packageName = samplePackageName,
-            fingerprints = listOf(certA, malformedFp)
+            historyFingerprints = listOf(certA, malformedFp)
         )
 
         val result = verifier.verify(origin, claimedApp)
@@ -427,7 +429,7 @@ class AdversarialNegativeControlTest {
 
         val claimedApp = AppSigningInfo(
             packageName = samplePackageName,
-            signingCertificates = listOf(validCert, corruptedCert)
+            signingCertificateHistory = listOf(validCert, corruptedCert)
         )
 
         val result = verifier.verify(origin, claimedApp)
@@ -507,4 +509,83 @@ class AdversarialNegativeControlTest {
         assertEquals(samplePackageName, verified.packageName)
         assertEquals(certA, verified.matchedFingerprint)
     }
+
+    @Test
+    fun `testAmbiguousSigningEvidenceRejectedAtConstruction`() {
+        val digestA = org.upspa.assetlinks.model.CertificateDigest(certA)
+        val digestB = org.upspa.assetlinks.model.CertificateDigest(certB)
+
+        // Multiple current signers cannot have rotation history
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = setOf(digestA, digestB),
+                rotationHistory = listOf(digestA, digestB)
+            )
+        }
+
+        // Rotation history cannot be supplied without current signer
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = emptySet(),
+                rotationHistory = listOf(digestA, digestB)
+            )
+        }
+
+        // Current signer must be in rotation history
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = setOf(org.upspa.assetlinks.model.CertificateDigest(certEvil)),
+                rotationHistory = listOf(digestA, digestB)
+            )
+        }
+
+        // Multiple fingerprints in fromFingerprints is ambiguous and rejected
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA, certB))
+        }
+
+        // Raw-string current signer not in raw rotation history is rejected
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                rawCurrentFingerprints = listOf(certEvil),
+                rawRotationHistory = listOf(certA, certB)
+            )
+        }
+
+        // Raw-bytes current certificate not in signing certificate history is rejected
+        val validCert = CertificateUtils.sampleX509CertificateBytes
+        val otherCert = byteArrayOf(0x01, 0x02, 0x03, 0x04)
+        assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                signingCertificates = listOf(otherCert),
+                signingCertificateHistory = listOf(validCert)
+            )
+        }
+    }
+
+    @Test
+    fun `testRawCertificateWithTrailingGarbageFailsClosed`() {
+        val statementJson = createStatementJson(samplePackageName, listOf(certA))
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, statementJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        val validCert = CertificateUtils.sampleX509CertificateBytes
+        val trailingGarbage = byteArrayOf(0x01, 0x02, 0x03)
+        val certWithGarbage = validCert + trailingGarbage
+
+        val claimedApp = AppSigningInfo(
+            packageName = samplePackageName,
+            signingCertificates = listOf(certWithGarbage)
+        )
+
+        val result = verifier.verify(origin, claimedApp)
+        val rejected = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateEvidence::class.java, result)
+        assertTrue(rejected.reason.contains("corrupted") || rejected.reason.contains("Malformed"))
+    }
 }
+

@@ -42,13 +42,16 @@ object CertificateUtils {
 
     /**
      * Validates whether [certificateBytes] forms a syntactically valid DER or PEM encoded X.509 certificate.
+     * Enforces complete consumption of input: rejects any trailing unconsumed bytes.
      */
     @JvmStatic
     fun isValidX509Certificate(certificateBytes: ByteArray): Boolean {
         if (certificateBytes.isEmpty()) return false
         return try {
+            val bis = ByteArrayInputStream(certificateBytes)
             val factory = CertificateFactory.getInstance("X.509")
-            factory.generateCertificate(ByteArrayInputStream(certificateBytes)) != null
+            val cert = factory.generateCertificate(bis)
+            cert != null && bis.available() == 0
         } catch (_: Exception) {
             false
         }
@@ -57,11 +60,33 @@ object CertificateUtils {
     /**
      * Computes the SHA-256 digest of the given binary certificate/signature bytes
      * and formats it as an uppercase, colon-separated hex string.
+     *
+     * If the input contains a valid X.509 certificate, verifies no trailing unconsumed bytes
+     * exist and computes the digest from the validated certificate encoding (`cert.encoded`).
+     * Otherwise, hashes the input bytes directly (for raw test/signature inputs).
      */
     @JvmStatic
     fun computeSha256Fingerprint(certificateBytes: ByteArray): String {
+        require(certificateBytes.isNotEmpty()) { "Certificate bytes must not be empty" }
+        val bis = ByteArrayInputStream(certificateBytes)
+        val cert = try {
+            val factory = CertificateFactory.getInstance("X.509")
+            factory.generateCertificate(bis) as? X509Certificate
+        } catch (_: Exception) {
+            null
+        }
+
+        val bytesToHash = if (cert != null) {
+            require(bis.available() == 0) {
+                "Trailing unconsumed bytes detected after X.509 certificate (${bis.available()} bytes remaining)"
+            }
+            cert.encoded
+        } else {
+            certificateBytes
+        }
+
         val digest = MessageDigest.getInstance(SHA256_ALGORITHM)
-        val hash = digest.digest(certificateBytes)
+        val hash = digest.digest(bytesToHash)
         return formatAsColonSeparatedHex(hash)
     }
 

@@ -179,10 +179,9 @@ class UpSpaAssetLinkVerifierTest {
         val fetcher = FakeAssetLinkFetcher.empty()
         val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
 
-        val multiSignerApp = AppSigningInfo.fromFingerprints(
+        val multiSignerApp = AppSigningInfo.fromMultiSigners(
             packageName = samplePackageName,
-            fingerprints = listOf(sampleFingerprint1, sampleFingerprint2),
-            hasMultipleSigners = true
+            fingerprints = listOf(sampleFingerprint1, sampleFingerprint2)
         )
 
         val result = verifier.verify(origin, multiSignerApp)
@@ -213,13 +212,48 @@ class UpSpaAssetLinkVerifierTest {
         val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
 
         // App has rotated to sampleFingerprint2, but retains sampleFingerprint1 in rotation lineage
-        val rotatedApp = AppSigningInfo.fromFingerprints(
+        val rotatedApp = AppSigningInfo.fromRotationHistory(
             packageName = samplePackageName,
-            fingerprints = listOf(sampleFingerprint1, sampleFingerprint2)
+            historyFingerprints = listOf(sampleFingerprint1, sampleFingerprint2)
         )
 
         val result = verifier.verify(origin, rotatedApp)
         val verified = assertInstanceOf(VerificationResult.Verified::class.java, result)
         assertEquals(sampleFingerprint1, verified.matchedFingerprint)
+    }
+
+    @Test
+    fun `regression test - two current signers structurally cannot verify even if assetlinks authorizes one`() {
+        val assetLinksJson = """
+            [
+              {
+                "relation": ["delegate_permission/common.handle_all_urls"],
+                "target": {
+                  "namespace": "android_app",
+                  "package_name": "$samplePackageName",
+                  "sha256_cert_fingerprints": ["$sampleFingerprint1"]
+                }
+              }
+            ]
+        """.trimIndent()
+
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, assetLinksJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        // Directly construct AppSigningInfo with two current signers.
+        // There is NO caller-controlled hasMultipleSigners boolean: hasMultipleSigners is structurally derived (>1).
+        val multiSignerApp = AppSigningInfo(
+            packageName = samplePackageName,
+            currentFingerprints = setOf(
+                org.upspa.assetlinks.model.CertificateDigest(sampleFingerprint1),
+                org.upspa.assetlinks.model.CertificateDigest(sampleFingerprint2)
+            )
+        )
+        org.junit.jupiter.api.Assertions.assertTrue(multiSignerApp.hasMultipleSigners)
+
+        val result = verifier.verify(origin, multiSignerApp)
+        val rejected = assertInstanceOf(VerificationResult.Rejected.MultipleSignersUnsupported::class.java, result)
+        assertEquals(samplePackageName, rejected.packageName)
+        assertEquals(0, fetcher.recordedRequests.size)
     }
 }

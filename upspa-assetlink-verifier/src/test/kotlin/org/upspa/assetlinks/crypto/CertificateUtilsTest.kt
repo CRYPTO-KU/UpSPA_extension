@@ -42,4 +42,24 @@ class CertificateUtilsTest {
         }
         assertNull(CertificateUtils.normalizeFingerprintOrNull("INVALID_HEX_DATA"))
     }
+
+    @Test
+    fun `test isValidX509Certificate and computeSha256Fingerprint reject trailing garbage bytes`() {
+        val validCertBytes = CertificateUtils.sampleX509CertificateBytes
+        org.junit.jupiter.api.Assertions.assertTrue(CertificateUtils.isValidX509Certificate(validCertBytes))
+        val validFingerprint = CertificateUtils.computeSha256Fingerprint(validCertBytes)
+        assertEquals(95, validFingerprint.length)
+
+        val trailingGarbage = byteArrayOf(0x00, 0xDE.toByte(), 0xAD.toByte(), 0xBE.toByte(), 0xEF.toByte())
+        val certWithTrailingGarbage = validCertBytes + trailingGarbage
+
+        // isValidX509Certificate must reject input with trailing bytes
+        org.junit.jupiter.api.Assertions.assertFalse(CertificateUtils.isValidX509Certificate(certWithTrailingGarbage))
+
+        // computeSha256Fingerprint must fail on unconsumed trailing bytes
+        assertThrows(IllegalArgumentException::class.java) {
+            CertificateUtils.computeSha256Fingerprint(certWithTrailingGarbage)
+        }
+        assertNull(CertificateUtils.computeSha256FingerprintOrNull(certWithTrailingGarbage))
+    }
 }

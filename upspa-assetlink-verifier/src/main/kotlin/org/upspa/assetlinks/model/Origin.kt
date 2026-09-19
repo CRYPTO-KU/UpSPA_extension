@@ -22,7 +22,7 @@ class Origin(
         require(this.scheme == "https" || this.scheme == "http") {
             "Only HTTP and HTTPS schemes are supported, got: '$scheme'"
         }
-        require(this.host.isNotBlank()) { "Host must not be blank" }
+        validateHost(this.host)
         require(port in 1..65535) { "Port must be in range 1..65535, got: $port" }
     }
 
@@ -83,6 +83,31 @@ class Origin(
     override fun toString(): String = toOriginString()
 
     companion object {
+        private val FORBIDDEN_HOST_CHARS = charArrayOf('/', '\\', '?', '#', '@', ' ', '\t', '\r', '\n')
+
+        private fun validateHost(host: String) {
+            require(host.isNotBlank()) { "Host must not be blank" }
+            require(!host.any { it in FORBIDDEN_HOST_CHARS }) {
+                "Host must not contain path, query, fragment, userinfo, or whitespace characters, got: '$host'"
+            }
+            if (host.startsWith("[") && host.endsWith("]")) {
+                val inner = host.substring(1, host.length - 1)
+                require(inner.isNotBlank() && inner.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' || it == ':' }) {
+                    "Invalid IPv6 host literal: '$host'"
+                }
+            } else {
+                require(!host.contains(':')) {
+                    "Host must not contain port or unbracketed colons, got: '$host'"
+                }
+                require(!host.startsWith(".") && !host.endsWith(".") && !host.contains("..")) {
+                    "Host contains invalid dot placement: '$host'"
+                }
+                require(host.all { it in 'a'..'z' || it in '0'..'9' || it == '.' || it == '-' || it == '_' }) {
+                    "Host contains invalid characters: '$host'"
+                }
+            }
+        }
+
         /**
          * Parses a URL or URI string into an [Origin].
          *

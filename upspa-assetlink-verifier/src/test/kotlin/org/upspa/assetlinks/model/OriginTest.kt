@@ -64,4 +64,50 @@ class OriginTest {
         assertEquals("example.com", upper.host)
         assertEquals("https://example.com", upper.toOriginString())
     }
+
+    @Test
+    fun `test direct constructor rejects invalid host components`() {
+        // Path in host (Required fix 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com/path", 443)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com\\path", 443)
+        }
+
+        // Port in host
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com:443", 443)
+        }
+
+        // Query or fragment in host
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com?query=true", 443)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com#fragment", 443)
+        }
+
+        // Userinfo in host
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "admin@example.com", 443)
+        }
+
+        // Whitespace and blank
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example.com ", 443)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "   ", 443)
+        }
+
+        // Invalid dot syntax
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", ".example.com", 443)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Origin("https", "example..com", 443)
+        }
+    }
 }
+
