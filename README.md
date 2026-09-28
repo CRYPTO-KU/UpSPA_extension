@@ -11,6 +11,18 @@ This repository contains:
 - A lightweight local login server for browser demo testing.
 - Protocol/API/security documentation and intern implementation notes.
 
+## Development guidance
+
+- [Contributing](CONTRIBUTING.md): branch workflow, verification and PR evidence.
+- [AI working rules](docs/ai-working-rules.md) and [agent instructions](AGENTS.md).
+- [Mobile architecture](docs/mobile-architecture.md): target design, invariants and open decisions.
+- [Tentative mobile development plan](docs/mobile-development-plan.md): full product scope,
+  implementation milestones and evidence required at each release gate.
+
+Mobile development targets `mobile-dev`. The current Android implementation is a synthetic
+provider shell, not a production credential provider. The mobile plan describes the full target
+product and development lifecycle.
+
 ---
 
 ## 1. High-level architecture
@@ -1080,52 +1092,16 @@ If not present, reload the extension and hard-refresh the demo page.
 
 ---
 
-## 14. Intern / contributor workflow
+## 14. Contributor workflow
 
-Install the guard hook from repo root:
+Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branch selection, independent task scope,
+verification commands and PR requirements. Mobile work, including shared-core/backend work
+assigned to the mobile roadmap, targets `mobile-dev`. Confirm the integration target for other
+work before creating a branch.
 
-```bash
-chmod +x tools/hooks/gaurd.sh
-mkdir -p .git/hooks
-ln -sf ../../tools/hooks/gaurd.sh .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
-
-Use personal intern branches:
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b intern/<name>
-git push -u origin intern/<name>
-```
-
-Examples:
-
-```text
-intern/efe
-intern/sina
-intern/emirhan
-```
-
-Daily workflow:
-
-```bash
-git status
-git add -A
-git commit -m "Describe what you implemented"
-git push
-```
-
-Update branch from main:
-
-```bash
-git fetch origin
-git rebase origin/main
-git push --force-with-lease
-```
-
-Never force-push `main`.
+Use focused task branches, review the diff before staging, and preserve unrelated local changes.
+AI-assisted contributions follow [AI working rules](docs/ai-working-rules.md); coding agents also
+read [AGENTS.md](AGENTS.md). Review and merging remain separate from author verification.
 
 ---
 
