@@ -60,6 +60,7 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
         val enforceVisibilityGate: Boolean = true,
         val enforceEnabledGate: Boolean = true,
         val enforceImportantForAutofill: Boolean = true,
+        val enforceNonCredentialHints: Boolean = true,
     ) {
         companion object {
             val DEFAULT_POISON = Regex(
@@ -80,6 +81,8 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
     }
 
     private fun collect(node: ViewNodeSnapshot, output: MutableList<Field>) {
+        // A visible child is still hidden when any ancestor is GONE or INVISIBLE.
+        if (policy.enforceVisibilityGate && node.visibility != View.VISIBLE) return
         if (isCandidate(node)) {
             output += Field(
                 autofillId = node.autofillId,
@@ -121,7 +124,7 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
         // tier 1 is what makes it a veto rather than a tie-breaker: an app-supplied hint is not a
         // trusted enough signal to override it, because the hint and the poisoned attribute corpus
         // can both be present on the same node (see FieldClassifierTest, "poison outranks...").
-        if (policy.poison.containsMatchIn(field.attributeCorpus)) return
+        if (isVetoed(field)) return
 
         field.hints.firstNotNullOfOrNull { PLATFORM_HINTS[it] }?.let { role ->
             field.role = role
@@ -129,9 +132,8 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
             return
         }
 
-        field.htmlAutocomplete
-            ?.split(' ')
-            ?.firstNotNullOfOrNull { HTML_HINTS[it.trim().lowercase()] }
+        field.htmlTokens()
+            .firstNotNullOfOrNull { HTML_HINTS[it] }
             ?.let { role ->
                 field.role = role
                 field.tier = 1
@@ -172,7 +174,7 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
                 .lastOrNull {
                     it.role == Role.UNKNOWN &&
                         !it.passwordInput &&
-                        !policy.poison.containsMatchIn(it.attributeCorpus)
+                        !isVetoed(it)
                 }
                 ?.assign(Role.USERNAME, 3)
         }
@@ -216,6 +218,21 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
         tier = newTier
     }
 
+    /** Apply the same veto before hint classification and before topology promotion. */
+    private fun isVetoed(field: Field): Boolean {
+        // Remove only the email-address phrase from the poison scan. A separate street/postal
+        // address signal in another attribute must still veto even an explicitly hinted email.
+        val physicalAddressCorpus = EMAIL_ADDRESS.replace(field.attributeCorpus, "email")
+        if (policy.poison.containsMatchIn(physicalAddressCorpus)) return true
+        return policy.enforceNonCredentialHints && (
+            field.hints.any { it in NON_CREDENTIAL_PLATFORM_HINTS } ||
+                field.htmlTokens().any { it in NON_CREDENTIAL_HTML_HINTS }
+            )
+    }
+
+    private fun Field.htmlTokens(): List<String> =
+        htmlAutocomplete?.trim()?.lowercase()?.split(HTML_WHITESPACE).orEmpty()
+
     private fun isPasswordInput(node: ViewNodeSnapshot): Boolean {
         val inputClass = node.inputType and InputType.TYPE_MASK_CLASS
         val variation = node.inputType and InputType.TYPE_MASK_VARIATION
@@ -251,6 +268,38 @@ class FieldClassifier @VisibleForTesting internal constructor(private val policy
             "current-password" to Role.PASSWORD_CURRENT,
             "new-password" to Role.PASSWORD_NEW,
             "one-time-code" to Role.OTP,
+        )
+
+        // Explicit payment/address metadata overrides credential hints and password-like input.
+        private val NON_CREDENTIAL_PLATFORM_HINTS = setOf(
+            View.AUTOFILL_HINT_CREDIT_CARD_NUMBER,
+            View.AUTOFILL_HINT_CREDIT_CARD_SECURITY_CODE,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_DATE,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_DAY,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_MONTH,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_YEAR,
+            View.AUTOFILL_HINT_POSTAL_ADDRESS,
+            View.AUTOFILL_HINT_POSTAL_CODE,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_COUNTRY,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_REGION,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_LOCALITY,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_STREET_ADDRESS,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_EXTENDED_ADDRESS,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_EXTENDED_POSTAL_CODE,
+        )
+
+        // WHATWG autocomplete field names; section-*, shipping and billing are grouping tokens.
+        private val NON_CREDENTIAL_HTML_HINTS = setOf(
+            "cc-name", "cc-given-name", "cc-additional-name", "cc-family-name", "cc-number",
+            "cc-exp", "cc-exp-month", "cc-exp-year", "cc-csc", "cc-type",
+            "transaction-currency", "transaction-amount", "street-address", "address-line1",
+            "address-line2", "address-line3", "address-level1", "address-level2", "address-level3",
+            "address-level4", "country", "country-name", "postal-code",
+        )
+        private val HTML_WHITESPACE = Regex("[\\t\\n\\u000C\\r ]+")
+        private val EMAIL_ADDRESS = Regex(
+            "(?<![a-z])e[\\s_-]?mail[\\s_-]*address(?![a-z])",
+            RegexOption.IGNORE_CASE,
         )
 
         private val EMAIL = Regex("e.?mail", RegexOption.IGNORE_CASE)

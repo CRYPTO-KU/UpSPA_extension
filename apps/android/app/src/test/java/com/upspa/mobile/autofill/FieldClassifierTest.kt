@@ -128,7 +128,11 @@ class FieldClassifierTest {
     @Test
     fun `registration screen resolves the hint-free confirmation field`() {
         val result = classifier.classifyScreen(
-            TestNodes.field("registration_email", hints = listOf(View.AUTOFILL_HINT_EMAIL_ADDRESS)),
+            TestNodes.field(
+                "registration_email",
+                hints = listOf(View.AUTOFILL_HINT_EMAIL_ADDRESS),
+                label = "Email address",
+            ),
             TestNodes.password(
                 "registration_new_password",
                 hints = listOf(HintConstants.AUTOFILL_HINT_NEW_PASSWORD),

@@ -126,6 +126,40 @@ class FieldClassifierNegativeControlTest {
     // --- NC-3: the application's own autofill opt-out ---------------------------------------------
 
     @Test
+    fun `NC-2 weakening visibility exposes a visible child beneath a hidden ancestor`() {
+        for (visibility in listOf(View.GONE, View.INVISIBLE)) {
+            val roots = listOf(TestNodes.container(children = listOf(
+                TestNodes.container(children = listOf(TestNodes.password("field_alpha"))),
+            )).copy(visibility = visibility))
+            assertEquals(emptyList<String>(), safe.classify(roots).fillableKeys())
+            val weakened = FieldClassifier(FieldClassifier.Policy(enforceVisibilityGate = false))
+            assertEquals(listOf("field_alpha"), weakened.classify(roots).fillableKeys())
+        }
+    }
+
+    @Test
+    fun `NC-5 weakening non-credential hint veto exposes masked payment fields`() {
+        val nodes = arrayOf(
+            TestNodes.password("field_alpha", hints = listOf(View.AUTOFILL_HINT_CREDIT_CARD_SECURITY_CODE)),
+            TestNodes.field("field_beta", html = mapOf("autocomplete" to "cc-csc", "type" to "password")),
+        )
+        assertEquals(emptyList<String>(), safe.classifyScreen(*nodes).fillableKeys())
+        val weakened = FieldClassifier(FieldClassifier.Policy(enforceNonCredentialHints = false))
+        assertEquals(listOf("field_alpha", "field_beta"), weakened.classifyScreen(*nodes).fillableKeys())
+    }
+
+    @Test
+    fun `NC-5 weakening non-credential hint veto lets topology promote an address field`() {
+        val nodes = arrayOf(
+            TestNodes.field("field_alpha", hints = listOf(View.AUTOFILL_HINT_POSTAL_ADDRESS)),
+            TestNodes.password("field_beta"),
+        )
+        assertEquals(listOf("field_beta"), safe.classifyScreen(*nodes).fillableKeys())
+        val weakened = FieldClassifier(FieldClassifier.Policy(enforceNonCredentialHints = false))
+        assertEquals(listOf("field_alpha", "field_beta"), weakened.classifyScreen(*nodes).fillableKeys())
+    }
+
+    @Test
     fun `NC-3 weakening the importance gate fills a form the application excluded`() {
         val tree = listOf(
             TestNodes.container(

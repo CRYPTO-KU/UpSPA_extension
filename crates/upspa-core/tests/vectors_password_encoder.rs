@@ -53,25 +53,19 @@ fn corpus_has_exactly_one_reject_vector() {
 #[test]
 fn all_accepted_vectors_match_expected() {
     let vectors = load_corpus();
-    let mut failures = 0usize;
+    let mut failures = Vec::new();
 
     for v in vectors.iter().filter(|v| !v.reject) {
         match encode_secret_as_password(&v.secret_b64, &v.policy, &v.account_id, v.counter) {
-            Ok(pw) if pw == v.expected => eprintln!("PASS [{}]", v.id),
-            Ok(_) => {
-                eprintln!("FAIL [{}]: password mismatch", v.id);
-                failures += 1;
-            }
-            Err(_) => {
-                eprintln!("FAIL [{}]: password mismatch", v.id);
-                failures += 1;
-            }
+            Ok(pw) if pw == v.expected => {}
+            _ => failures.push(v.id.as_str()),
         }
     }
 
-    assert_eq!(
-        failures, 0,
-        "{failures} vector(s) failed — see stderr above"
+    assert!(
+        failures.is_empty(),
+        "password mismatch for vector IDs: {}",
+        failures.join(", ")
     );
 }
 

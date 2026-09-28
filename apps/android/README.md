@@ -72,12 +72,11 @@ Install both debug APKs, enable the UpSPA Autofill service, then walk the fixtur
 The full procedure, expected decisions, and API 26 / 30 / 34 results are in
 [docs/emirhan-android-autofill-fixtures-classifier.md](../../docs/emirhan-android-autofill-fixtures-classifier.md).
 
-Every value UpSPA fills contains `UPSPA-TEMPLATE` or the reserved `.invalid` domain and must never
-be used as a credential.
+All values are fixed synthetic markers (for example `template-user`, `UPSPA-TEMPLATE...`,
+or an address under `.invalid`) and must never be used as credentials.
 
 ## Next implementation step
 
-Generate the compatibility corpus from this repository's
-`packages/extension/src/shared/passwordPolicy.ts`, port that encoder to Rust, and replace
-`TemplateCredentialEngine` with the reviewed UniFFI command/effect boundary. Do not import the
-different User Study encoder.
+The canonical compatibility corpus and Rust encoder are now on `mobile-dev`. Replace
+`TemplateCredentialEngine` with the reviewed UniFFI command/effect boundary in later integration
+work. Do not import the different User Study encoder.
