@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/registration_title"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:text="@string/registration_expectation" />
+
+        <EditText
+            android:id="@+id/registration_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="emailAddress"
+            android:hint="@string/registration_email"
+            android:importantForAutofill="yes"
+            android:inputType="textEmailAddress">
+
+            <!-- Focus on launch, so the fill request is raised without a synthetic tap. -->
+            <requestFocus />
+        </EditText>
+
+        <EditText
+            android:id="@+id/registration_new_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="newPassword"
+            android:hint="@string/registration_new_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword" />
+
+        <!-- Deliberately hint-free: the confirmation field must be resolved from its attributes. -->
+        <EditText
+            android:id="@+id/registration_confirm_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/registration_confirm_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword"
+            tools:ignore="Autofill" />
+
+        <Button
+            android:id="@+id/fixture_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fixture_submit" />
+    </LinearLayout>
+</ScrollView>

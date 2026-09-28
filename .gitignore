@@ -13,3 +13,6 @@ packages/upspa-js/wasm-pkg/
 
 __pycache__/
 *.pyc
+# Local IDE metadata
+.idea/
+*.iml
