@@ -1,14 +1,27 @@
 {
   "profileVersion": 1,
-  "status": "bootstrap-pending-vector-generation",
+  "status": "stable",
   "canonicalRepository": "UpSPA_extension",
   "bootstrapBaseCommit": "7580597b148895ae1816561d1966ed8a2039d425",
+  "encoderCommit": "fd00014",
   "protocolCore": "crates/upspa-core",
   "passwordEncoder": "packages/extension/src/shared/passwordPolicy.ts",
   "passwordEncoderIdentifier": "upspa-password-encoding-v2",
-  "vectorCorpus": null,
+  "vectorCorpus": "vectors.json",
+  "vectorSchema": {
+    "id": "Stable vector identifier (e.g. v001). Never reused.",
+    "description": "Human-readable label for the test case.",
+    "secretB64": "Input keying material passed as secretB64 to the encoder.",
+    "policy": "Normalised PasswordPolicy object (all fields present, camelCase).",
+    "accountId": "Site account identifier string (may be empty).",
+    "counter": "Rotation index (non-negative integer).",
+    "expected": "The exact password string the encoder must produce.",
+    "reject": "If true, expected is intentionally wrong; both TS and Rust must produce a DIFFERENT value."
+  },
   "notes": [
-    "Record the reviewed post-bootstrap commit before declaring this profile stable.",
-    "Generate vectors from this repository; external study repositories are evidence only."
+    "Vectors generated from passwordPolicy.ts at commit fd00014 (mobile-dev branch).",
+    "Algorithm: upspa-password-encoding-v2 (SHA-256 block-counter expansion, NOT HKDF).",
+    "v022 is the deliberately mutated rejection vector.",
+    "Rust parity currently expects fully normalized policies. Rust and TypeScript do not normalize every raw policy identically; partial-policy support remains future integration work."
   ]
 }
