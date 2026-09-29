@@ -123,34 +123,42 @@ class PureAssetLinkVerifier internal constructor(
         statements: List<AssetLinkStatement>,
         requiredRelation: String
     ): VerificationResult {
-        // Step 0: Enforce secure HTTPS origin (§1.2)
+        // Check 1: Enforce secure HTTPS origin (§1.2)
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
         if (!origin.isHttps && !allowInsecureHttp) {
             return VerificationResult.Rejected.NonHttpsOrigin(origin.toOriginString())
         }
 
-        // Step 1: Validate claimed package syntax (§1.4)
-        if (!AndroidPackageName.isValid(appSigningInfo.packageName)) {
-            return VerificationResult.Rejected.InvalidPackageName(appSigningInfo.packageName)
-        }
-
-        // Step 2: Multi-signer safety (§7.2, §10.3)
+        // Check 2: Multi-signer safety (§7.2, §10.3)
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
         if (appSigningInfo.hasMultipleSigners) {
             return VerificationResult.Rejected.MultipleSignersUnsupported(appSigningInfo.packageName)
         }
 
-        // Fail-closed on corrupted or unparseable raw certificates
+        // Check 3: Validate claimed package syntax (§1.4)
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
+        if (!AndroidPackageName.isValid(appSigningInfo.packageName)) {
+            return VerificationResult.Rejected.InvalidPackageName(appSigningInfo.packageName)
+        }
+
+        // Check 4: Fail-closed on corrupted or unparseable raw certificates
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
         if (!appSigningInfo.validateCertificates()) {
             return VerificationResult.Rejected.MalformedCertificateEvidence(
                 reason = "AppSigningInfo contains corrupted or unparseable raw certificate bytes for package '${appSigningInfo.packageName}'."
             )
         }
 
+        // Check 5: Claimed fingerprints presence
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
         val claimedFingerprints = appSigningInfo.getAllSha256Fingerprints()
+        // Defense in depth: structurally unreachable while AppSigningInfo enforces exactly one non-empty representation family
         if (claimedFingerprints.isEmpty()) {
             return VerificationResult.Rejected.NoSigningCertificatesFound(appSigningInfo.packageName)
         }
 
-        // Strictly inspect all claimed certificate digests fail-closed without lossy transform
+        // Check 6: Strictly inspect all claimed certificate digests fail-closed without lossy transform
+        // (Must match the check order in UpSpaAssetLinkVerifier.verify)
         val normalizedClaimedFingerprints = mutableListOf<String>()
         for (fp in claimedFingerprints) {
             val normalized = CertificateUtils.normalizeFingerprintOrNull(fp)

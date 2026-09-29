@@ -9,8 +9,15 @@ import java.security.cert.X509Certificate
  * Designed to cleanly mirror Android's `android.content.pm.SigningInfo` and `PackageInfo`
  * while structurally preventing multi-signer verification bypass (§7.2, §10.3).
  *
+ * Exactly one authoritative representation family must be provided:
+ * 1. Typed: [currentFingerprints], [rotationHistory]
+ * 2. Raw string fingerprints: [rawCurrentFingerprints], [rawRotationHistory]
+ * 3. Raw DER certificate bytes: [signingCertificates], [signingCertificateHistory]
+ *
+ * Providing zero families or more than one family is strictly rejected with [IllegalArgumentException].
+ *
  * Multi-signer state is structural: `hasMultipleSigners` is derived from the count of
- * current signers (> 1), rather than an independently settable caller-controlled boolean.
+ * current signers (> 1) strictly within the single active family.
  *
  * @property packageName The claimed Android application package name (e.g. "com.example.app").
  * @property currentFingerprints The set of current active signing certificate digests.
@@ -29,11 +36,30 @@ data class AppSigningInfo(
     val rawCurrentFingerprints: List<String> = emptyList(),
     val rawRotationHistory: List<String> = emptyList()
 ) {
+    /**
+     * Derives whether the application has multiple concurrent APK signers (> 1).
+     *
+     * Invariant guarantee: Because exactly one representation family is populated,
+     * this property is derived strictly from the single active family.
+     */
     val hasMultipleSigners: Boolean
         get() = currentFingerprints.size > 1 || rawCurrentFingerprints.size > 1 || signingCertificates.size > 1
 
     init {
         require(packageName.isNotBlank()) { "Package name must not be blank" }
+
+        val hasTyped = currentFingerprints.isNotEmpty() || rotationHistory.isNotEmpty()
+        val hasRawString = rawCurrentFingerprints.isNotEmpty() || rawRotationHistory.isNotEmpty()
+        val hasRawBytes = signingCertificates.isNotEmpty() || signingCertificateHistory.isNotEmpty()
+
+        val populatedFamilies = (if (hasTyped) 1 else 0) + (if (hasRawString) 1 else 0) + (if (hasRawBytes) 1 else 0)
+
+        require(populatedFamilies <= 1) {
+            "Ambiguous signing evidence: multiple representation families supplied (typed/raw-string/raw-bytes); provide exactly one authoritative representation."
+        }
+        require(populatedFamilies == 1) {
+            "Empty signing evidence: exactly one representation family must be provided."
+        }
 
         val effectiveHistorySize = rotationHistory.size + rawRotationHistory.size
         // Reject ambiguous evidence: multi-signer apps cannot have rotation history
@@ -64,11 +90,6 @@ data class AppSigningInfo(
                 "Ambiguous signing evidence: current signing certificate must be part of certificate history"
             }
         }
-        if (currentFingerprints.isNotEmpty() && signingCertificates.isNotEmpty()) {
-            require(currentFingerprints.size == signingCertificates.size) {
-                "Ambiguous signing evidence: conflicting direct fingerprints and raw signing certificates count"
-            }
-        }
     }
 
     val packageIdentity: AndroidPackageName
@@ -77,6 +98,7 @@ data class AppSigningInfo(
     /**
      * Validates that all raw certificate byte arrays (if present) are valid, parseable X.509 certificates (§1.3, §1.4).
      *
+     * Invariant guarantee: When the raw-bytes family is active, validates parseability.
      * Returns true if no raw certificates are configured, or if all configured raw certificates parse successfully.
      */
     fun validateCertificates(): Boolean {
@@ -92,8 +114,9 @@ data class AppSigningInfo(
     /**
      * Extracts all SHA-256 fingerprints (formatted as uppercase AA:BB:CC:... hex).
      *
-     * If rotation history or current fingerprints are provided, returns them directly.
-     * Otherwise, computes SHA-256 digests from [signingCertificateHistory] or [signingCertificates].
+     * Invariant guarantee: Because exactly one representation family is populated,
+     * this method evaluates only the single active family without skipping or ignoring
+     * conflicting populated representations from other families.
      *
      * Guarantees non-lossy transformation: does not silently drop corrupted raw certificates or strings.
      */
@@ -127,6 +150,10 @@ data class AppSigningInfo(
     /**
      * Safely extracts all certificates as strongly-typed [CertificateDigest] instances,
      * or returns null if any certificate is malformed, corrupted, or unparseable.
+     *
+     * Invariant guarantee: Because exactly one representation family is populated,
+     * this method evaluates only the single active family without skipping or ignoring
+     * conflicting populated representations from other families.
      */
     fun getAllCertificateDigestsOrNull(): List<CertificateDigest>? {
         if (!validateCertificates()) return null
@@ -176,6 +203,8 @@ data class AppSigningInfo(
 
     /**
      * Returns the primary (latest) signing certificate fingerprint, or null if multi-signer / empty / corrupted.
+     *
+     * Invariant guarantee: Evaluates only the single active representation family.
      */
     fun getLatestSha256FingerprintOrNull(): String? {
         if (hasMultipleSigners || !validateCertificates()) {
@@ -243,6 +272,8 @@ data class AppSigningInfo(
          *
          * Requires unambiguous input: single fingerprint for single-signer apps.
          * For multi-signers, use [fromMultiSigners]. For key rotation, use [fromRotationHistory].
+         *
+         * Populates the raw-string representation family.
          */
         @JvmStatic
         fun fromFingerprints(
@@ -256,10 +287,8 @@ data class AppSigningInfo(
                     "Use AppSigningInfo.fromMultiSigners(...) for concurrent signers or AppSigningInfo.fromRotationHistory(...) for key rotation."
                 )
             }
-            val digests = fingerprints.mapNotNull { CertificateDigest.fromHexOrNull(it) }.toSet()
             return AppSigningInfo(
                 packageName = packageName,
-                currentFingerprints = digests,
                 rawCurrentFingerprints = fingerprints
             )
         }
@@ -267,6 +296,8 @@ data class AppSigningInfo(
         /**
          * Creates an [AppSigningInfo] from [X509Certificate] instances.
          * Derives multi-signer status structurally from the number of certificates.
+         *
+         * Populates the raw-bytes representation family.
          */
         @JvmStatic
         fun fromX509Certificates(
@@ -274,15 +305,8 @@ data class AppSigningInfo(
             certificates: List<X509Certificate>
         ): AppSigningInfo {
             require(certificates.isNotEmpty()) { "Certificates list must not be empty" }
-            if (certificates.size > 1) {
-                return AppSigningInfo(
-                    packageName = packageName,
-                    signingCertificates = certificates.map { it.encoded }
-                )
-            }
             return AppSigningInfo(
                 packageName = packageName,
-                currentFingerprints = certificates.map { CertificateDigest.fromX509Certificate(it) }.toSet(),
                 signingCertificates = certificates.map { it.encoded }
             )
         }
@@ -290,6 +314,8 @@ data class AppSigningInfo(
         /**
          * Creates an [AppSigningInfo] with multiple current APK signers.
          * Enforces fail-closed multi-signer status structurally (§7.2, §10.3).
+         *
+         * Populates the raw-string representation family.
          */
         @JvmStatic
         fun fromMultiSigners(
@@ -299,16 +325,16 @@ data class AppSigningInfo(
             require(fingerprints.size > 1) {
                 "Multi-signer application requires at least two distinct signing certificates, got: ${fingerprints.size}"
             }
-            val digests = fingerprints.mapNotNull { CertificateDigest.fromHexOrNull(it) }.toSet()
             return AppSigningInfo(
                 packageName = packageName,
-                currentFingerprints = digests,
                 rawCurrentFingerprints = fingerprints
             )
         }
 
         /**
          * Creates an [AppSigningInfo] representing an application with signing-key rotation history (§2.3).
+         *
+         * Populates the raw-string representation family.
          */
         @JvmStatic
         fun fromRotationHistory(
@@ -316,12 +342,8 @@ data class AppSigningInfo(
             historyFingerprints: List<String>
         ): AppSigningInfo {
             require(historyFingerprints.isNotEmpty()) { "Rotation history must not be empty" }
-            val digests = historyFingerprints.mapNotNull { CertificateDigest.fromHexOrNull(it) }
-            val currentDigests = digests.lastOrNull()?.let { setOf(it) } ?: emptySet()
             return AppSigningInfo(
                 packageName = packageName,
-                currentFingerprints = currentDigests,
-                rotationHistory = digests,
                 rawCurrentFingerprints = listOfNotNull(historyFingerprints.lastOrNull()),
                 rawRotationHistory = historyFingerprints
             )
@@ -329,6 +351,8 @@ data class AppSigningInfo(
 
         /**
          * Creates an [AppSigningInfo] from strongly-typed [AndroidPackageName] and [CertificateDigest]s.
+         *
+         * Populates the typed representation family.
          */
         @JvmStatic
         fun fromTypedValues(

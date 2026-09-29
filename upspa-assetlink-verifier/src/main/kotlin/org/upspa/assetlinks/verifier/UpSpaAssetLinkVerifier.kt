@@ -53,33 +53,42 @@ class UpSpaAssetLinkVerifier internal constructor(
         appSigningInfo: AppSigningInfo,
         requiredRelation: String
     ): VerificationResult {
-        // Enforce secure HTTPS origin before network fetch
+        // Check 1: Enforce secure HTTPS origin before network fetch (§1.2)
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         if (!origin.isHttps && !allowInsecureHttp) {
             return VerificationResult.Rejected.NonHttpsOrigin(origin.toOriginString())
         }
 
-        // Step 0: Validate App Signing Information (§7.2, §10.3)
+        // Check 2: Multi-signer safety (§7.2, §10.3)
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         if (appSigningInfo.hasMultipleSigners) {
             return VerificationResult.Rejected.MultipleSignersUnsupported(appSigningInfo.packageName)
         }
 
+        // Check 3: Validate claimed package syntax (§1.4)
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         if (!AndroidPackageName.isValid(appSigningInfo.packageName)) {
             return VerificationResult.Rejected.InvalidPackageName(appSigningInfo.packageName)
         }
 
-        // Fail-closed on corrupted or unparseable raw certificates
+        // Check 4: Fail-closed on corrupted or unparseable raw certificates
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         if (!appSigningInfo.validateCertificates()) {
             return VerificationResult.Rejected.MalformedCertificateEvidence(
                 reason = "AppSigningInfo contains corrupted or unparseable raw certificate bytes for package '${appSigningInfo.packageName}'."
             )
         }
 
+        // Check 5: Claimed fingerprints presence
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         val claimedFingerprints = appSigningInfo.getAllSha256Fingerprints()
+        // Defense in depth: structurally unreachable while AppSigningInfo enforces exactly one non-empty representation family
         if (claimedFingerprints.isEmpty()) {
             return VerificationResult.Rejected.NoSigningCertificatesFound(appSigningInfo.packageName)
         }
 
-        // Pre-validate all claimed fingerprints strictly fail-closed before any network fetch
+        // Check 6: Pre-validate all claimed fingerprints strictly fail-closed before any network fetch
+        // (Must match the check order in PureAssetLinkVerifier.verifyStatementsInternal)
         for (fp in claimedFingerprints) {
             if (!CertificateUtils.isValidSha256Fingerprint(fp)) {
                 return VerificationResult.Rejected.MalformedCertificateEvidence(

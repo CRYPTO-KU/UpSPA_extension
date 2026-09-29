@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.upspa.assetlinks.crypto.CertificateUtils
 import org.upspa.assetlinks.fetcher.FakeAssetLinkFetcher
+import org.upspa.assetlinks.fetcher.FetchResult
 import org.upspa.assetlinks.model.AppSigningInfo
 import org.upspa.assetlinks.model.AssetLinkEvidence
 import org.upspa.assetlinks.model.AssetLinkStatement
@@ -586,6 +587,157 @@ class AdversarialNegativeControlTest {
         val result = verifier.verify(origin, claimedApp)
         val rejected = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateEvidence::class.java, result)
         assertTrue(rejected.reason.contains("corrupted") || rejected.reason.contains("Malformed"))
+    }
+
+    @Test
+    fun `testConflictingRepresentationFamiliesRejectedAtConstructionAndCannotVerify`() {
+        val digestA = CertificateDigest(certA)
+        // Statement authorizes raw fingerprint certB
+        val statementJson = createStatementJson(samplePackageName, listOf(certB))
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, statementJson)
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        // Building AppSigningInfo with typed current fingerprint A AND raw current fingerprint B
+        // must fail with IllegalArgumentException due to multiple representation families.
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = setOf(digestA),
+                rawCurrentFingerprints = listOf(certB)
+            )
+        }
+        assertTrue(ex.message?.contains("Ambiguous signing evidence: multiple representation families supplied") == true)
+
+        // End-to-end verifier invocation with mixed evidence can never return Verified
+        // because construction fails closed. Attempting to verify with mixed evidence cannot succeed.
+        assertThrows(IllegalArgumentException::class.java) {
+            val mixedEvidenceApp = AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = setOf(digestA),
+                rawCurrentFingerprints = listOf(certB)
+            )
+            val result = verifier.verify(origin, mixedEvidenceApp)
+            assertFalse(result is VerificationResult.Verified)
+        }
+    }
+
+    @Test
+    fun `testMalformedRawEvidenceAlongsideValidTypedRotationHistoryRejectedAtConstruction`() {
+        val digestA = CertificateDigest(certA)
+        val malformedFp = "MALFORMED:HEX:FINGERPRINT:XX"
+
+        // Build AppSigningInfo with valid typed rotationHistory (and matching typed current)
+        // plus a malformed raw current fingerprint string.
+        // Must be rejected with IllegalArgumentException due to multiple representation families.
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(
+                packageName = samplePackageName,
+                currentFingerprints = setOf(digestA),
+                rotationHistory = listOf(digestA),
+                rawCurrentFingerprints = listOf(malformedFp)
+            )
+        }
+        assertTrue(ex.message?.contains("Ambiguous signing evidence: multiple representation families supplied") == true)
+    }
+
+    @Test
+    fun `testCompletelyEmptySigningEvidenceRejectedAtConstruction`() {
+        // Assert building AppSigningInfo with no evidence in any family is rejected
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            AppSigningInfo(packageName = samplePackageName)
+        }
+        assertTrue(ex.message?.contains("Empty signing evidence: exactly one representation family must be provided") == true)
+    }
+
+    @Test
+    fun `testConsistentCheckOrderingBetweenPureAndUpSpaVerifiers`() {
+        // AppSigningInfo that is BOTH multi-signer AND has an invalid package name (no dots)
+        val invalidPkg = "invalid_single_segment"
+        val multiSignerWithBadPackage = AppSigningInfo.fromMultiSigners(
+            packageName = invalidPkg,
+            fingerprints = listOf(certA, certB)
+        )
+        assertTrue(multiSignerWithBadPackage.hasMultipleSigners)
+
+        val upSpaVerifier = UpSpaAssetLinkVerifier(fetcher = FakeAssetLinkFetcher.empty())
+        val pureVerifier = PureAssetLinkVerifier()
+
+        val statements = listOf(
+            AssetLinkStatement(
+                relation = listOf(AssetLinkVerifier.DEFAULT_RELATION),
+                target = Target(
+                    namespace = "android_app",
+                    packageName = invalidPkg,
+                    sha256CertFingerprints = listOf(certA)
+                )
+            )
+        )
+        val evidence = AssetLinkEvidence(sourceOrigin = origin, statements = statements)
+
+        val resultUpSpa = upSpaVerifier.verify(origin, multiSignerWithBadPackage)
+        val resultPure = pureVerifier.verify(origin, multiSignerWithBadPackage, evidence)
+
+        // Both verifiers must prioritize multi-signer check (Check 2) over package syntax (Check 3)
+        val rejectedUpSpa = assertInstanceOf(VerificationResult.Rejected.MultipleSignersUnsupported::class.java, resultUpSpa)
+        val rejectedPure = assertInstanceOf(VerificationResult.Rejected.MultipleSignersUnsupported::class.java, resultPure)
+        assertEquals(invalidPkg, rejectedUpSpa.packageName)
+        assertEquals(invalidPkg, rejectedPure.packageName)
+    }
+
+    @Test
+    fun `testInvalidPackageNameFailsClosedWithInvalidPackageName`() {
+        val invalidPkg = "invalid_single_segment_no_dot"
+        val claimedApp = AppSigningInfo.fromFingerprints(invalidPkg, listOf(certA))
+        val upSpaVerifier = UpSpaAssetLinkVerifier(fetcher = FakeAssetLinkFetcher.empty())
+        val pureVerifier = PureAssetLinkVerifier()
+
+        val resultUpSpa = upSpaVerifier.verify(origin, claimedApp)
+        val rejectedUpSpa = assertInstanceOf(VerificationResult.Rejected.InvalidPackageName::class.java, resultUpSpa)
+        assertEquals(invalidPkg, rejectedUpSpa.rawPackageName)
+        assertTrue(rejectedUpSpa.reason.contains(invalidPkg))
+
+        val evidence = AssetLinkEvidence(sourceOrigin = origin, statements = emptyList())
+        val resultPure = pureVerifier.verify(origin, claimedApp, evidence)
+        val rejectedPure = assertInstanceOf(VerificationResult.Rejected.InvalidPackageName::class.java, resultPure)
+        assertEquals(invalidPkg, rejectedPure.rawPackageName)
+    }
+
+    @Test
+    fun `testMalformedStatementCertificateFingerprintFailsClosed`() {
+        val malformedStatementFp = "MALFORMED:STATEMENT:FP:XX"
+        val statementJson = createStatementJson(samplePackageName, listOf(malformedStatementFp))
+        val fetcher = FakeAssetLinkFetcher.withJson(origin, statementJson)
+        val upSpaVerifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+        val pureVerifier = PureAssetLinkVerifier()
+
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+
+        // UpSpaAssetLinkVerifier path
+        val resultUpSpa = upSpaVerifier.verify(origin, claimedApp)
+        val rejectedUpSpa = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateFingerprint::class.java, resultUpSpa)
+        assertEquals(malformedStatementFp, rejectedUpSpa.rawFingerprint)
+        assertTrue(rejectedUpSpa.reason.contains(malformedStatementFp))
+
+        // PureAssetLinkVerifier path
+        val resultPure = pureVerifier.verifyRawJson(origin, claimedApp, statementJson)
+        val rejectedPure = assertInstanceOf(VerificationResult.Rejected.MalformedCertificateFingerprint::class.java, resultPure)
+        assertEquals(malformedStatementFp, rejectedPure.rawFingerprint)
+    }
+
+    @Test
+    fun `testNetworkFailureDuringFetchReturnsNetworkErrorPreservingCause`() {
+        val networkCause = java.net.SocketTimeoutException("Read timed out connecting to auth.example.com:443")
+        val fetcher = FakeAssetLinkFetcher(
+            configuredResponses = mapOf(origin to FetchResult.NetworkFailure(networkCause))
+        )
+        val verifier = UpSpaAssetLinkVerifier(fetcher = fetcher)
+
+        val claimedApp = AppSigningInfo.fromFingerprints(samplePackageName, listOf(certA))
+        val result = verifier.verify(origin, claimedApp)
+
+        val rejected = assertInstanceOf(VerificationResult.Rejected.NetworkError::class.java, result)
+        assertEquals(networkCause, rejected.throwable)
+        assertTrue(rejected.reason.contains("Read timed out"))
     }
 }
 
