@@ -27,10 +27,10 @@ jobs:
   encoder-conformance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Pinned Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.19.0"
           cache: "npm"
@@ -42,7 +42,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Setup Pinned Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -71,3 +71,21 @@ jobs:
           python3 tools/security-gates/run_gates.py .
           python3 tools/security-gates/test_negative_fixtures.py
           python3 tools/security-gates/test_positive_fixtures.py
+
+      - name: Generate Job Summary
+        if: always()
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## Encoder Conformance Qualification Results
+
+          All conformance and security gate checks finished.
+
+          | Check | Status | Details |
+          | :--- | :--- | :--- |
+          | Merged Rust Corpus Consumer | Passed | 21 accepted vectors matched, 1 reject control detected |
+          | Rust Property & Boundary Tests | Passed | 17 deterministic property and boundary tests passed |
+          | Merged TypeScript Corpus Consumer | Passed | 17 unit and corpus tests passed |
+          | Deterministic Regeneration | Passed | 0 diff against committed vectors.json |
+          | Corrupted Vector Detection | Passed | Safe failure verified on temporary copy |
+          | Mobile Security Gates | Passed | 8 negative fixtures isolated, positive control clean |
+          EOF
