@@ -161,7 +161,11 @@ describe('compatibility-profile-v1 corpus', () => {
 
   beforeAll(() => {
     const repoRoot = join(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
-    const corpusPath = join(repoRoot, 'test-vectors/compatibility-profile-v1/vectors.json');
+    const customPath = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env?.UPSPA_TEST_VECTORS_PATH;
+    const corpusPath = customPath
+      ? customPath
+      : join(repoRoot, 'test-vectors/compatibility-profile-v1/vectors.json');
     vectors = JSON.parse(readFileSync(corpusPath, 'utf8')) as CorpusVector[];
   });
 

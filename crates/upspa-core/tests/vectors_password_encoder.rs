@@ -23,8 +23,11 @@ struct CorpusVector {
 
 /// Loads the test vectors from the JSON corpus file.
 fn load_corpus() -> Vec<CorpusVector> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test-vectors/compatibility-profile-v1/vectors.json");
+    let path = match std::env::var("UPSPA_TEST_VECTORS_PATH") {
+        Ok(val) => std::path::PathBuf::from(val),
+        Err(_) => std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test-vectors/compatibility-profile-v1/vectors.json"),
+    };
     let raw = fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("Could not read corpus at {}: {e}", path.display()));
     serde_json::from_str(&raw).expect("vectors.json must be valid JSON")
