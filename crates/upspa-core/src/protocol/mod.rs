@@ -1,5 +1,5 @@
 use crate::aead::xchacha_decrypt_detached;
-use crate::types::{CtBlob, UpspaError, NONCE_LEN, TAG_LEN};
+use crate::types::{CtBlob, UpspaError};
 use ed25519_dalek::SigningKey;
 pub mod authenticate;
 pub mod password_update;

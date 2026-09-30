@@ -1,0 +1,444 @@
+[
+  {
+    "id": "v001",
+    "description": "default policy, counter 0, alice@example.com",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "HlVIsTPtj9Tb4scuQGHqxxz^22yQHAfy",
+    "reject": false
+  },
+  {
+    "id": "v002",
+    "description": "default policy, counter 1, alice@example.com",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 1,
+    "expected": "HEIfp7O&DS*^IOpHFl0lB^9AnG88Fy4U",
+    "reject": false
+  },
+  {
+    "id": "v003",
+    "description": "default policy, counter 3, alice@example.com",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 3,
+    "expected": "6v1neyBEMAzPGWcgbZhZ$BoABWmmseFL",
+    "reject": false
+  },
+  {
+    "id": "v004",
+    "description": "maxLen 16",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 16,
+      "maxLen": 16,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "e^fdA28*pyAvPVsC",
+    "reject": false
+  },
+  {
+    "id": "v005",
+    "description": "maxLen 12 (normalized minLen is 12)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 12,
+      "maxLen": 12,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "ktJL8E#azo*3",
+    "reject": false
+  },
+  {
+    "id": "v006",
+    "description": "no symbol required",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": false,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "gaVBYE1RRI6vozum0xTZhxGbtI47rLyW",
+    "reject": false
+  },
+  {
+    "id": "v007",
+    "description": "restricted symbols -_.",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 16,
+      "maxLen": 20,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "-_.",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "X6Nb3qU1W-aX8cZ5STCr",
+    "reject": false
+  },
+  {
+    "id": "v008",
+    "description": "all classes, minLen=maxLen=8",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 8,
+      "maxLen": 8,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "u",
+    "counter": 0,
+    "expected": "T5P@BY!y",
+    "reject": false
+  },
+  {
+    "id": "v009",
+    "description": "fixed length 16 (minLen=maxLen=16)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 16,
+      "maxLen": 16,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "A@EjHV50eym0ONqF",
+    "reject": false
+  },
+  {
+    "id": "v010",
+    "description": "fixed length 32 (minLen=maxLen=32)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 32,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "KUP%et7gRp#HkFVqPn8xVYH9*&o%Bvf8",
+    "reject": false
+  },
+  {
+    "id": "v011",
+    "description": "no upper required",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": false,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "9&rq^s8estvemop8&lprv#qzwckc09kw",
+    "reject": false
+  },
+  {
+    "id": "v012",
+    "description": "no lower required",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": false,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "S%UA9TQ0D$LW0YC1O13^WLSTWF@3W6N6",
+    "reject": false
+  },
+  {
+    "id": "v013",
+    "description": "no digit required",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": false,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "AstcAMpGPWbwkqRk%OUy!#naobIxwmZ&",
+    "reject": false
+  },
+  {
+    "id": "v014",
+    "description": "forbiddenSubstrings: [\"pass\"]",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": [
+        "pass"
+      ]
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "q&06DEoZ@HRE#vr4rnigd1M!lbNSi0GZ",
+    "reject": false
+  },
+  {
+    "id": "v015",
+    "description": "accountId bob, counter 0",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 12,
+      "maxLen": 20,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "bob",
+    "counter": 0,
+    "expected": "qFybELUA#8vdIBSG*5k^",
+    "reject": false
+  },
+  {
+    "id": "v016",
+    "description": "accountId bob, counter 5 (rotation)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 12,
+      "maxLen": 20,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "bob",
+    "counter": 5,
+    "expected": "DX8U^h%!EGRIIpa@tJ1U",
+    "reject": false
+  },
+  {
+    "id": "v017",
+    "description": "different secret, default policy, counter 0",
+    "secretB64": "another-upspa-secret-b64==",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "pwzpN2SvLuSv5cXwD2#QLLEit1zwO&!4",
+    "reject": false
+  },
+  {
+    "id": "v018",
+    "description": "maxLen 64 (boundary)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 64,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "s8o#wTyU^G13YKiqbMQ6UlYdJLK0&End",
+    "reject": false
+  },
+  {
+    "id": "v019",
+    "description": "lower and digit only, no upper/symbol",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": false,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": false,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice",
+    "counter": 0,
+    "expected": "uz5tyybu8yk5sbnbdxk0105sv3a764ev",
+    "reject": false
+  },
+  {
+    "id": "v020",
+    "description": "default policy, empty accountId, counter 0",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "",
+    "counter": 0,
+    "expected": "jz%cnAzfx1&M#tvwddT3jfaWbtOVtr*T",
+    "reject": false
+  },
+  {
+    "id": "v021",
+    "description": "accountId with uppercase letters (Alice)",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "Alice",
+    "counter": 0,
+    "expected": "c#!v9zVZ$4@f!Q^OqCgrQznjo%NGL^Km",
+    "reject": false
+  },
+  {
+    "id": "v022",
+    "description": "MUTATED — deliberately corrupted expected value; both implementations must reject",
+    "secretB64": "raw-upspa-secret-for-tests",
+    "policy": {
+      "minLen": 20,
+      "maxLen": 32,
+      "requireUpper": true,
+      "requireLower": true,
+      "requireDigit": true,
+      "requireSymbol": true,
+      "allowedSymbols": "!@#$%^&*",
+      "forbidWhitespace": true,
+      "forbiddenSubstrings": []
+    },
+    "accountId": "alice@example.com",
+    "counter": 0,
+    "expected": "HlVIsTPtj9Tb4scuQGHqxxz^22yQHAfa",
+    "reject": true
+  }
+]

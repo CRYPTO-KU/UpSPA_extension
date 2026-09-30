@@ -1133,7 +1133,10 @@ dependencies = [
  "rand_core",
  "serde",
  "serde-big-array",
+ "serde_json",
+ "sha2",
  "thiserror",
+ "zeroize",
 ]
 
 [[package]]

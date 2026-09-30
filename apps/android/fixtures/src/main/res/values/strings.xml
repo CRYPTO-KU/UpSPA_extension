@@ -1,7 +1,76 @@
 <resources>
-    <string name="app_name">UpSPA Login Fixture</string>
-    <string name="fixture_title">Controlled login fixture</string>
-    <string name="fixture_username">Username</string>
-    <string name="fixture_password">Password</string>
+    <string name="app_name">UpSPA Autofill Fixtures</string>
+
+    <string name="menu_title">UpSPA controlled Autofill fixtures</string>
+    <string name="menu_subtitle">Every screen is synthetic. No field is read, submitted, logged, or stored.</string>
     <string name="fixture_submit">Submit test form</string>
+    <string name="fixture_submit_noop">Fixture only: nothing was read or submitted</string>
+
+    <string name="scenario_login">1. Login (platform hints)</string>
+    <string name="scenario_registration">2. Registration (email + new password)</string>
+    <string name="scenario_password_change">3. Password change (current + new)</string>
+    <string name="scenario_split_login">4. Split username / password login</string>
+    <string name="scenario_no_hints">5. No hints (topology fallback)</string>
+    <string name="scenario_hidden_disabled">6. Hidden and disabled fields</string>
+    <string name="scenario_poison">7. Poison fields next to a login</string>
+    <string name="scenario_autofill_disabled">8. Autofill explicitly disabled</string>
+    <string name="scenario_unknown">9. Unknown, non-credential fields</string>
+
+    <string name="login_title">Login</string>
+    <string name="login_expectation">Expected: one locked UpSPA entry offering username and current password.</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+
+    <string name="registration_title">Create account</string>
+    <string name="registration_expectation">Expected: email plus two new-password fields. The confirmation field carries no hint and must be resolved from its attributes.</string>
+    <string name="registration_email">Email address</string>
+    <string name="registration_new_password">Choose a password</string>
+    <string name="registration_confirm_password">Confirm password</string>
+
+    <string name="password_change_title">Change password</string>
+    <string name="password_change_expectation">Expected: the first field is the current password, the other two are the new password. Only the current-password field carries no autofill hint.</string>
+    <string name="password_change_current">Current password</string>
+    <string name="password_change_new">New password</string>
+    <string name="password_change_confirm">Confirm new password</string>
+
+    <string name="split_username_title">Sign in</string>
+    <string name="split_username_expectation">Step 1 of 2. Expected: a username-only locked entry.</string>
+    <string name="split_username_field">Username</string>
+    <string name="split_continue">Continue</string>
+
+    <string name="split_password_title">Enter your password</string>
+    <string name="split_password_expectation">Step 2 of 2. Expected: a password-only locked entry. No field precedes the password, so the topology fallback must not invent a username target.</string>
+    <string name="split_password_field">Password</string>
+
+    <string name="no_hints_title">Legacy form without autofill hints</string>
+    <string name="no_hints_expectation">Expected: the password is recognised from its input type, and the preceding unlabelled field is promoted to username by the topology fallback only.</string>
+    <string name="no_hints_alpha">Value 1</string>
+    <string name="no_hints_beta">Value 2</string>
+
+    <string name="hidden_disabled_title">Hidden and disabled fields</string>
+    <string name="hidden_disabled_expectation">Expected: only the two live fields are offered. The gone, invisible, and disabled fields must stay untouched even though they carry valid autofill hints.</string>
+    <string name="hidden_gone_password">Gone password</string>
+    <string name="hidden_invisible_username">Invisible username</string>
+    <string name="hidden_disabled_password">Disabled password</string>
+    <string name="hidden_visible_username">Username</string>
+    <string name="hidden_visible_password">Password</string>
+
+    <string name="poison_title">Checkout page with a sign-in box</string>
+    <string name="poison_expectation">Expected: the username and password are offered. Search, coupon, card number, card security code, and postal code must never be filled, including the security code, which is a password input.</string>
+    <string name="poison_search">Search this store</string>
+    <string name="poison_coupon">Coupon code</string>
+    <string name="poison_card_number">Card number</string>
+    <string name="poison_card_cvv">Card security code</string>
+    <string name="poison_postal_code">Postal code</string>
+
+    <string name="autofill_disabled_title">Autofill disabled by the application</string>
+    <string name="autofill_disabled_expectation">Expected: no UpSPA entry at all. The container is marked noExcludeDescendants, so the platform withholds these fields from every autofill service.</string>
+    <string name="autofill_disabled_username">Username (excluded)</string>
+    <string name="autofill_disabled_password">Password (excluded)</string>
+
+    <string name="unknown_title">Preferences</string>
+    <string name="unknown_expectation">Expected: no UpSPA entry. None of these fields is a credential field.</string>
+    <string name="unknown_favourite_colour">Favourite colour</string>
+    <string name="unknown_pet">Pet</string>
+    <string name="unknown_lucky_number">Lucky number</string>
 </resources>
