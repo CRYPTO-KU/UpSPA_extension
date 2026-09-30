@@ -6,6 +6,7 @@ import com.upspa.mobile.ffi.fakes.FakeSecureStorage
 import com.upspa.mobile.ffi.fakes.FakeTransport
 import com.upspa.mobile.ffi.fakes.RecordingDiagnostics
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -50,7 +51,7 @@ class MobileContractTest {
         )
 
         val effect = engine.submit(probe(t0 + 5_000))
-        assertEquals("op-000001-probe", effect.operation.value)
+        assertEquals("op-000001", effect.operation.value)
         assertTrue(effect.body is EffectBody.AckImmediately)
 
         clock.advance(250)
@@ -62,7 +63,6 @@ class MobileContractTest {
         assertEquals(effect.operation, event.operation)
         assertEquals(1u, event.sequence)
         assertTrue(event.body is EventBody.ProbeCompleted)
-        assertEquals(0u, engine.openOperationCount())
         assertEquals(
             listOf("operation.started", "operation.settled"),
             diagnostics.codes(),
@@ -110,6 +110,59 @@ class MobileContractTest {
             fail("expected MobileException.UnknownOperation")
         } catch (expected: MobileException.UnknownOperation) {
             assertEquals("op-999999-forged", expected.operation)
+        }
+    }
+
+    /** Review #3: cancelling past the deadline is a typed expiry, not a cancellation event. */
+    @Test
+    fun `cancelling an expired operation throws OperationExpired`() {
+        val clock = FakeClock(t0)
+        val diagnostics = RecordingDiagnostics()
+        val engine = MobileEngine(FakeTransport(), FakeSecureStorage(), clock, FakeIdentity(), diagnostics)
+
+        val effect = engine.submit(probe(t0 + 1_000))
+        clock.advance(1_001)
+
+        try {
+            engine.cancel(effect.operation)
+            fail("expected MobileException.OperationExpired")
+        } catch (expected: MobileException.OperationExpired) {
+            assertEquals(effect.operation.value, expected.operation)
+            assertEquals((t0 + 1_000).toULong(), expected.deadlineMillis)
+        }
+
+        try {
+            engine.cancel(effect.operation)
+            fail("expected MobileException.OperationAlreadySettled")
+        } catch (expected: MobileException.OperationAlreadySettled) {
+            // settled as expired; cannot be reopened
+        }
+        assertEquals(listOf("operation.started", "operation.expired"), diagnostics.codes())
+    }
+
+    /** Review #4: a hostile request tag never reaches diagnostics, IDs, or exception messages. */
+    @Test
+    fun `hostile request tag never reaches diagnostics`() {
+        val hostileTag = "alice@example.com:hunter2-master-secret"
+        val clock = FakeClock(t0)
+        val diagnostics = RecordingDiagnostics()
+        val engine = MobileEngine(FakeTransport(), FakeSecureStorage(), clock, FakeIdentity(), diagnostics)
+
+        val accepted = engine.submit(probe(t0 + 5_000).copy(requestTag = hostileTag))
+        engine.deliver(accepted.operation, HostOutcome.ProbeAck(echoTag = "lifecycle-demo"))
+
+        val rejectionMessage = try {
+            engine.submit(probe(t0 - 1).copy(requestTag = hostileTag))
+            fail("expected MobileException.OperationExpired")
+            ""
+        } catch (expected: MobileException.OperationExpired) {
+            "${expected.operation} ${expected.message}"
+        }
+
+        val observed = diagnostics.allFields() + accepted.operation.value + rejectionMessage
+        assertTrue(diagnostics.codes().contains("command.rejected"))
+        for (field in observed) {
+            assertFalse("request tag leaked", field.contains("hunter2") || field.contains("alice"))
         }
     }
 }

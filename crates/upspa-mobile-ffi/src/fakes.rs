@@ -54,26 +54,26 @@ pub struct FakeSecureStorage {
 }
 
 impl SecureStoragePort for FakeSecureStorage {
-    fn load(&self, key: String) -> Result<Option<SecretBytes>, MobileError> {
+    fn load(&self, slot: String) -> Result<Option<SecretBytes>, MobileError> {
         Ok(self
             .entries
             .lock()
             .expect("poisoned")
-            .get(&key)
+            .get(&slot)
             .cloned()
             .map(SecretBytes::new))
     }
 
-    fn store(&self, key: String, value: SecretBytes) -> Result<(), MobileError> {
+    fn store(&self, slot: String, value: SecretBytes) -> Result<(), MobileError> {
         self.entries
             .lock()
             .expect("poisoned")
-            .insert(key, value.bytes.clone());
+            .insert(slot, value.bytes.clone());
         Ok(())
     }
 
-    fn remove(&self, key: String) -> Result<(), MobileError> {
-        self.entries.lock().expect("poisoned").remove(&key);
+    fn remove(&self, slot: String) -> Result<(), MobileError> {
+        self.entries.lock().expect("poisoned").remove(&slot);
         Ok(())
     }
 }
@@ -114,6 +114,16 @@ pub struct RecordingDiagnostics {
 }
 
 impl RecordingDiagnostics {
+    /// Every string the sink has received, flattened. Used by the redaction regression tests.
+    pub fn all_fields(&self) -> Vec<String> {
+        self.records
+            .lock()
+            .expect("poisoned")
+            .iter()
+            .flat_map(|(a, b, c)| [a.clone(), b.clone(), c.clone()])
+            .collect()
+    }
+
     pub fn codes(&self) -> Vec<String> {
         self.records
             .lock()

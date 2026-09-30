@@ -42,15 +42,15 @@ class FakeTransport : TransportPort {
 class FakeSecureStorage : SecureStoragePort {
     private val entries = mutableMapOf<String, ByteArray>()
 
-    override fun load(key: String): SecretBytes? =
-        entries[key]?.let { SecretBytes(it.copyOf()) }
+    override fun load(slot: String): SecretBytes? =
+        entries[slot]?.let { SecretBytes(it.copyOf()) }
 
-    override fun store(key: String, value: SecretBytes) {
-        entries[key] = value.bytes.copyOf()
+    override fun store(slot: String, value: SecretBytes) {
+        entries[slot] = value.bytes.copyOf()
     }
 
-    override fun remove(key: String) {
-        entries.remove(key)
+    override fun remove(slot: String) {
+        entries.remove(slot)
     }
 }
 
@@ -78,4 +78,7 @@ class RecordingDiagnostics : RedactedDiagnosticsPort {
     }
 
     fun codes(): List<String> = records.map { it.first }
+
+    /** Every string the sink received, flattened. Used by the redaction regression tests. */
+    fun allFields(): List<String> = records.flatMap { listOf(it.first, it.second, it.third) }
 }

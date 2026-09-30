@@ -125,7 +125,11 @@ pub enum CommandBody {
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct MobileCommand {
     pub contract_version: u32,
-    /// Host-chosen idempotency key. Distinct from the engine-assigned `OperationId`.
+    /// Host-chosen idempotency key, for the host's own bookkeeping only.
+    ///
+    /// The engine discards this value on entry: it never appears in an `OperationId`, in a
+    /// diagnostics record, or in an error message, because it is host-controlled text that may
+    /// contain account or credential material.
     pub request_tag: String,
     /// Absolute deadline for the whole operation.
     pub deadline: Deadline,
@@ -147,10 +151,10 @@ pub enum EffectBody {
         payload: Vec<u8>,
         attempt: u32,
     },
-    /// Read a keystore-backed blob.
-    ReadSecureBlob { key: String },
-    /// Write a keystore-backed blob.
-    WriteSecureBlob { key: String, value: SecretBytes },
+    /// Read a keystore-backed blob. `slot` is a non-secret storage location name.
+    ReadSecureBlob { slot: String },
+    /// Write a keystore-backed blob. `slot` is a non-secret storage location name.
+    WriteSecureBlob { slot: String, value: SecretBytes },
 }
 
 /// Versioned effect envelope, correlated to the operation that produced it.
@@ -259,6 +263,10 @@ pub enum MobileError {
 
     #[error("host callback failed: {reason_code}")]
     HostCallback { reason_code: String },
+
+    /// Password encoding refused or failed. `reason_code` is a fixed engine code, never input data.
+    #[error("password encoding failed: {reason_code}")]
+    PasswordEncoding { reason_code: String },
 }
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for MobileError {

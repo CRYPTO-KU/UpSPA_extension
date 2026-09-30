@@ -16,11 +16,13 @@ pub trait TransportPort: Send + Sync {
 }
 
 /// Platform keystore access. Values are byte buffers so nothing lands in the string pool.
+///
+/// `slot` names a storage location (e.g. `blob/<site>/<account>`); it is not key material.
 #[uniffi::export(with_foreign)]
 pub trait SecureStoragePort: Send + Sync {
-    fn load(&self, key: String) -> Result<Option<SecretBytes>, MobileError>;
-    fn store(&self, key: String, value: SecretBytes) -> Result<(), MobileError>;
-    fn remove(&self, key: String) -> Result<(), MobileError>;
+    fn load(&self, slot: String) -> Result<Option<SecretBytes>, MobileError>;
+    fn store(&self, slot: String, value: SecretBytes) -> Result<(), MobileError>;
+    fn remove(&self, slot: String) -> Result<(), MobileError>;
 }
 
 /// Wall clock, injected so deadline expiry is testable without sleeping.

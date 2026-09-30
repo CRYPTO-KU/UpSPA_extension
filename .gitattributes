@@ -3,3 +3,5 @@
 *.sh text eol=lf
 gradlew text eol=lf
 .gitattributes text eol=lf
+# Generated UniFFI bindings are compared byte-for-byte by scripts/check_mobile_bindings.py.
+apps/android/ffi/src/main/generated/** text eol=lf

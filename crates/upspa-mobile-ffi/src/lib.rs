@@ -7,13 +7,16 @@
 //! - [`ports`] — host-implemented traits (transport, secure storage, clock, identity, diagnostics).
 //! - [`engine`] — the deterministic command -> effect -> event state machine.
 //! - [`fakes`] — fake adapters only; nothing here performs real I/O.
+//! - [`encoder`] — minimal facade over the canonical `upspa-core` password encoder.
 
 pub mod contract;
+pub mod encoder;
 pub mod engine;
 pub mod fakes;
 pub mod ports;
 
 pub use contract::*;
+pub use encoder::{encode_password, NormalizedPasswordPolicy};
 pub use engine::MobileEngine;
 pub use ports::*;
 

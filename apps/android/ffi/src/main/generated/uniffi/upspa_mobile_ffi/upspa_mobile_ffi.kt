@@ -667,13 +667,13 @@ internal interface UniffiCallbackInterfaceRedactedDiagnosticsPortMethod0 : com.s
     fun callback(`uniffiHandle`: Long,`eventCode`: RustBuffer.ByValue,`operation`: RustBuffer.ByValue,`detailCode`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureStoragePortMethod0 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureStoragePortMethod1 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureStoragePortMethod2 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceTransportPortMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`endpoint`: RustBuffer.ByValue,`payload`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
@@ -874,10 +874,6 @@ internal open class UniffiVTableCallbackInterfaceTransportPort(
 
 
 
-
-
-
-
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -928,16 +924,10 @@ internal interface UniffiLib : Library {
     ): Pointer
     fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_cancel(`ptr`: Pointer,`operation`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_check_version(`ptr`: Pointer,`host`: Int,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
     fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_contract_version(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
     fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_deliver(`ptr`: Pointer,`operation`: RustBuffer.ByValue,`outcome`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_next_operation_id(`ptr`: Pointer,`requestTag`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_open_operation_count(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
     fun uniffi_upspa_mobile_ffi_fn_method_mobileengine_submit(`ptr`: Pointer,`command`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_upspa_mobile_ffi_fn_clone_redacteddiagnosticsport(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -954,11 +944,11 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_upspa_mobile_ffi_fn_init_callback_vtable_securestorageport(`vtable`: UniffiVTableCallbackInterfaceSecureStoragePort,
     ): Unit
-    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_load(`ptr`: Pointer,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_load(`ptr`: Pointer,`slot`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_store(`ptr`: Pointer,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_store(`ptr`: Pointer,`slot`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_remove(`ptr`: Pointer,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_upspa_mobile_ffi_fn_method_securestorageport_remove(`ptr`: Pointer,`slot`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_upspa_mobile_ffi_fn_clone_transportport(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
@@ -969,6 +959,8 @@ internal interface UniffiLib : Library {
     fun uniffi_upspa_mobile_ffi_fn_method_transportport_send(`ptr`: Pointer,`endpoint`: RustBuffer.ByValue,`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_upspa_mobile_ffi_fn_func_bootstrap_info(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_upspa_mobile_ffi_fn_func_encode_password(`secret`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,`accountId`: RustBuffer.ByValue,`counter`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_upspa_mobile_ffi_fn_func_mobile_contract_version(uniffi_out_err: UniffiRustCallStatus, 
     ): Int
@@ -1086,6 +1078,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_upspa_mobile_ffi_checksum_func_bootstrap_info(
     ): Short
+    fun uniffi_upspa_mobile_ffi_checksum_func_encode_password(
+    ): Short
     fun uniffi_upspa_mobile_ffi_checksum_func_mobile_contract_version(
     ): Short
     fun uniffi_upspa_mobile_ffi_checksum_method_clockport_now_epoch_millis(
@@ -1096,15 +1090,9 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_cancel(
     ): Short
-    fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_check_version(
-    ): Short
     fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_contract_version(
     ): Short
     fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_deliver(
-    ): Short
-    fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_next_operation_id(
-    ): Short
-    fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_open_operation_count(
     ): Short
     fun uniffi_upspa_mobile_ffi_checksum_method_mobileengine_submit(
     ): Short
@@ -1140,6 +1128,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_upspa_mobile_ffi_checksum_func_bootstrap_info() != 30801.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_upspa_mobile_ffi_checksum_func_encode_password() != 43251.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_upspa_mobile_ffi_checksum_func_mobile_contract_version() != 31842.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1152,10 +1143,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_identityevidenceport_is_fresh() != 28383.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_cancel() != 24632.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_check_version() != 3952.toShort()) {
+    if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_cancel() != 55966.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_contract_version() != 24557.toShort()) {
@@ -1164,25 +1152,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_deliver() != 33759.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_next_operation_id() != 52673.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_open_operation_count() != 1171.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_mobileengine_submit() != 63943.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_redacteddiagnosticsport_record() != 47191.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_load() != 7582.toShort()) {
+    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_load() != 43160.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_store() != 37173.toShort()) {
+    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_store() != 6534.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_remove() != 40515.toShort()) {
+    if (lib.uniffi_upspa_mobile_ffi_checksum_method_securestorageport_remove() != 4200.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_upspa_mobile_ffi_checksum_method_transportport_send() != 24548.toShort()) {
@@ -2169,11 +2151,13 @@ public object FfiConverterTypeIdentityEvidencePort: FfiConverter<IdentityEvidenc
 public interface MobileEngineInterface {
     
     /**
-     * Cancel an in-flight operation. Cancellation is terminal and idempotent-safe.
+     * Cancel an in-flight operation. Cancellation is terminal.
+     *
+     * The same expiry-before-outcome rule as [`MobileEngine::deliver`] applies: cancelling an
+     * operation whose deadline has passed settles it as expired and returns the typed
+     * `OperationExpired` error, not an `OperationCancelled` event.
      */
     fun `cancel`(`operation`: OperationId): MobileEvent
-    
-    fun `checkVersion`(`host`: kotlin.UInt)
     
     fun `contractVersion`(): kotlin.UInt
     
@@ -2181,13 +2165,6 @@ public interface MobileEngineInterface {
      * Report the result of an effect. This is the only path that can produce a success event.
      */
     fun `deliver`(`operation`: OperationId, `outcome`: HostOutcome): MobileEvent
-    
-    fun `nextOperationId`(`requestTag`: kotlin.String): OperationId
-    
-    /**
-     * Number of operations the engine still considers open. Test and diagnostics helper.
-     */
-    fun `openOperationCount`(): kotlin.UInt
     
     /**
      * Accept a command and return the single effect the host must run next.
@@ -2290,7 +2267,11 @@ open class MobileEngine: Disposable, AutoCloseable, MobileEngineInterface {
 
     
     /**
-     * Cancel an in-flight operation. Cancellation is terminal and idempotent-safe.
+     * Cancel an in-flight operation. Cancellation is terminal.
+     *
+     * The same expiry-before-outcome rule as [`MobileEngine::deliver`] applies: cancelling an
+     * operation whose deadline has passed settles it as expired and returns the typed
+     * `OperationExpired` error, not an `OperationCancelled` event.
      */
     @Throws(MobileException::class)override fun `cancel`(`operation`: OperationId): MobileEvent {
             return FfiConverterTypeMobileEvent.lift(
@@ -2302,18 +2283,6 @@ open class MobileEngine: Disposable, AutoCloseable, MobileEngineInterface {
     }
     )
     }
-    
-
-    
-    @Throws(MobileException::class)override fun `checkVersion`(`host`: kotlin.UInt)
-        = 
-    callWithPointer {
-    uniffiRustCallWithError(MobileException) { _status ->
-    UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_mobileengine_check_version(
-        it, FfiConverterUInt.lower(`host`),_status)
-}
-    }
-    
     
 
     override fun `contractVersion`(): kotlin.UInt {
@@ -2338,33 +2307,6 @@ open class MobileEngine: Disposable, AutoCloseable, MobileEngineInterface {
     uniffiRustCallWithError(MobileException) { _status ->
     UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_mobileengine_deliver(
         it, FfiConverterTypeOperationId.lower(`operation`),FfiConverterTypeHostOutcome.lower(`outcome`),_status)
-}
-    }
-    )
-    }
-    
-
-    override fun `nextOperationId`(`requestTag`: kotlin.String): OperationId {
-            return FfiConverterTypeOperationId.lift(
-    callWithPointer {
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_mobileengine_next_operation_id(
-        it, FfiConverterString.lower(`requestTag`),_status)
-}
-    }
-    )
-    }
-    
-
-    
-    /**
-     * Number of operations the engine still considers open. Test and diagnostics helper.
-     */override fun `openOperationCount`(): kotlin.UInt {
-            return FfiConverterUInt.lift(
-    callWithPointer {
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_mobileengine_open_operation_count(
-        it, _status)
 }
     }
     )
@@ -2803,20 +2745,24 @@ public object FfiConverterTypeRedactedDiagnosticsPort: FfiConverter<RedactedDiag
 
 /**
  * Platform keystore access. Values are byte buffers so nothing lands in the string pool.
+ *
+ * `slot` names a storage location (e.g. `blob/<site>/<account>`); it is not key material.
  */
 public interface SecureStoragePort {
     
-    fun `load`(`key`: kotlin.String): SecretBytes?
+    fun `load`(`slot`: kotlin.String): SecretBytes?
     
-    fun `store`(`key`: kotlin.String, `value`: SecretBytes)
+    fun `store`(`slot`: kotlin.String, `value`: SecretBytes)
     
-    fun `remove`(`key`: kotlin.String)
+    fun `remove`(`slot`: kotlin.String)
     
     companion object
 }
 
 /**
  * Platform keystore access. Values are byte buffers so nothing lands in the string pool.
+ *
+ * `slot` names a storage location (e.g. `blob/<site>/<account>`); it is not key material.
  */
 open class SecureStoragePortImpl: Disposable, AutoCloseable, SecureStoragePort {
 
@@ -2900,12 +2846,12 @@ open class SecureStoragePortImpl: Disposable, AutoCloseable, SecureStoragePort {
     }
 
     
-    @Throws(MobileException::class)override fun `load`(`key`: kotlin.String): SecretBytes? {
+    @Throws(MobileException::class)override fun `load`(`slot`: kotlin.String): SecretBytes? {
             return FfiConverterOptionalTypeSecretBytes.lift(
     callWithPointer {
     uniffiRustCallWithError(MobileException) { _status ->
     UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_securestorageport_load(
-        it, FfiConverterString.lower(`key`),_status)
+        it, FfiConverterString.lower(`slot`),_status)
 }
     }
     )
@@ -2913,24 +2859,24 @@ open class SecureStoragePortImpl: Disposable, AutoCloseable, SecureStoragePort {
     
 
     
-    @Throws(MobileException::class)override fun `store`(`key`: kotlin.String, `value`: SecretBytes)
+    @Throws(MobileException::class)override fun `store`(`slot`: kotlin.String, `value`: SecretBytes)
         = 
     callWithPointer {
     uniffiRustCallWithError(MobileException) { _status ->
     UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_securestorageport_store(
-        it, FfiConverterString.lower(`key`),FfiConverterTypeSecretBytes.lower(`value`),_status)
+        it, FfiConverterString.lower(`slot`),FfiConverterTypeSecretBytes.lower(`value`),_status)
 }
     }
     
     
 
     
-    @Throws(MobileException::class)override fun `remove`(`key`: kotlin.String)
+    @Throws(MobileException::class)override fun `remove`(`slot`: kotlin.String)
         = 
     callWithPointer {
     uniffiRustCallWithError(MobileException) { _status ->
     UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_method_securestorageport_remove(
-        it, FfiConverterString.lower(`key`),_status)
+        it, FfiConverterString.lower(`slot`),_status)
 }
     }
     
@@ -2948,11 +2894,11 @@ open class SecureStoragePortImpl: Disposable, AutoCloseable, SecureStoragePort {
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceSecureStoragePort {
     internal object `load`: UniffiCallbackInterfaceSecureStoragePortMethod0 {
-        override fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureStoragePort.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`load`(
-                    FfiConverterString.lift(`key`),
+                    FfiConverterString.lift(`slot`),
                 )
             }
             val writeReturn = { value: SecretBytes? -> uniffiOutReturn.setValue(FfiConverterOptionalTypeSecretBytes.lower(value)) }
@@ -2965,11 +2911,11 @@ internal object uniffiCallbackInterfaceSecureStoragePort {
         }
     }
     internal object `store`: UniffiCallbackInterfaceSecureStoragePortMethod1 {
-        override fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureStoragePort.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`store`(
-                    FfiConverterString.lift(`key`),
+                    FfiConverterString.lift(`slot`),
                     FfiConverterTypeSecretBytes.lift(`value`),
                 )
             }
@@ -2983,11 +2929,11 @@ internal object uniffiCallbackInterfaceSecureStoragePort {
         }
     }
     internal object `remove`: UniffiCallbackInterfaceSecureStoragePortMethod2 {
-        override fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`slot`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureStoragePort.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`remove`(
-                    FfiConverterString.lift(`key`),
+                    FfiConverterString.lift(`slot`),
                 )
             }
             val writeReturn = { _: Unit -> Unit }
@@ -3503,7 +3449,11 @@ public object FfiConverterTypeIdentityEvidence: FfiConverterRustBuffer<IdentityE
 data class MobileCommand (
     var `contractVersion`: kotlin.UInt, 
     /**
-     * Host-chosen idempotency key. Distinct from the engine-assigned `OperationId`.
+     * Host-chosen idempotency key, for the host's own bookkeeping only.
+     *
+     * The engine discards this value on entry: it never appears in an `OperationId`, in a
+     * diagnostics record, or in an error message, because it is host-controlled text that may
+     * contain account or credential material.
      */
     var `requestTag`: kotlin.String, 
     /**
@@ -3630,6 +3580,69 @@ public object FfiConverterTypeMobileEvent: FfiConverterRustBuffer<MobileEvent> {
             FfiConverterTypeOperationId.write(value.`operation`, buf)
             FfiConverterUInt.write(value.`sequence`, buf)
             FfiConverterTypeEventBody.write(value.`body`, buf)
+    }
+}
+
+
+
+/**
+ * Password policy as it crosses the boundary. Must already be in normalized form.
+ */
+data class NormalizedPasswordPolicy (
+    var `minLen`: kotlin.UInt, 
+    var `maxLen`: kotlin.UInt, 
+    var `requireUpper`: kotlin.Boolean, 
+    var `requireLower`: kotlin.Boolean, 
+    var `requireDigit`: kotlin.Boolean, 
+    var `requireSymbol`: kotlin.Boolean, 
+    var `allowedSymbols`: kotlin.String, 
+    var `forbidWhitespace`: kotlin.Boolean, 
+    var `forbiddenSubstrings`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNormalizedPasswordPolicy: FfiConverterRustBuffer<NormalizedPasswordPolicy> {
+    override fun read(buf: ByteBuffer): NormalizedPasswordPolicy {
+        return NormalizedPasswordPolicy(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NormalizedPasswordPolicy) = (
+            FfiConverterUInt.allocationSize(value.`minLen`) +
+            FfiConverterUInt.allocationSize(value.`maxLen`) +
+            FfiConverterBoolean.allocationSize(value.`requireUpper`) +
+            FfiConverterBoolean.allocationSize(value.`requireLower`) +
+            FfiConverterBoolean.allocationSize(value.`requireDigit`) +
+            FfiConverterBoolean.allocationSize(value.`requireSymbol`) +
+            FfiConverterString.allocationSize(value.`allowedSymbols`) +
+            FfiConverterBoolean.allocationSize(value.`forbidWhitespace`) +
+            FfiConverterSequenceString.allocationSize(value.`forbiddenSubstrings`)
+    )
+
+    override fun write(value: NormalizedPasswordPolicy, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`minLen`, buf)
+            FfiConverterUInt.write(value.`maxLen`, buf)
+            FfiConverterBoolean.write(value.`requireUpper`, buf)
+            FfiConverterBoolean.write(value.`requireLower`, buf)
+            FfiConverterBoolean.write(value.`requireDigit`, buf)
+            FfiConverterBoolean.write(value.`requireSymbol`, buf)
+            FfiConverterString.write(value.`allowedSymbols`, buf)
+            FfiConverterBoolean.write(value.`forbidWhitespace`, buf)
+            FfiConverterSequenceString.write(value.`forbiddenSubstrings`, buf)
     }
 }
 
@@ -3843,18 +3856,18 @@ sealed class EffectBody {
     }
     
     /**
-     * Read a keystore-backed blob.
+     * Read a keystore-backed blob. `slot` is a non-secret storage location name.
      */
     data class ReadSecureBlob(
-        val `key`: kotlin.String) : EffectBody() {
+        val `slot`: kotlin.String) : EffectBody() {
         companion object
     }
     
     /**
-     * Write a keystore-backed blob.
+     * Write a keystore-backed blob. `slot` is a non-secret storage location name.
      */
     data class WriteSecureBlob(
-        val `key`: kotlin.String, 
+        val `slot`: kotlin.String, 
         val `value`: SecretBytes) : EffectBody() {
         companion object
     }
@@ -3910,14 +3923,14 @@ public object FfiConverterTypeEffectBody : FfiConverterRustBuffer<EffectBody>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterString.allocationSize(value.`key`)
+                + FfiConverterString.allocationSize(value.`slot`)
             )
         }
         is EffectBody.WriteSecureBlob -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterString.allocationSize(value.`key`)
+                + FfiConverterString.allocationSize(value.`slot`)
                 + FfiConverterTypeSecretBytes.allocationSize(value.`value`)
             )
         }
@@ -3939,12 +3952,12 @@ public object FfiConverterTypeEffectBody : FfiConverterRustBuffer<EffectBody>{
             }
             is EffectBody.ReadSecureBlob -> {
                 buf.putInt(3)
-                FfiConverterString.write(value.`key`, buf)
+                FfiConverterString.write(value.`slot`, buf)
                 Unit
             }
             is EffectBody.WriteSecureBlob -> {
                 buf.putInt(4)
-                FfiConverterString.write(value.`key`, buf)
+                FfiConverterString.write(value.`slot`, buf)
                 FfiConverterTypeSecretBytes.write(value.`value`, buf)
                 Unit
             }
@@ -4314,6 +4327,17 @@ sealed class MobileException: kotlin.Exception() {
             get() = "reasonCode=${ `reasonCode` }"
     }
     
+    /**
+     * Password encoding refused or failed. `reason_code` is a fixed engine code, never input data.
+     */
+    class PasswordEncoding(
+        
+        val `reasonCode`: kotlin.String
+        ) : MobileException() {
+        override val message
+            get() = "reasonCode=${ `reasonCode` }"
+    }
+    
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<MobileException> {
         override fun lift(error_buf: RustBuffer.ByValue): MobileException = FfiConverterTypeMobileError.lift(error_buf)
@@ -4362,6 +4386,9 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
                 FfiConverterString.read(buf),
                 )
             10 -> MobileException.HostCallback(
+                FfiConverterString.read(buf),
+                )
+            11 -> MobileException.PasswordEncoding(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4420,6 +4447,11 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
                 + FfiConverterString.allocationSize(value.`reasonCode`)
             )
             is MobileException.HostCallback -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reasonCode`)
+            )
+            is MobileException.PasswordEncoding -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
                 + FfiConverterString.allocationSize(value.`reasonCode`)
@@ -4483,6 +4515,11 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
                 FfiConverterString.write(value.`reasonCode`, buf)
                 Unit
             }
+            is MobileException.PasswordEncoding -> {
+                buf.putInt(11)
+                FfiConverterString.write(value.`reasonCode`, buf)
+                Unit
+            }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 
@@ -4519,6 +4556,34 @@ public object FfiConverterOptionalTypeSecretBytes: FfiConverterRustBuffer<Secret
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
         /**
          * Non-sensitive linkage probe used by Android/iOS hosts to confirm they are bound to this core.
          */ fun `bootstrapInfo`(): BootstrapInfo {
@@ -4526,6 +4591,22 @@ public object FfiConverterOptionalTypeSecretBytes: FfiConverterRustBuffer<Secret
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_func_bootstrap_info(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Encode `secret` into a site password with the canonical `upspa-password-encoding-v2` encoder.
+         *
+         * Errors are typed `MobileError::PasswordEncoding` with fixed reason codes; no input value is
+         * ever echoed into an error.
+         */
+    @Throws(MobileException::class) fun `encodePassword`(`secret`: SecretBytes, `policy`: NormalizedPasswordPolicy, `accountId`: kotlin.String, `counter`: kotlin.UInt): SecretBytes {
+            return FfiConverterTypeSecretBytes.lift(
+    uniffiRustCallWithError(MobileException) { _status ->
+    UniffiLib.INSTANCE.uniffi_upspa_mobile_ffi_fn_func_encode_password(
+        FfiConverterTypeSecretBytes.lower(`secret`),FfiConverterTypeNormalizedPasswordPolicy.lower(`policy`),FfiConverterString.lower(`accountId`),FfiConverterUInt.lower(`counter`),_status)
 }
     )
     }

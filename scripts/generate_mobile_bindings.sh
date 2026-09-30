@@ -6,6 +6,9 @@
 #   scripts/generate_mobile_bindings.sh kotlin
 #   scripts/generate_mobile_bindings.sh swift      # future iOS host
 #
+#   UPSPA_BINDINGS_OUT_DIR=/tmp/x scripts/generate_mobile_bindings.sh kotlin
+#       Generate into another directory instead (used by scripts/check_mobile_bindings.py).
+#
 # Determinism notes:
 #   - The generator is the `uniffi-bindgen` binary inside `upspa-mobile-ffi` itself, so the
 #     generator version can never drift from the scaffolding version.
@@ -28,13 +31,13 @@ case "$(uname -s)" in
 esac
 
 case "$LANGUAGE" in
-  kotlin) OUT_DIR="$REPO_ROOT/apps/android/ffi/src/main/generated" ;;
+  kotlin) OUT_DIR="${UPSPA_BINDINGS_OUT_DIR:-$REPO_ROOT/apps/android/ffi/src/main/generated}" ;;
   swift)  OUT_DIR="$REPO_ROOT/build/xcframework/swift" ;;
   *) echo "unsupported language: $LANGUAGE (expected kotlin or swift)" >&2; exit 2 ;;
 esac
 
 echo "==> building $CRATE ($PROFILE)"
-cargo build --profile "$PROFILE" -p "$CRATE"
+cargo build --locked --profile "$PROFILE" -p "$CRATE"
 
 LIB_PATH="$TARGET_DIR/$PROFILE/$LIB_NAME"
 if [[ ! -f "$LIB_PATH" ]]; then
@@ -47,7 +50,7 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
 echo "==> generating $LANGUAGE bindings from $LIB_PATH"
-cargo run --profile "$PROFILE" -p "$CRATE" --bin uniffi-bindgen -- \
+cargo run --locked --profile "$PROFILE" -p "$CRATE" --bin uniffi-bindgen -- \
   generate --library "$LIB_PATH" \
   --language "$LANGUAGE" \
   --out-dir "$OUT_DIR" \

@@ -3,6 +3,15 @@
 //! The engine is a pure state machine over an operation registry. All time and all I/O arrive
 //! through the ports in [`crate::ports`], so a test with a fake clock can drive deadline expiry
 //! exactly, with no sleeping and no flakiness.
+//!
+//! Invariants enforced here:
+//! - Expiry is checked before any outcome, on every path that can settle an operation
+//!   (`deliver` and `cancel`). An expired operation settles as `OperationExpired`, never as a
+//!   success or a cancellation.
+//! - Operation IDs and diagnostic correlation IDs are engine-minted and never contain host text.
+//!   `MobileCommand::request_tag` is an idempotency key for the host only; it is discarded on entry.
+//! - Every secret buffer that crosses the boundary into the engine is moved into a
+//!   [`SecretGuard`] before any check runs, so it is erased on success and on every early return.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -29,6 +38,87 @@ enum PendingKind {
     BlobWrite { policy_revision: u32 },
 }
 
+/// Owns a secret for as long as the engine holds it and erases it on drop.
+///
+/// `SecretBytes` itself cannot implement `Drop` (it is a UniFFI record; see `contract.rs`), so
+/// the engine moves every incoming secret into this guard as its very first action. Because the
+/// erasure lives in `Drop`, it runs on the success path and on every `?` / early `return` alike.
+pub(crate) struct SecretGuard(SecretBytes);
+
+impl SecretGuard {
+    pub(crate) fn new(secret: SecretBytes) -> Self {
+        Self(secret)
+    }
+
+    pub(crate) fn expose(&self) -> &SecretBytes {
+        &self.0
+    }
+}
+
+impl Drop for SecretGuard {
+    fn drop(&mut self) {
+        self.0.zeroize();
+        #[cfg(test)]
+        erasure_probe::record(self.0.bytes.is_empty());
+    }
+}
+
+/// Command body after secrets have been moved into guards.
+enum GuardedCommandBody {
+    Probe {
+        echo_tag: String,
+    },
+    DeriveCredential {
+        selector: AccountSelector,
+        master_secret: SecretGuard,
+    },
+    RotateBlob {
+        selector: AccountSelector,
+        evidence: IdentityEvidence,
+    },
+}
+
+impl From<CommandBody> for GuardedCommandBody {
+    fn from(body: CommandBody) -> Self {
+        match body {
+            CommandBody::Probe { echo_tag } => Self::Probe { echo_tag },
+            CommandBody::DeriveCredential {
+                selector,
+                master_secret,
+            } => Self::DeriveCredential {
+                selector,
+                master_secret: SecretGuard::new(master_secret),
+            },
+            CommandBody::RotateBlob { selector, evidence } => {
+                Self::RotateBlob { selector, evidence }
+            }
+        }
+    }
+}
+
+/// Host outcome after secrets have been moved into guards.
+enum GuardedOutcome {
+    ProbeAck { echo_tag: String },
+    RequestSucceeded { response: Vec<u8> },
+    BlobRead { _value: SecretGuard },
+    BlobWritten,
+    HostFailed { reason_code: String },
+}
+
+impl From<HostOutcome> for GuardedOutcome {
+    fn from(outcome: HostOutcome) -> Self {
+        match outcome {
+            HostOutcome::ProbeAck { echo_tag } => Self::ProbeAck { echo_tag },
+            HostOutcome::RequestSucceeded { response } => Self::RequestSucceeded { response },
+            HostOutcome::BlobRead { value } => Self::BlobRead {
+                _value: SecretGuard::new(value),
+            },
+            HostOutcome::BlobWritten => Self::BlobWritten,
+            HostOutcome::HostFailed { reason_code } => Self::HostFailed { reason_code },
+        }
+    }
+}
+
 #[derive(uniffi::Object)]
 pub struct MobileEngine {
     ports: HostPorts,
@@ -36,6 +126,9 @@ pub struct MobileEngine {
     counter: AtomicU64,
 }
 
+/// The public host contract. Only methods in this block are exported through UniFFI; internal
+/// helpers live in the plain `impl` block below and must stay out of the generated bindings
+/// (enforced by `scripts/check_mobile_bindings.py`).
 #[uniffi::export]
 impl MobileEngine {
     /// Build an engine over host-supplied ports. Fake adapters satisfy this signature unchanged.
@@ -66,45 +159,56 @@ impl MobileEngine {
 
     /// Accept a command and return the single effect the host must run next.
     pub fn submit(&self, command: MobileCommand) -> Result<MobileEffect, MobileError> {
-        self.check_version(command.contract_version)?;
+        // Take ownership of every field first. Secrets go into guards before any check can
+        // return early, and the host's request tag is dropped here: it must never reach an
+        // operation ID, a diagnostics record, or an error message.
+        let MobileCommand {
+            contract_version,
+            request_tag: _,
+            deadline,
+            body,
+        } = command;
+        let body = GuardedCommandBody::from(body);
+
+        self.check_version(contract_version)?;
 
         let now = self.ports.clock.now_epoch_millis();
-        if command.deadline.is_expired_at(now) {
-            // A command that arrives already expired never becomes an operation.
+        let operation = self.next_operation_id();
+
+        if deadline.is_expired_at(now) {
+            // A command that arrives already expired never becomes an operation. The minted ID
+            // is used only for correlation and is never registered, so it cannot be delivered.
             self.ports.diagnostics.record(
                 "command.rejected".to_owned(),
-                command.request_tag.clone(),
+                operation.value.clone(),
                 "deadline-in-past".to_owned(),
             );
             return Err(MobileError::OperationExpired {
-                operation: command.request_tag,
-                deadline_millis: command.deadline.epoch_millis,
+                operation: operation.value,
+                deadline_millis: deadline.epoch_millis,
                 now_millis: now,
             });
         }
 
-        let operation = self.next_operation_id(&command.request_tag);
-
-        let (pending, body) = match command.body {
-            CommandBody::Probe { echo_tag } => (
+        let (pending, effect_body) = match body {
+            GuardedCommandBody::Probe { echo_tag } => (
                 PendingKind::Probe {
                     echo_tag: echo_tag.clone(),
                 },
                 EffectBody::AckImmediately { echo_tag },
             ),
-            CommandBody::DeriveCredential {
+            GuardedCommandBody::DeriveCredential {
                 selector,
-                mut master_secret,
+                master_secret,
             } => {
-                if master_secret.is_empty() {
+                if master_secret.expose().is_empty() {
                     return Err(MobileError::IdentityRejected {
                         reason_code: "empty-master-secret".to_owned(),
                     });
                 }
                 // Only the length reaches the payload; no secret byte is copied into the effect.
-                let payload = derivation_request_payload(&selector, &master_secret);
-                // Explicit, because SecretBytes cannot carry a Drop impl (see contract.rs).
-                master_secret.zeroize();
+                let payload = derivation_request_payload(&selector, master_secret.expose());
+                drop(master_secret); // erased here; also erased on every early return above
                 (
                     PendingKind::Request,
                     EffectBody::SendRequest {
@@ -114,10 +218,7 @@ impl MobileEngine {
                     },
                 )
             }
-            CommandBody::RotateBlob {
-                selector,
-                evidence,
-            } => {
+            GuardedCommandBody::RotateBlob { selector, evidence } => {
                 if !self.ports.identity.is_fresh(evidence, now) {
                     return Err(MobileError::IdentityRejected {
                         reason_code: "stale-identity-evidence".to_owned(),
@@ -128,7 +229,7 @@ impl MobileEngine {
                         policy_revision: selector.policy_revision,
                     },
                     EffectBody::WriteSecureBlob {
-                        key: format!("blob/{}/{}", selector.site_tag, selector.account_label),
+                        slot: format!("blob/{}/{}", selector.site_tag, selector.account_label),
                         value: SecretBytes::new(Vec::new()),
                     },
                 )
@@ -138,7 +239,7 @@ impl MobileEngine {
         self.operations.lock().expect("registry poisoned").insert(
             operation.value.clone(),
             OperationRecord {
-                deadline: command.deadline,
+                deadline,
                 sequence: 0,
                 settled: false,
                 pending,
@@ -154,8 +255,8 @@ impl MobileEngine {
         Ok(MobileEffect {
             contract_version: MOBILE_CONTRACT_VERSION,
             operation,
-            deadline: command.deadline,
-            body,
+            deadline,
+            body: effect_body,
         })
     }
 
@@ -165,6 +266,8 @@ impl MobileEngine {
         operation: OperationId,
         outcome: HostOutcome,
     ) -> Result<MobileEvent, MobileError> {
+        // Guard any secret in the outcome before a check can return early.
+        let outcome = GuardedOutcome::from(outcome);
         let now = self.ports.clock.now_epoch_millis();
         let mut registry = self.operations.lock().expect("registry poisoned");
 
@@ -187,20 +290,11 @@ impl MobileEngine {
             record.settled = true;
             let deadline_millis = record.deadline.epoch_millis;
             drop(registry);
-            self.ports.diagnostics.record(
-                "operation.expired".to_owned(),
-                operation.value.clone(),
-                "deadline-passed".to_owned(),
-            );
-            return Err(MobileError::OperationExpired {
-                operation: operation.value,
-                deadline_millis,
-                now_millis: now,
-            });
+            return Err(self.expired(operation, deadline_millis, now));
         }
 
         let body = match (&record.pending, outcome) {
-            (PendingKind::Probe { echo_tag }, HostOutcome::ProbeAck { echo_tag: got }) => {
+            (PendingKind::Probe { echo_tag }, GuardedOutcome::ProbeAck { echo_tag: got }) => {
                 if *echo_tag != got {
                     return Err(MobileError::OutcomeMismatch {
                         operation: operation.value.clone(),
@@ -208,17 +302,17 @@ impl MobileEngine {
                 }
                 EventBody::ProbeCompleted { echo_tag: got }
             }
-            (PendingKind::Request, HostOutcome::RequestSucceeded { response }) => {
+            (PendingKind::Request, GuardedOutcome::RequestSucceeded { response }) => {
                 EventBody::CredentialReady {
                     handle: credential_handle(&operation, &response),
                 }
             }
-            (PendingKind::BlobWrite { policy_revision }, HostOutcome::BlobWritten) => {
+            (PendingKind::BlobWrite { policy_revision }, GuardedOutcome::BlobWritten) => {
                 EventBody::BlobRotated {
                     policy_revision: *policy_revision,
                 }
             }
-            (_, HostOutcome::HostFailed { reason_code }) => EventBody::OperationFailed {
+            (_, GuardedOutcome::HostFailed { reason_code }) => EventBody::OperationFailed {
                 reason_code: sanitize_reason(&reason_code),
             },
             _ => {
@@ -247,7 +341,11 @@ impl MobileEngine {
         })
     }
 
-    /// Cancel an in-flight operation. Cancellation is terminal and idempotent-safe.
+    /// Cancel an in-flight operation. Cancellation is terminal.
+    ///
+    /// The same expiry-before-outcome rule as [`MobileEngine::deliver`] applies: cancelling an
+    /// operation whose deadline has passed settles it as expired and returns the typed
+    /// `OperationExpired` error, not an `OperationCancelled` event.
     pub fn cancel(&self, operation: OperationId) -> Result<MobileEvent, MobileError> {
         let now = self.ports.clock.now_epoch_millis();
         let mut registry = self.operations.lock().expect("registry poisoned");
@@ -262,6 +360,13 @@ impl MobileEngine {
             return Err(MobileError::OperationAlreadySettled {
                 operation: operation.value.clone(),
             });
+        }
+
+        if record.deadline.is_expired_at(now) {
+            record.settled = true;
+            let deadline_millis = record.deadline.epoch_millis;
+            drop(registry);
+            return Err(self.expired(operation, deadline_millis, now));
         }
 
         record.settled = true;
@@ -282,8 +387,16 @@ impl MobileEngine {
             body: EventBody::OperationCancelled { at_millis: now },
         })
     }
+}
 
-    /// Number of operations the engine still considers open. Test and diagnostics helper.
+/// Internal helpers. Deliberately NOT `#[uniffi::export]`: hosts never mint operation IDs and
+/// never call the version check directly.
+impl MobileEngine {
+    /// Number of operations the engine still considers open.
+    ///
+    /// Rust-side test helper only. It is `pub` because `tests/` is a separate crate, but it is not
+    /// part of the UniFFI contract.
+    #[doc(hidden)]
     pub fn open_operation_count(&self) -> u32 {
         self.operations
             .lock()
@@ -294,7 +407,7 @@ impl MobileEngine {
     }
 
     fn check_version(&self, host: u32) -> Result<(), MobileError> {
-        if host < MIN_SUPPORTED_CONTRACT_VERSION || host > MOBILE_CONTRACT_VERSION {
+        if !(MIN_SUPPORTED_CONTRACT_VERSION..=MOBILE_CONTRACT_VERSION).contains(&host) {
             return Err(MobileError::UnsupportedContractVersion {
                 host,
                 min: MIN_SUPPORTED_CONTRACT_VERSION,
@@ -304,10 +417,25 @@ impl MobileEngine {
         Ok(())
     }
 
-    fn next_operation_id(&self, request_tag: &str) -> OperationId {
-        // Deterministic and monotonic: the demo lifecycle produces the same IDs on every run.
+    /// Deterministic, monotonic, and free of host-supplied text.
+    fn next_operation_id(&self) -> OperationId {
         let n = self.counter.fetch_add(1, Ordering::SeqCst) + 1;
-        OperationId::new(format!("op-{n:06}-{request_tag}"))
+        OperationId::new(format!("op-{n:06}"))
+    }
+
+    /// Emit the expiry diagnostic and build the typed error. The caller has already settled the
+    /// record and released the registry lock.
+    fn expired(&self, operation: OperationId, deadline_millis: u64, now: u64) -> MobileError {
+        self.ports.diagnostics.record(
+            "operation.expired".to_owned(),
+            operation.value.clone(),
+            "deadline-passed".to_owned(),
+        );
+        MobileError::OperationExpired {
+            operation: operation.value,
+            deadline_millis,
+            now_millis: now,
+        }
     }
 }
 
@@ -337,5 +465,147 @@ fn sanitize_reason(raw: &str) -> String {
         "unspecified".to_owned()
     } else {
         cleaned
+    }
+}
+
+/// Test-only observation point for secret erasure. Thread-local so parallel tests don't interfere.
+#[cfg(test)]
+pub(crate) mod erasure_probe {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static ERASURES: RefCell<Vec<bool>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub(crate) fn record(erased: bool) {
+        ERASURES.with(|e| e.borrow_mut().push(erased));
+    }
+
+    /// Returns and clears the erasures observed on this thread (`true` = buffer was emptied).
+    pub(crate) fn take() -> Vec<bool> {
+        ERASURES.with(|e| std::mem::take(&mut *e.borrow_mut()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Secret-erasure regressions. These live in-crate because the erasure probe is `cfg(test)`.
+    use super::*;
+    use crate::fakes::*;
+
+    const T0: u64 = 1_700_000_000_000;
+
+    fn engine(clock: Arc<FakeClock>) -> Arc<MobileEngine> {
+        MobileEngine::new(
+            Arc::new(FakeTransport::default()),
+            Arc::new(FakeSecureStorage::default()),
+            clock,
+            Arc::new(FakeIdentity::default()),
+            Arc::new(RecordingDiagnostics::default()),
+        )
+    }
+
+    fn derive(version: u32, deadline: u64, secret: &[u8]) -> MobileCommand {
+        MobileCommand {
+            contract_version: version,
+            request_tag: "derive".to_owned(),
+            deadline: Deadline {
+                epoch_millis: deadline,
+            },
+            body: CommandBody::DeriveCredential {
+                selector: AccountSelector {
+                    site_tag: "example.org".to_owned(),
+                    account_label: "user".to_owned(),
+                    policy_revision: 1,
+                },
+                master_secret: SecretBytes::new(secret.to_vec()),
+            },
+        }
+    }
+
+    #[test]
+    fn secret_erased_on_success() {
+        let e = engine(Arc::new(FakeClock::new(T0)));
+        erasure_probe::take();
+        e.submit(derive(MOBILE_CONTRACT_VERSION, T0 + 5_000, b"s3cret"))
+            .expect("accepted");
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn secret_erased_when_contract_version_rejected() {
+        let e = engine(Arc::new(FakeClock::new(T0)));
+        erasure_probe::take();
+        assert!(matches!(
+            e.submit(derive(1, T0 + 5_000, b"s3cret")),
+            Err(MobileError::UnsupportedContractVersion { .. })
+        ));
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn secret_erased_when_deadline_already_passed() {
+        let e = engine(Arc::new(FakeClock::new(T0)));
+        erasure_probe::take();
+        assert!(matches!(
+            e.submit(derive(MOBILE_CONTRACT_VERSION, T0 - 1, b"s3cret")),
+            Err(MobileError::OperationExpired { .. })
+        ));
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn empty_secret_rejection_still_runs_the_guard() {
+        let e = engine(Arc::new(FakeClock::new(T0)));
+        erasure_probe::take();
+        assert!(matches!(
+            e.submit(derive(MOBILE_CONTRACT_VERSION, T0 + 5_000, b"")),
+            Err(MobileError::IdentityRejected { .. })
+        ));
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn secret_in_mismatched_blob_read_outcome_is_erased() {
+        let clock = Arc::new(FakeClock::new(T0));
+        let e = engine(clock);
+        let effect = e
+            .submit(MobileCommand {
+                contract_version: MOBILE_CONTRACT_VERSION,
+                request_tag: "probe".to_owned(),
+                deadline: Deadline {
+                    epoch_millis: T0 + 5_000,
+                },
+                body: CommandBody::Probe {
+                    echo_tag: "t".to_owned(),
+                },
+            })
+            .expect("accepted");
+        erasure_probe::take();
+        assert!(matches!(
+            e.deliver(
+                effect.operation,
+                HostOutcome::BlobRead {
+                    value: SecretBytes::new(b"blob".to_vec())
+                }
+            ),
+            Err(MobileError::OutcomeMismatch { .. })
+        ));
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn secret_in_outcome_for_unknown_operation_is_erased() {
+        let e = engine(Arc::new(FakeClock::new(T0)));
+        erasure_probe::take();
+        assert!(e
+            .deliver(
+                OperationId::new("op-999999"),
+                HostOutcome::BlobRead {
+                    value: SecretBytes::new(b"blob".to_vec())
+                }
+            )
+            .is_err());
+        assert_eq!(erasure_probe::take(), vec![true]);
     }
 }

@@ -56,7 +56,7 @@ fn deterministic_probe_lifecycle() {
 
     // 2. Effect out, correlated and version-stamped.
     assert_eq!(effect.contract_version, MOBILE_CONTRACT_VERSION);
-    assert_eq!(effect.operation.value, "op-000001-probe");
+    assert_eq!(effect.operation.value, "op-000001");
     assert_eq!(
         effect.body,
         EffectBody::AckImmediately {
@@ -137,7 +137,7 @@ fn unknown_operation_cannot_be_reported_successful() {
     let h = harness();
 
     let result = h.engine.deliver(
-        OperationId::new("op-999999-forged"),
+        OperationId::new("op-999999"),
         HostOutcome::RequestSucceeded {
             response: vec![1, 2, 3],
         },
@@ -148,7 +148,7 @@ fn unknown_operation_cannot_be_reported_successful() {
         Err(MobileError::UnknownOperation { .. })
     ));
     assert!(matches!(
-        h.engine.cancel(OperationId::new("op-999999-forged")),
+        h.engine.cancel(OperationId::new("op-999999")),
         Err(MobileError::UnknownOperation { .. })
     ));
 }
@@ -209,4 +209,141 @@ fn mismatched_outcome_is_rejected() {
         h.engine.deliver(effect.operation, HostOutcome::BlobWritten),
         Err(MobileError::OutcomeMismatch { .. })
     ));
+}
+
+/// REVIEW #3: cancelling an operation whose deadline has passed must settle it as expired and
+/// return the typed `OperationExpired` error, never an `OperationCancelled` event.
+#[test]
+fn cancelling_an_expired_operation_returns_operation_expired() {
+    let h = harness();
+    let effect = h.engine.submit(probe(T0 + 1_000)).expect("submit accepted");
+
+    h.clock.advance(1_001);
+
+    match h.engine.cancel(effect.operation.clone()) {
+        Err(MobileError::OperationExpired {
+            operation,
+            deadline_millis,
+            now_millis,
+        }) => {
+            assert_eq!(operation, effect.operation.value);
+            assert_eq!(deadline_millis, T0 + 1_000);
+            assert_eq!(now_millis, T0 + 1_001);
+        }
+        other => panic!("expected OperationExpired, got {other:?}"),
+    }
+
+    // Settled as expired: closed, and neither a second cancel nor a late delivery can reopen it.
+    assert_eq!(h.engine.open_operation_count(), 0);
+    assert!(matches!(
+        h.engine.cancel(effect.operation.clone()),
+        Err(MobileError::OperationAlreadySettled { .. })
+    ));
+    assert!(matches!(
+        h.engine.deliver(
+            effect.operation,
+            HostOutcome::ProbeAck {
+                echo_tag: "lifecycle-demo".to_owned()
+            }
+        ),
+        Err(MobileError::OperationAlreadySettled { .. })
+    ));
+    assert_eq!(
+        h.diagnostics.codes(),
+        vec!["operation.started", "operation.expired"]
+    );
+}
+
+/// Cancellation exactly at the deadline is still allowed (expiry is strictly `now > deadline`).
+#[test]
+fn cancelling_at_the_deadline_is_a_cancellation() {
+    let h = harness();
+    let effect = h.engine.submit(probe(T0 + 1_000)).expect("submit accepted");
+    h.clock.advance(1_000);
+    let event = h.engine.cancel(effect.operation).expect("cancel accepted");
+    assert!(matches!(event.body, EventBody::OperationCancelled { .. }));
+}
+
+const HOSTILE_TAG: &str = "alice@example.com:hunter2-master-secret";
+
+fn hostile_probe(deadline_millis: u64) -> MobileCommand {
+    let mut command = probe(deadline_millis);
+    command.request_tag = HOSTILE_TAG.to_owned();
+    command
+}
+
+fn assert_tag_absent(h: &Harness, extra: &[String]) {
+    for field in h.diagnostics.all_fields().iter().chain(extra) {
+        assert!(
+            !field.contains("hunter2") && !field.contains("alice"),
+            "host request tag leaked into engine output"
+        );
+    }
+}
+
+/// REVIEW #4: host-controlled request tags never reach diagnostics or operation IDs.
+#[test]
+fn hostile_request_tag_never_reaches_diagnostics_on_the_happy_path() {
+    let h = harness();
+    let effect = h
+        .engine
+        .submit(hostile_probe(T0 + 5_000))
+        .expect("submit accepted");
+    let event = h
+        .engine
+        .deliver(
+            effect.operation.clone(),
+            HostOutcome::ProbeAck {
+                echo_tag: "lifecycle-demo".to_owned(),
+            },
+        )
+        .expect("delivered");
+
+    assert_eq!(effect.operation.value, "op-000001");
+    assert!(!h.diagnostics.all_fields().is_empty());
+    assert_tag_absent(&h, &[effect.operation.value, event.operation.value]);
+}
+
+/// REVIEW #4: the early-rejection path (command already expired) must not leak the tag either,
+/// neither into diagnostics nor into the typed error that becomes a Kotlin exception message.
+#[test]
+fn hostile_request_tag_never_reaches_diagnostics_on_early_rejection() {
+    let h = harness();
+    let err = h
+        .engine
+        .submit(hostile_probe(T0 - 1))
+        .expect_err("already expired");
+
+    let MobileError::OperationExpired { ref operation, .. } = err else {
+        panic!("expected OperationExpired, got {err:?}");
+    };
+    assert_eq!(h.diagnostics.codes(), vec!["command.rejected"]);
+    assert_tag_absent(&h, &[operation.clone(), err.to_string()]);
+
+    // The correlation ID minted for the rejection was never registered.
+    assert!(matches!(
+        h.engine.cancel(OperationId::new(operation.clone())),
+        Err(MobileError::UnknownOperation { .. })
+    ));
+}
+
+/// REVIEW #4: hostile tags on cancellation and expiry paths stay out of diagnostics too.
+#[test]
+fn hostile_request_tag_never_reaches_diagnostics_on_cancel_and_expiry() {
+    let h = harness();
+    let a = h.engine.submit(hostile_probe(T0 + 5_000)).expect("a");
+    let b = h.engine.submit(hostile_probe(T0 + 1_000)).expect("b");
+    h.engine.cancel(a.operation).expect("cancelled");
+    h.clock.advance(1_001);
+    let _ = h.engine.cancel(b.operation);
+    assert_eq!(
+        h.diagnostics.codes(),
+        vec![
+            "operation.started",
+            "operation.started",
+            "operation.cancelled",
+            "operation.expired"
+        ]
+    );
+    assert_tag_absent(&h, &[]);
 }
