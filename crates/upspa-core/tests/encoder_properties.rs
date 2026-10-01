@@ -119,6 +119,17 @@ fn output_length_clamping_for_underflow_overflow_and_inverted() {
     assert_eq!(pw_inverted.chars().count(), 25);
 }
 
+#[test]
+fn minimum_above_64_is_not_rejected_or_capped() {
+    // Compatibility limitation: capping requested max does not cap min.
+    let mut policy = make_base_policy();
+    policy.min_len = 65;
+    policy.max_len = 65;
+    let pw = encode_secret_as_password(TEST_SECRET, &policy, TEST_ACCOUNT, 0)
+        .expect("existing API accepts min_len above 64");
+    assert_eq!(pw.chars().count(), 65);
+}
+
 // ============================================================================
 // Character Class Properties
 // ============================================================================
@@ -386,6 +397,33 @@ fn invalid_json_returns_invalid_policy_json_error() {
     match result {
         Err(PasswordEncoderError::InvalidPolicyJson(_)) => {}
         other => panic!("expected InvalidPolicyJson error, got: {:?}", other),
+    }
+}
+
+#[test]
+fn json_length_fields_reject_values_outside_u32_and_missing_fields() {
+    let base = serde_json::to_value(make_base_policy()).expect("serialize synthetic policy");
+    for field in ["minLen", "maxLen"] {
+        for value in [
+            serde_json::json!(-1),
+            serde_json::json!(8.5),
+            serde_json::json!(4294967296u64),
+        ] {
+            let mut policy = base.clone();
+            policy[field] = value;
+            let result =
+                encode_secret_as_password_json(TEST_SECRET, &policy.to_string(), TEST_ACCOUNT, 0);
+            assert!(
+                matches!(result, Err(PasswordEncoderError::InvalidPolicyJson(_))),
+                "out-of-range JSON length must fail before encoding"
+            );
+        }
+        let mut policy = base.clone();
+        policy.as_object_mut().unwrap().remove(field);
+        assert!(matches!(
+            encode_secret_as_password_json(TEST_SECRET, &policy.to_string(), TEST_ACCOUNT, 0),
+            Err(PasswordEncoderError::InvalidPolicyJson(_))
+        ));
     }
 }
 

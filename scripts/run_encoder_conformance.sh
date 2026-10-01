@@ -30,19 +30,25 @@ npm -w upspa-extension test -- src/shared/passwordPolicy.test.ts
 echo ""
 echo "Step 4: Deterministic corpus regeneration check..."
 ./node_modules/.bin/tsx scripts/gen_password_vectors.mjs
-git diff --exit-code -- test-vectors/compatibility-profile-v1/
+profile_changes=$(git status --porcelain --untracked-files=all -- test-vectors/compatibility-profile-v1/) && test -z "$profile_changes"
 
 echo ""
 echo "Step 5: Verifying temporary corrupted vector detection..."
 ./scripts/verify_corpus_corruption.sh
 
 echo ""
-echo "Step 6: Running security gates and fixture isolation tests..."
+echo "Step 6: Running qualification regression controls..."
+python3 scripts/test_encoder_conformance.py
+
+echo "Step 7: Running security gates and fixture isolation tests..."
 python3 tools/security-gates/run_gates.py .
 python3 tools/security-gates/test_negative_fixtures.py
 python3 tools/security-gates/test_positive_fixtures.py
 
 echo ""
+echo "Step 8: Checking Rust formatting..."
+cargo fmt --all -- --check
+
 echo "============================================================"
 echo "  All Conformance, Parity, and Security Checks PASSED!       "
 echo "============================================================"

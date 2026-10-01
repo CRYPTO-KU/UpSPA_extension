@@ -128,6 +128,15 @@ describe('deterministic encoder (Task 6 guarantees)', () => {
     expect(passwordSatisfiesPolicy(out.password, policy, 'alice')).toBe(true);
   });
 
+  test('minimum above 64 overrides the requested maximum cap', async () => {
+    const policy = normalizePasswordPolicy({ minLen: 65, maxLen: 65 });
+    expect(policy.minLen).toBe(65);
+    expect(policy.maxLen).toBe(65);
+    const out = await encodeSecretAsPassword(SECRET, policy, 'alice', 0);
+    expect(out.password.length).toBe(65);
+    expect(passwordSatisfiesPolicy(out.password, policy, 'alice')).toBe(true);
+  });
+
   test('honours a restricted allowed-symbol set', async () => {
     const policy = normalizePasswordPolicy({
       minLen: 16,
