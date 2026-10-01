@@ -1,0 +1,385 @@
+[
+  {
+    "file": "valid/01_single_verified.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/02_subdomains_distinct.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/03_ports_distinct.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/04_http_manual.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/05_case_sensitive_accounts.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/06_unverified_and_pending.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "valid/07_compatibility_policies.json",
+    "expected": "ACCEPTED",
+    "comment": "synthetic, values mirrored from compatibility-profile v1 policies"
+  },
+  {
+    "file": "valid/08_empty_entries.json",
+    "expected": "ACCEPTED"
+  },
+  {
+    "file": "invalid/account_ref_control_char.json",
+    "expected": "InvalidAccountReference",
+    "code": "CONTROL_CHARACTER",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/account_ref_empty.json",
+    "expected": "InvalidAccountReference",
+    "code": "EMPTY",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/account_ref_leading_space.json",
+    "expected": "InvalidAccountReference",
+    "code": "WHITESPACE_AT_EDGE",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/account_ref_separator.json",
+    "expected": "InvalidAccountReference",
+    "code": "SEPARATOR_PRESENT",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/account_ref_too_long.json",
+    "expected": "InvalidAccountReference",
+    "code": "TOO_LONG",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/account_ref_trailing_space.json",
+    "expected": "InvalidAccountReference",
+    "code": "WHITESPACE_AT_EDGE",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_invalid_cert.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "INVALID_CERTIFICATE_DIGEST",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_invalid_package.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "INVALID_PACKAGE_NAME",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_invalid_source_origin.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "INVALID_SOURCE_ORIGIN",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_manual_with_ref.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "REFERENCE_FORBIDDEN",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_mismatch_parent.json",
+    "expected": "AliasOriginMismatch",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_mismatch_port.json",
+    "expected": "AliasOriginMismatch",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_mismatch_scheme.json",
+    "expected": "AliasOriginMismatch",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_mismatch_subdomain.json",
+    "expected": "AliasOriginMismatch",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_pending_with_reason.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "REASON_FORBIDDEN",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_unknown_status.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "UNKNOWN_STATUS",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_unverified_no_reason.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "REASON_REQUIRED",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_verified_http.json",
+    "expected": "AliasRequiresHttps",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_verified_no_ref.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "REFERENCE_REQUIRED",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/alias_verified_with_reason.json",
+    "expected": "MalformedAliasEvidence",
+    "code": "REASON_FORBIDDEN",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/compat_version_2.json",
+    "expected": "UnsupportedCompatibilityProfileVersion",
+    "entryIndex": 0,
+    "found": 2
+  },
+  {
+    "file": "invalid/compat_version_missing.json",
+    "expected": "MissingField",
+    "path": "/entries/0/compatibilityProfileVersion"
+  },
+  {
+    "file": "invalid/compat_version_string.json",
+    "expected": "WrongType",
+    "path": "/entries/0/compatibilityProfileVersion"
+  },
+  {
+    "file": "invalid/counter_exponent.json",
+    "expected": "WrongType",
+    "path": "/entries/0/encoderCounter"
+  },
+  {
+    "file": "invalid/counter_float.json",
+    "expected": "WrongType",
+    "path": "/entries/0/encoderCounter"
+  },
+  {
+    "file": "invalid/counter_missing.json",
+    "expected": "MissingField",
+    "path": "/entries/0/encoderCounter"
+  },
+  {
+    "file": "invalid/counter_negative.json",
+    "expected": "WrongType",
+    "path": "/entries/0/encoderCounter"
+  },
+  {
+    "file": "invalid/counter_overflow.json",
+    "expected": "InvalidEncoderCounter",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/counter_string.json",
+    "expected": "WrongType",
+    "path": "/entries/0/encoderCounter"
+  },
+  {
+    "file": "invalid/duplicate_entry.json",
+    "expected": "DuplicateEntry",
+    "firstIndex": 0,
+    "secondIndex": 1
+  },
+  {
+    "file": "invalid/entries_missing.json",
+    "expected": "MissingField",
+    "path": "/entries"
+  },
+  {
+    "file": "invalid/entries_wrong_type.json",
+    "expected": "WrongType",
+    "path": "/entries"
+  },
+  {
+    "file": "invalid/entry_duplicate_key.json",
+    "expected": "DuplicateJsonKey",
+    "path": "/entries/0"
+  },
+  {
+    "file": "invalid/entry_unknown_field.json",
+    "expected": "UnknownField",
+    "parentPath": "/entries/0"
+  },
+  {
+    "file": "invalid/entry_wrong_type.json",
+    "expected": "WrongType",
+    "path": "/entries/0"
+  },
+  {
+    "file": "invalid/malformed_json.json",
+    "expected": "MalformedJson"
+  },
+  {
+    "file": "invalid/nesting_depth_9.json",
+    "expected": "NestingTooDeep"
+  },
+  {
+    "file": "invalid/origin_explicit_default_port.json",
+    "expected": "NonCanonicalEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_invalid_syntax.json",
+    "expected": "InvalidEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_missing.json",
+    "expected": "MissingEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_null.json",
+    "expected": "MissingEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_path.json",
+    "expected": "NonCanonicalEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_trailing_slash.json",
+    "expected": "NonCanonicalEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_uppercase.json",
+    "expected": "NonCanonicalEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/origin_userinfo.json",
+    "expected": "NonCanonicalEnrolledOrigin",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/policy_duplicate_symbols.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "DUPLICATE_SYMBOLS"
+  },
+  {
+    "file": "invalid/policy_empty_symbols_required.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL"
+  },
+  {
+    "file": "invalid/policy_forbidden_substring_empty.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "FORBIDDEN_SUBSTRING_NOT_NORMALIZED"
+  },
+  {
+    "file": "invalid/policy_forbidden_substring_untrimmed.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "FORBIDDEN_SUBSTRING_NOT_NORMALIZED"
+  },
+  {
+    "file": "invalid/policy_forbidden_substring_uppercase.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "FORBIDDEN_SUBSTRING_NOT_NORMALIZED"
+  },
+  {
+    "file": "invalid/policy_max_above_cap.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "MAX_LEN_ABOVE_CAP"
+  },
+  {
+    "file": "invalid/policy_max_len_overflow.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "LENGTH_OUT_OF_RANGE"
+  },
+  {
+    "file": "invalid/policy_min_gt_max.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "MIN_GREATER_THAN_MAX"
+  },
+  {
+    "file": "invalid/policy_min_len_overflow.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "LENGTH_OUT_OF_RANGE"
+  },
+  {
+    "file": "invalid/policy_min_too_small.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "MIN_LEN_TOO_SMALL"
+  },
+  {
+    "file": "invalid/policy_missing_field.json",
+    "expected": "PartialPolicy",
+    "entryIndex": 0
+  },
+  {
+    "file": "invalid/policy_unknown_field.json",
+    "expected": "UnknownField",
+    "parentPath": "/entries/0/policy"
+  },
+  {
+    "file": "invalid/policy_whitespace_in_symbols.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "WHITESPACE_IN_SYMBOLS"
+  },
+  {
+    "file": "invalid/root_duplicate_key.json",
+    "expected": "DuplicateJsonKey",
+    "path": ""
+  },
+  {
+    "file": "invalid/root_unknown_field.json",
+    "expected": "UnknownField",
+    "parentPath": ""
+  },
+  {
+    "file": "invalid/schema_version_0.json",
+    "expected": "UnsupportedSchemaVersion",
+    "found": 0
+  },
+  {
+    "file": "invalid/schema_version_2.json",
+    "expected": "UnsupportedSchemaVersion",
+    "found": 2
+  },
+  {
+    "file": "invalid/schema_version_missing.json",
+    "expected": "MissingField",
+    "path": "/schemaVersion"
+  },
+  {
+    "file": "invalid/schema_version_string.json",
+    "expected": "WrongType",
+    "path": "/schemaVersion"
+  },
+  {
+    "file": "invalid/trailing_data.json",
+    "expected": "TrailingData"
+  }
+]
