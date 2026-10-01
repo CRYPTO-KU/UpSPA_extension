@@ -38,7 +38,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 GENERATED_DIR = REPO_ROOT / "apps/android/ffi/src/main/generated"
 BINDINGS_FILE = Path("uniffi/upspa_mobile_ffi/upspa_mobile_ffi.kt")
 ALLOWLIST = REPO_ROOT / "scripts/mobile_api_allowlist.txt"
-GENERATOR = REPO_ROOT / "scripts/generate_mobile_bindings.sh"
 
 # UniFFI runtime scaffolding interfaces; these are generator internals, not our contract.
 RUNTIME_INTERFACE = re.compile(r"^(Ffi|Uniffi|Disposable)")
@@ -148,18 +147,34 @@ def normalized(path: Path) -> bytes:
 
 
 def regenerate(out_dir: Path) -> None:
-    env = dict(os.environ, UPSPA_BINDINGS_OUT_DIR=str(out_dir))
-    result = subprocess.run(
-        ["bash", str(GENERATOR), "kotlin"],
-        cwd=REPO_ROOT,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    if result.returncode != 0:
-        sys.stdout.write(result.stdout)
-        raise SystemExit("binding generation failed")
+    """Regenerate Kotlin bindings into out_dir exactly as scripts/generate_mobile_bindings.sh does.
+
+    Calls cargo directly instead of the shell script, so it behaves the same on Linux, macOS and
+    Windows (where a bare `bash` can resolve to WSL instead of Git Bash).
+    """
+    target_dir = Path(os.environ.get("CARGO_TARGET_DIR", REPO_ROOT / "target"))
+    if sys.platform == "darwin":
+        lib_name = "libupspa_mobile_ffi.dylib"
+    elif os.name == "nt":
+        lib_name = "upspa_mobile_ffi.dll"
+    else:
+        lib_name = "libupspa_mobile_ffi.so"
+    lib_path = target_dir / "release" / lib_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    commands = [
+        ["cargo", "build", "--locked", "--profile", "release", "-p", "upspa-mobile-ffi"],
+        ["cargo", "run", "--locked", "--profile", "release", "-p", "upspa-mobile-ffi",
+         "--bin", "uniffi-bindgen", "--", "generate", "--library", str(lib_path),
+         "--language", "kotlin", "--out-dir", str(out_dir), "--no-format"],
+    ]
+    for command in commands:
+        result = subprocess.run(command, cwd=REPO_ROOT, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True)
+        if result.returncode != 0:
+            sys.stdout.write(result.stdout)
+            raise SystemExit(f"binding generation failed: {' '.join(command[:3])}")
+    if not lib_path.is_file():
+        raise SystemExit(f"expected library not found at {lib_path}")
 
 
 def report(title: str, problems: list[str]) -> bool:

@@ -26,11 +26,15 @@ PY
 )"
 echo "==> corrupted accepted vector $CORRUPTED_ID in a temporary copy"
 
+# Gradle runs on the JVM, which needs a native path on Windows (C:/..., not Git Bash's /tmp/...).
+COPY_FOR_GRADLE="$COPY"
+command -v cygpath >/dev/null 2>&1 && COPY_FOR_GRADLE="$(cygpath -m "$COPY")"
+
 cd "$REPO_ROOT/apps/android"
 OUTPUT="$TMP/gradle.log"
 if ./gradlew :ffi:cleanTestDebugUnitTest :ffi:testDebugUnitTest \
     --tests 'com.upspa.mobile.ffi.EncoderConformanceTest' \
-    -PupspaVectorCorpus="$COPY" --console=plain > "$OUTPUT" 2>&1; then
+    -PupspaVectorCorpus="$COPY_FOR_GRADLE" --console=plain > "$OUTPUT" 2>&1; then
   echo "ERROR: conformance passed on a corrupted corpus" >&2
   exit 1
 fi
