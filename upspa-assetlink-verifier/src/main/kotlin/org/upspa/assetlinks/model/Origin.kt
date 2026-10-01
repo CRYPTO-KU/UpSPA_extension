@@ -85,16 +85,31 @@ class Origin(
     companion object {
         private val FORBIDDEN_HOST_CHARS = charArrayOf('/', '\\', '?', '#', '@', ' ', '\t', '\r', '\n')
 
+        private fun validateIpv6Literal(host: String) {
+            val inner = host.substring(1, host.length - 1)
+            require(inner.isNotBlank() && inner.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' || it == ':' }) {
+                "Invalid IPv6 host literal: '$host'"
+            }
+            try {
+                val uri = URI.create("https://$host")
+                val parsedHost = uri.host
+                require(parsedHost != null && parsedHost.equals(host, ignoreCase = true)) {
+                    "Invalid IPv6 host literal: '$host'"
+                }
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("Invalid IPv6 host literal: '$host'", e)
+            } catch (e: Exception) {
+                throw IllegalArgumentException("Invalid IPv6 host literal: '$host'", e)
+            }
+        }
+
         private fun validateHost(host: String) {
             require(host.isNotBlank()) { "Host must not be blank" }
             require(!host.any { it in FORBIDDEN_HOST_CHARS }) {
                 "Host must not contain path, query, fragment, userinfo, or whitespace characters, got: '$host'"
             }
             if (host.startsWith("[") && host.endsWith("]")) {
-                val inner = host.substring(1, host.length - 1)
-                require(inner.isNotBlank() && inner.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' || it == ':' }) {
-                    "Invalid IPv6 host literal: '$host'"
-                }
+                validateIpv6Literal(host)
             } else {
                 require(!host.contains(':')) {
                     "Host must not contain port or unbracketed colons, got: '$host'"
@@ -128,6 +143,8 @@ class Origin(
 
             val host = uri.host?.lowercase()
                 ?: throw IllegalArgumentException("Origin must have a valid host: $rawUrl")
+
+            validateHost(host)
 
             val defaultPort = if (scheme == "https") 443 else 80
             val port = if (uri.port != -1) uri.port else defaultPort

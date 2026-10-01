@@ -361,19 +361,15 @@ data class AppSigningInfo(
             rotationHistory: List<CertificateDigest> = emptyList()
         ): AppSigningInfo {
             val currentSet = currentSigners.toSet()
-            val history = if (rotationHistory.isNotEmpty()) {
-                if (!rotationHistory.containsAll(currentSet)) {
-                    rotationHistory + currentSet
-                } else {
-                    rotationHistory
+            if (rotationHistory.isNotEmpty()) {
+                require(rotationHistory.containsAll(currentSet)) {
+                    "Inconsistent signing evidence: rotation history must contain all current signing certificates"
                 }
-            } else {
-                emptyList()
             }
             return AppSigningInfo(
                 packageName = packageIdentity.value,
                 currentFingerprints = currentSet,
-                rotationHistory = history
+                rotationHistory = rotationHistory
             )
         }
     }

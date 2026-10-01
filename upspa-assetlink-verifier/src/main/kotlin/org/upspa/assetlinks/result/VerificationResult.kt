@@ -180,5 +180,15 @@ sealed interface VerificationResult {
             val evidenceOrigin: Origin,
             override val reason: String = "Requested origin '$requestedOrigin' does not match evidence origin '$evidenceOrigin'."
         ) : Rejected
+
+        /**
+         * Requested identity package name does not match the app signing evidence package name.
+         * Evaluated as Pre-check (Check 0) before network retrieval or certificate evaluation.
+         */
+        data class RequestedPackageMismatch(
+            val requestedPackage: String,
+            val signingPackage: String,
+            override val reason: String = "Requested package '$requestedPackage' does not match signing evidence package '$signingPackage'."
+        ) : Rejected
     }
 }

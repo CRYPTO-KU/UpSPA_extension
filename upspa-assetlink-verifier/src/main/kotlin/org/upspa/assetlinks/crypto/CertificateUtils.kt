@@ -58,12 +58,16 @@ object CertificateUtils {
     }
 
     /**
-     * Computes the SHA-256 digest of the given binary certificate/signature bytes
-     * and formats it as an uppercase, colon-separated hex string.
+     * Generic hash utility computing the SHA-256 digest of binary bytes, formatted as
+     * standard uppercase colon-separated hex string.
      *
      * If the input contains a valid X.509 certificate, verifies no trailing unconsumed bytes
      * exist and computes the digest from the validated certificate encoding (`cert.encoded`).
      * Otherwise, hashes the input bytes directly (for raw test/signature inputs).
+     *
+     * NOTE: This is a generic hash utility and NOT an evidence validation routine.
+     * Production certificate ingestion points must validate certificate validity using
+     * [isValidX509Certificate] rather than relying on this method for certificate validation.
      */
     @JvmStatic
     fun computeSha256Fingerprint(certificateBytes: ByteArray): String {

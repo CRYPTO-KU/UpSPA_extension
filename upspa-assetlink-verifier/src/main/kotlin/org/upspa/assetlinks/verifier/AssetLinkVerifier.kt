@@ -39,13 +39,28 @@ interface AssetLinkVerifier {
 
     /**
      * Overload accepting strongly-typed [RequestedIdentity].
+     *
+     * Pre-check (Check 0): Enforces binding between the requested package identity
+     * and the claimed app signing evidence package before performing network fetch or
+     * origin-bound statement evaluation.
      */
     fun verify(
         requestedIdentity: org.upspa.assetlinks.model.RequestedIdentity,
         appSigningInfo: AppSigningInfo
-    ): VerificationResult = verify(
-        requestedIdentity.origin,
-        appSigningInfo,
-        requestedIdentity.requiredRelation ?: DEFAULT_RELATION
-    )
+    ): VerificationResult {
+        // Pre-check (Check 0): Verify that the requested package identity matches the app signing evidence package name.
+        // This check runs before any origin checks or network fetch operations.
+        if (requestedIdentity.packageName.value != appSigningInfo.packageName) {
+            return VerificationResult.Rejected.RequestedPackageMismatch(
+                requestedPackage = requestedIdentity.packageName.value,
+                signingPackage = appSigningInfo.packageName
+            )
+        }
+
+        return verify(
+            requestedIdentity.origin,
+            appSigningInfo,
+            requestedIdentity.requiredRelation ?: DEFAULT_RELATION
+        )
+    }
 }

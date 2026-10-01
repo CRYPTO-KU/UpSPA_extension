@@ -44,9 +44,16 @@ class CertificateDigest(rawDigest: String) {
 
         /**
          * Computes SHA-256 digest from raw binary certificate bytes.
+         *
+         * Requires valid, fully consumed X.509 certificate input.
+         *
+         * @throws IllegalArgumentException if certificateBytes is not a valid, fully consumed X.509 certificate.
          */
         @JvmStatic
         fun fromCertificateBytes(certificateBytes: ByteArray): CertificateDigest {
+            require(CertificateUtils.isValidX509Certificate(certificateBytes)) {
+                "Invalid X.509 certificate bytes: must be a valid, fully consumed X.509 certificate"
+            }
             val fp = CertificateUtils.computeSha256Fingerprint(certificateBytes)
             return CertificateDigest(fp)
         }

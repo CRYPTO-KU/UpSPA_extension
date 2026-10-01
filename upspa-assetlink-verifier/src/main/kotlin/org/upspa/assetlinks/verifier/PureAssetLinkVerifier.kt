@@ -85,6 +85,25 @@ class PureAssetLinkVerifier internal constructor(
             return VerificationResult.Rejected.InvalidJsonFormat("Failed to parse assetlinks.json: ${e.message}")
         }
 
+        // Validate parsed JSON structure: fail-closed with InvalidJsonFormat if any statement,
+        // target, relation element, or sha256_cert_fingerprints element is null or of invalid type.
+        for (statement: Any? in statements) {
+            if (statement !is AssetLinkStatement) {
+                return VerificationResult.Rejected.InvalidJsonFormat("Statement must be a valid JSON object")
+            }
+            if (statement.target == null) {
+                return VerificationResult.Rejected.InvalidJsonFormat("Statement target must not be null")
+            }
+            val relation: List<*>? = statement.relation
+            if (relation == null || relation.any { it !is String }) {
+                return VerificationResult.Rejected.InvalidJsonFormat("Statement relation contains null or non-string element")
+            }
+            val fingerprints: List<*>? = statement.target.sha256CertFingerprints
+            if (fingerprints == null || fingerprints.any { it !is String }) {
+                return VerificationResult.Rejected.InvalidJsonFormat("Statement sha256_cert_fingerprints contains null or non-string element")
+            }
+        }
+
         val evidence = AssetLinkEvidence(sourceOrigin = origin, statements = statements)
         return verify(
             requestedOrigin = origin,

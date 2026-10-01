@@ -77,7 +77,7 @@ class TypedValuesTest {
         assertNull(CertificateDigest.fromHexOrNull("NOT_VALID"))
 
         // From bytes
-        val certBytes = "TestCertData".toByteArray(StandardCharsets.UTF_8)
+        val certBytes = org.upspa.assetlinks.crypto.CertificateUtils.sampleX509CertificateBytes
         val computedDigest = CertificateDigest.fromCertificateBytes(certBytes)
         assertEquals(95, computedDigest.value.length)
     }
