@@ -10,3 +10,9 @@ dist/
 packages/upspa-js/wasm-pkg/
 
 .DS_Store
+
+__pycache__/
+*.pyc
+# Local IDE metadata
+.idea/
+*.iml
