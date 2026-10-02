@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "id": "default-policy",
+      "secretB64": "raw-upspa-secret-for-tests",
+      "accountId": "alice@example.com",
+      "counter": 0,
+      "policy": {
+        "minLen": 20,
+        "maxLen": 32,
+        "requireUpper": true,
+        "requireLower": true,
+        "requireDigit": true,
+        "requireSymbol": true,
+        "allowedSymbols": "!@#$%^&*",
+        "forbidWhitespace": true,
+        "forbiddenSubstrings": []
+      },
+      "browserFixedPoint": true,
+      "expectParity": true,
+      "browserPasswordSha256": "950d783edc48a20da2db275cac9736b79a55293185d85de4c490fb7b9190ffe2"
+    },
+    {
+      "id": "single-pass-empty-symbols",
+      "secretB64": "raw-upspa-secret-for-tests",
+      "accountId": "alice@example.com",
+      "counter": 0,
+      "policy": {
+        "minLen": 16,
+        "maxLen": 20,
+        "requireUpper": true,
+        "requireLower": true,
+        "requireDigit": true,
+        "requireSymbol": false,
+        "allowedSymbols": "",
+        "forbidWhitespace": true,
+        "forbiddenSubstrings": []
+      },
+      "browserFixedPoint": false,
+      "expectParity": false,
+      "browserPasswordSha256": "c5f89d8fd4db998bc3975cbae17c04cbd904e76fff1bef1c2b2510ee16950fc4"
+    },
+    {
+      "id": "shared-fixed-point",
+      "secretB64": "raw-upspa-secret-for-tests",
+      "accountId": "alice@example.com",
+      "counter": 0,
+      "policy": {
+        "minLen": 16,
+        "maxLen": 20,
+        "requireUpper": true,
+        "requireLower": true,
+        "requireDigit": true,
+        "requireSymbol": false,
+        "allowedSymbols": "!@#$%^&*",
+        "forbidWhitespace": true,
+        "forbiddenSubstrings": []
+      },
+      "browserFixedPoint": true,
+      "expectParity": true,
+      "browserPasswordSha256": "c5f89d8fd4db998bc3975cbae17c04cbd904e76fff1bef1c2b2510ee16950fc4"
+    }
+  ]
+}

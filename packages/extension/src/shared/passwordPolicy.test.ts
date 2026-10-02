@@ -62,6 +62,30 @@ describe('password policy encoding', () => {
     expect(passwordSatisfiesPolicy(out.password, policy, 'alice@example.com')).toBe(true);
   });
 
+  test('default policy is unchanged by repeated browser normalization', () => {
+    const policy = defaultPasswordPolicy();
+    expect(normalizePasswordPolicy(policy)).toEqual(policy);
+    expect(normalizePasswordPolicy(normalizePasswordPolicy(policy))).toEqual(policy);
+  });
+
+  test('one browser pass can leave a non-idempotent empty-symbol policy', async () => {
+    const once = normalizePasswordPolicy({
+      ...defaultPasswordPolicy(),
+      minLen: 16,
+      maxLen: 20,
+      requireSymbol: false,
+      allowedSymbols: ' \t',
+    });
+    const twice = normalizePasswordPolicy(once);
+    expect(once.allowedSymbols).toBe('');
+    expect(twice).toEqual({ ...once, allowedSymbols: defaultPasswordPolicy().allowedSymbols });
+    expect(normalizePasswordPolicy(twice)).toEqual(twice);
+    const fromOnce = await encodeSecretAsPassword(SECRET, once, 'alice@example.com', 0);
+    const fromTwice = await encodeSecretAsPassword(SECRET, twice, 'alice@example.com', 0);
+    // Assert only a boolean so a failure does not print synthetic candidate values.
+    expect(fromOnce.password === fromTwice.password).toBe(true);
+  });
+
   test('accountId forbidden substring is avoided', async () => {
     const policy = normalizePasswordPolicy({
       minLen: 12,

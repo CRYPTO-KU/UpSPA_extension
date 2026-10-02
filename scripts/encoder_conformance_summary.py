@@ -9,6 +9,7 @@ CHECKS = {
     "rust_corpus": "Rust corpus",
     "rust_properties": "Rust properties and boundaries",
     "ts_corpus": "TypeScript corpus",
+    "normalization": "Shared normalization controls and excluded gap",
     "regeneration": "Deterministic regeneration",
     "corruption": "Safe corruption detection",
     "security": "Security gates and fixtures",

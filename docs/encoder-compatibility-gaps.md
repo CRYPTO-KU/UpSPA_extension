@@ -24,7 +24,7 @@ The Rust core encoder is not yet exported in the mobile FFI library. Android and
 
 ## Character Sets
 
-Rust checks ASCII character ranges using byte methods. TypeScript checks characters using regular expressions. Behavior for non-ASCII characters outside standard ASCII is currently unspecified.
+Rust uses ASCII character predicates and Unicode scalar iteration. TypeScript checks characters using regular expressions. Behavior for non-ASCII characters outside standard ASCII is currently unspecified.
 
 ## Attempt Limit
 
@@ -32,12 +32,37 @@ Both implementations stop after 128 attempts if a candidate does not match the p
 
 ## Length cap and resource limits
 
-The supported policy boundary is complete normalized ASCII policies with
-`8 <= minLen <= maxLen <= 64`. Neither API enforces a hard maximum of 64:
+The shared ASCII input boundary requires a common fixed point of both existing
+normalizers, `N_browser(P) = P = N_rust(P)`, plus complete typed fields and
+`8 <= minLen <= maxLen <= 64`. One browser normalization pass is insufficient;
+see the empty-symbol gap below. Neither API enforces a hard maximum of 64:
 `minLen=65,maxLen=65` produces 65 characters in both encoders. Capping requested
 maximum happens before promoting it to minimum. Large minima have no explicit
 resource bound. Adding rejection or a hard cap would change compatibility and
 requires a separate decision; this change only documents and tests the limitation.
+
+## Shared normalization and empty symbols
+
+A complete ASCII policy can be browser-normalized once and still not be a shared
+normalization fixed point. With defaults, lengths 16–20, `requireSymbol=false`,
+`forbidWhitespace=true` and raw `allowedSymbols=" \t"`, the first browser pass
+returns `allowedSymbols=""`. A later pass substitutes `!@#$%^&*`; Rust retains
+empty symbols when symbols are disabled. Although the symbol class contributes
+no characters to the pool, its string remains in canonical policy JSON, so the
+same synthetic secret/account and counter 0 produce different passwords.
+
+This non-idempotent empty-symbol case is **excluded until separately qualified**.
+The shared condition requires the input's field values to remain unchanged under
+both existing normalizers, including a nonempty symbol string even when symbols
+are not required. This documents existing behavior without adding a normalization
+rule, changing either encoder or rewriting enrolled policy bytes.
+
+`node --import tsx scripts/verify_encoder_normalization.mjs` is the live
+cross-language regression. The default-policy control and the fixed-point form
+of the edge fixture match; strict equality for the single-pass policy fails.
+The retained gap assertion prevents this discrepancy from being represented as
+qualified parity. The original 22-vector corpus is unchanged and does not cover
+this case. Evidence for these controls is not universal policy qualification.
 
 ## Toolchain qualification
 

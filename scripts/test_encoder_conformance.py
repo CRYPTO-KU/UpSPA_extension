@@ -49,11 +49,13 @@ class WorkflowControls(unittest.TestCase):
         steps['rust_corpus'] = {'outcome': 'failure', 'conclusion': 'success'}
         steps['ts_corpus'] = {'outcome': 'skipped'}
         steps['security'] = {'outcome': 'cancelled'}
+        steps['normalization'] = {'outcome': 'failure'}
         del steps['regeneration']
         summary = render(steps)
         self.assertIn('| Rust corpus | failure |', summary)
         self.assertIn('| TypeScript corpus | skipped |', summary)
         self.assertIn('| Security gates and fixtures | cancelled |', summary)
+        self.assertIn('| Shared normalization controls and excluded gap | failure |', summary)
         self.assertIn('| Deterministic regeneration | skipped |', summary)
         self.assertIn('| Rust properties and boundaries | success |', summary)
         workflow = WORKFLOW.read_text()
@@ -90,7 +92,10 @@ class WorkflowControls(unittest.TestCase):
                             'crates/synthetic/Cargo.lock',
                             'package.json', 'package-lock.json',
                             'packages/extension/package.json',
-                            'packages/upspa-js/package-lock.json', 'rust-toolchain.toml'):
+                            'packages/upspa-js/package-lock.json', 'rust-toolchain.toml',
+                            'scripts/verify_encoder_normalization.mjs',
+                            'crates/upspa-core/tests/encoder_normalization.rs',
+                            'crates/upspa-core/tests/fixtures/encoder_normalization.json'):
                 # GitHub **/ also matches a root file; fnmatch requires handling it.
                 self.assertTrue(any(fnmatch.fnmatchcase(changed, pattern) or
                                     (pattern.startswith('**/') and

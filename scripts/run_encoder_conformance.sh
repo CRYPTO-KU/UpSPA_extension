@@ -28,6 +28,10 @@ echo "Step 3: Running TypeScript corpus consumer and encoder tests..."
 npm -w upspa-extension test -- src/shared/passwordPolicy.test.ts
 
 echo ""
+echo "Verifying shared normalization controls and the excluded gap..."
+node --import tsx scripts/verify_encoder_normalization.mjs
+
+echo ""
 echo "Step 4: Deterministic corpus regeneration check..."
 ./node_modules/.bin/tsx scripts/gen_password_vectors.mjs
 profile_changes=$(git status --porcelain --untracked-files=all -- test-vectors/compatibility-profile-v1/) && test -z "$profile_changes"

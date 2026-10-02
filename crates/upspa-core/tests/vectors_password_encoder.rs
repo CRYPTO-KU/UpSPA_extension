@@ -1,8 +1,8 @@
 //! Compatibility test suite for password encoding vectors.
 //!
-//! The Rust parity contract currently expects fully normalized policies.
-//! Rust and TypeScript do not normalize every raw policy identically, so
-//! partial-policy support remains future integration work.
+//! Shared-normalized policies must be fixed points of both existing normalizers.
+//! A single browser pass is insufficient; encoder_normalization.rs retains the
+//! excluded empty-symbol discrepancy. Raw/partial policy parity is not qualified.
 
 use serde::Deserialize;
 use std::fs;

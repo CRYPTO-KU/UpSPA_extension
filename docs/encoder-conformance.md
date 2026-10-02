@@ -25,11 +25,60 @@ for remaining qualification boundaries.
 
 ## Inputs and supported policy boundary
 
-The parity contract uses a complete, normalized policy, ASCII character pools and
-account identifiers, integral lengths `8 <= minLen <= maxLen <= 64`, and a counter
-in `0..=4294967295` (Rust `u32`). Secret material is passed as a string without
-base64 decoding. Raw/partial policies and Unicode equivalence are not qualified
-by the committed corpus; Rust requires every policy field.
+The shared input boundary requires a **common normalization fixed point**, not
+merely a complete object returned by one browser normalization pass. Let
+`N_browser` be the existing `normalizePasswordPolicy` and `N_rust` the existing
+Rust `normalize_policy`. A policy `P` is shared-normalized only when
+`N_browser(P) = P = N_rust(P)` by field values, including symbol strings and
+forbidden-substring order. Both encoders must then serialize those same values
+in the canonical field order below. This is a qualification precondition, not a
+new normalization implementation or an instruction to rewrite stored policies.
+
+Within the audited ASCII subset this means:
+
+- Every policy field is present with the API's actual types, including boolean
+  flags and integral lengths `8 <= minLen <= maxLen <= 64`. The separate counter
+  argument is in `0..=4294967295` (Rust `u32`).
+- Policy strings and account identifiers are ASCII. `allowedSymbols` is nonempty
+  and deduplicated in order, even when `requireSymbol=false`. If whitespace is
+  forbidden it contains no whitespace removed by either normalizer.
+- Each forbidden substring is already trimmed, lowercase and nonempty; its
+  order is preserved. The account uses the documented trim/lowercase handling.
+
+Secret material is passed as a string without base64 decoding. Rust requires
+all policy fields. The committed 22 vectors and the additional normalization
+controls are the executed qualification evidence; they do not establish universal
+qualification of arbitrary policies satisfying the shape/bounds checks. Raw or
+partial inputs, non-fixed-point inputs and Unicode equivalence are excluded.
+Shared normalization alone also does not make an impossible policy satisfiable;
+the existing empty-pool and exhausted-attempts errors remain unchanged.
+
+### Excluded empty-symbol / non-idempotent case
+
+The following single browser pass returns a complete ASCII policy within 8–64,
+but it **does not meet the shared normalization condition**:
+
+```ts
+const p = normalizePasswordPolicy({
+  ...defaultPasswordPolicy(),
+  minLen: 16, maxLen: 20,
+  requireSymbol: false, allowedSymbols: " \t",
+});
+```
+
+`p.allowedSymbols` is `""`. On the next normalization, the browser's unconditional
+`merged.allowedSymbols || defaults.allowedSymbols` substitutes `"!@#$%^&*"` even
+though symbols are not required. Rust retains `""` when `requireSymbol=false`.
+Thus `N_browser(p) != p`, while `N_rust(p) = p`. The encoders include the different
+symbol strings in canonical policy JSON and derive different passwords from the
+same synthetic secret, account and counter 0. Symbols being disabled does not
+remove their string from the seed.
+
+This input remains **excluded until a separately reviewed compatibility decision
+and qualification**. The probe also shows equality for the browser's fixed-point
+form of this exact fixture, but does not adopt an extra normalization pass as a
+production workaround or a credential migration rule. See the separate
+[normalization gap](encoder-compatibility-gaps.md#shared-normalization-and-empty-symbols).
 
 Both implementations perform these length operations on complete positive integer
 inputs: `minLen = max(8, requestedMin)` and
@@ -42,7 +91,10 @@ allocation/work; do not treat arbitrary representable lengths as supported polic
 Other normalization behavior:
 
 - Remove whitespace from allowed symbols when whitespace is forbidden; deduplicate symbols in order.
-- Fall back to `!@#$%^&*` when symbols are required and the cleaned list is empty.
+- Both implementations fall back to `!@#$%^&*` when symbols are required and
+  the cleaned list is empty. The browser also substitutes defaults for an input
+  empty symbol string regardless of `requireSymbol`; Rust does not. This is the
+  excluded discrepancy above.
 - Trim and lowercase forbidden substrings, dropping empty entries.
 - Trim and lowercase the account identifier for the seed and exclusion check.
 - Serialize the normalized policy as compact JSON in this field order:
@@ -99,6 +151,8 @@ or silently qualify a different toolchain. Individual checks:
 cargo test --locked -p upspa-core --test vectors_password_encoder
 cargo test --locked -p upspa-core --test encoder_properties
 npm -w upspa-extension test -- src/shared/passwordPolicy.test.ts
+cargo test --locked -p upspa-core --test encoder_normalization
+node --import tsx scripts/verify_encoder_normalization.mjs
 ./node_modules/.bin/tsx scripts/gen_password_vectors.mjs
 profile_changes=$(git status --porcelain --untracked-files=all -- test-vectors/compatibility-profile-v1/) && test -z "$profile_changes"
 ./scripts/verify_corpus_corruption.sh
@@ -128,6 +182,25 @@ regeneration check, with a clean profile retained as the control. Synthetic comm
 consumer; every logging fault must make the helper fail without echoing the value.
 A safe mismatch remains a passing control. Actual consumer logging and Rust length
 faults are exercised only in disposable copies and removed before handoff.
+
+The [live normalization probe](../scripts/verify_encoder_normalization.mjs)
+computes policies and outputs using the actual canonical browser encoder,
+then passes those exact policies, secret/account, counter and browser results to
+the actual Rust encoder in a private temporary fixture for exact string comparison. A strict equality run must pass the default and
+shared fixed-point controls and fail specifically for `single-pass-empty-symbols`.
+The retained Rust regression then requires that known gap to remain excluded.
+For a visible failing comparison against the browser snapshots, run
+`UPSPA_NORMALIZATION_REQUIRE_PARITY=1 cargo test --locked -p upspa-core --test encoder_normalization`;
+expect two passing controls and one failure. The live helper exits successfully only when both the failing probe and the passing
+regression have the expected outcomes. Captured output is withheld.
+
+[Standalone Rust snapshots](../crates/upspa-core/tests/fixtures/encoder_normalization.json)
+contain only synthetic inputs and browser output SHA-256 digests; they are separate
+from profile-v1. The live probe verifies them against fresh browser results.
+`node --import tsx scripts/verify_encoder_normalization.mjs --write-fixtures`
+regenerates these test-only snapshots. Review changes instead of updating them to
+hide parity failures. Normal Rust tests use these snapshots without requiring
+Node; the dedicated CI/runner step always exercises both implementations live.
 
 ## Verification baseline
 
@@ -198,3 +271,54 @@ Local follow-up qualification used Rust/Cargo 1.95.0, Node 24.19.0, npm 11.17.0 
 Python 3.14.7. GitHub Actions and its Python 3.12 runtime were not executed here;
 native/device qualification is outside this encoder task. Local results do not
 claim a remote CI run, a merge or a complete mobile release qualification.
+
+## Shared-normalization repair verification
+
+This focused repair started from clean `mobile-dev` at
+`5e707d438ef7742c1b50270a8206980ce55d83ab`. Acceptance criteria: reproduce the
+review's exact single-pass policy with identical synthetic inputs in both
+encoders, retain a passing default-policy control and an excluded-gap regression,
+define the common normalization condition, and leave canonical encoders and the
+22-vector corpus unchanged.
+
+Executed with Rust/Cargo 1.95.0, Node 24.19.0 and Python 3.14.7:
+
+- `PATH=/tmp/upspa-rust-1.95.0/bin:$PATH RUSTUP_TOOLCHAIN=1.95.0 CARGO_TARGET_DIR=/tmp/upspa-target-1.95.0 node --import tsx scripts/verify_encoder_normalization.mjs`:
+  reproduced strict parity failure for the single-pass empty-symbol policy, while
+  both default and shared fixed-point controls passed. The retained three-case
+  regression then passed using fresh browser results and exact Rust/browser
+  string comparison. No captured consumer output was printed.
+- `PATH=/tmp/upspa-rust-1.95.0/bin:$PATH RUSTUP_TOOLCHAIN=1.95.0 CARGO_TARGET_DIR=/tmp/upspa-target-1.95.0 cargo test --locked -p upspa-core`:
+  34 tests passed, including the 3 new standalone normalization controls.
+- `npm -w upspa-extension test -- src/shared/passwordPolicy.test.ts`:
+  20 tests passed, including default idempotence and the empty-symbol re-normalization case.
+- `PATH=/tmp/upspa-rust-1.95.0/bin:$PATH RUSTUP_TOOLCHAIN=1.95.0 CARGO_TARGET_DIR=/tmp/upspa-target-1.95.0 ./scripts/run_encoder_conformance.sh`:
+  passed with the live probe, unchanged deterministic regeneration, corruption
+  detection, 7 qualification controls, security gates, negative/positive fixtures
+  and global formatting. The existing `tsx` CLI socket required a permitted run
+  outside the sandbox. Existing installed Node dependencies were used.
+- `python3 scripts/test_encoder_conformance.py`,
+  `/tmp/upspa-actionlint/actionlint .github/workflows/encoder-conformance.yml`,
+  `git diff --check`, local link checks and protected-path comparisons passed.
+- An isolated snapshot fault marked the empty-symbol case as fixed-point and
+  qualified. `node --import tsx scripts/verify_encoder_normalization.mjs` rejected
+  it with nonzero status without dumping inputs or captured consumer output.
+  The mutation was confined to a temporary clone.
+
+The known gap is excluded, not repaired in production. Both canonical encoders,
+all 22 vectors, their classifications/provenance, corpus schema, root toolchains,
+shared manifests/lockfiles and generated bindings remain unchanged. No dependency
+updates, commit, push or remote CI execution were performed for this repair. CI
+now requires the live normalization probe and reports its actual step outcome;
+the new revision still needs its own remote run. The reported prior-head CI pass
+does not qualify this additional policy or replace the new regression.
+
+Final scope audit reran the full runner in the workspace and in a disposable
+clone with every proposed tracked/new file overlaid and existing `node_modules`
+reused; both passed. The 34-test Rust core suite also passed. In that clone,
+actual Rust and TypeScript candidate-logging faults were rejected without echoing
+protected values, and the seeded output-length fault failed its intended test.
+After restoration, corruption and length controls passed. Workflow validation,
+syntax checks, documentation links/anchors and protected-path/provenance checks
+also passed. This was an isolated review-copy run, not a fresh dependency install
+or remote CI qualification.
