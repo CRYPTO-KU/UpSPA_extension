@@ -20,11 +20,19 @@ pub struct OperationConfig {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OperationFailure {
+    QuorumUnavailable,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperationStatus {
     Pending,
     Completed {
         committed_digest: String,
         matching_replies: usize,
+    },
+    Failed {
+        reason: OperationFailure,
     },
     Cancelled,
     TimedOut,
@@ -39,14 +47,22 @@ pub enum Effect {
     },
     CompleteOperation {
         operation_id: OperationId,
+        request_ids: Vec<RequestId>,
         committed_digest: String,
         matching_replies: usize,
     },
+    FailOperation {
+        operation_id: OperationId,
+        request_ids: Vec<RequestId>,
+        reason: OperationFailure,
+    },
     CancelOperation {
         operation_id: OperationId,
+        request_ids: Vec<RequestId>,
     },
     TimeoutOperation {
         operation_id: OperationId,
+        request_ids: Vec<RequestId>,
     },
 }
 
@@ -61,10 +77,11 @@ pub enum Event {
     },
     Cancel {
         operation_id: OperationId,
+        request_ids: Vec<RequestId>,
     },
     Timeout {
         operation_id: OperationId,
-        now_ms: u64,
+        request_ids: Vec<RequestId>,
     },
 }
 
@@ -109,6 +126,9 @@ pub enum RecoveryEngineError {
     #[error("operation is already completed")]
     AlreadyCompleted,
 
+    #[error("operation has already failed")]
+    AlreadyFailed,
+
     #[error("operation is cancelled")]
     AlreadyCancelled,
 
@@ -126,6 +146,21 @@ pub enum RecoveryEngineError {
 
     #[error("duplicate provider reply")]
     DuplicateReply,
+
+    #[error("request correlation is invalid")]
+    RequestCorrelationMismatch,
+
+    #[error("snapshot provider membership is invalid")]
+    InvalidSnapshotProviderMembership,
+
+    #[error("snapshot request ids are invalid")]
+    InvalidSnapshotRequestIds,
+
+    #[error("snapshot contains an invalid provider reply")]
+    InvalidSnapshotReply,
+
+    #[error("snapshot status is inconsistent with recorded replies")]
+    InvalidSnapshotStatus,
 }
 #[derive(Clone, Debug)]
 pub struct OperationEngine {
@@ -170,7 +205,10 @@ impl OperationEngine {
         Ok((engine, effects))
     }
 
-    pub fn restore(snapshot: OperationSnapshot) -> Result<Self, RecoveryEngineError> {
+    pub fn restore(
+        snapshot: OperationSnapshot,
+        now_ms: u64,
+    ) -> Result<(Self, Vec<Effect>), RecoveryEngineError> {
         let config = OperationConfig {
             operation_id: snapshot.operation_id.clone(),
             storage_providers: snapshot.storage_providers.clone(),
@@ -179,8 +217,9 @@ impl OperationEngine {
         };
 
         validate_config(&config)?;
+        validate_snapshot(&snapshot)?;
 
-        Ok(Self {
+        let mut engine = Self {
             operation_id: snapshot.operation_id,
             storage_providers: snapshot.storage_providers,
             threshold: snapshot.threshold,
@@ -188,7 +227,29 @@ impl OperationEngine {
             status: snapshot.status,
             pending_requests: snapshot.pending_requests,
             replies: snapshot.replies,
-        })
+        };
+
+        if matches!(engine.status, OperationStatus::Pending)
+            && engine
+                .deadline_ms
+                .is_some_and(|deadline| now_ms >= deadline)
+        {
+            let request_ids = engine.outstanding_request_ids();
+
+            engine.status = OperationStatus::TimedOut;
+
+            return Ok((
+                engine,
+                vec![Effect::TimeoutOperation {
+                    operation_id: config.operation_id,
+                    request_ids,
+                }],
+            ));
+        }
+
+        let effects = engine.outstanding_request_effects();
+
+        Ok((engine, effects))
     }
 
     pub fn snapshot(&self) -> OperationSnapshot {
@@ -207,11 +268,42 @@ impl OperationEngine {
         &self.status
     }
 
-    pub fn advance(&mut self, event: Event) -> Result<AdvanceResult, RecoveryEngineError> {
+    fn outstanding_request_effects(&self) -> Vec<Effect> {
+        if !matches!(self.status, OperationStatus::Pending) {
+            return Vec::new();
+        }
+
+        let mut effects = Vec::new();
+
+        for provider in &self.storage_providers {
+            if self.replies.contains_key(provider) {
+                continue;
+            }
+
+            if let Some(request_id) = self.pending_requests.get(provider) {
+                effects.push(Effect::SendStorageProviderRequest {
+                    operation_id: self.operation_id.clone(),
+                    request_id: request_id.clone(),
+                    provider_id: provider.clone(),
+                });
+            }
+        }
+
+        effects
+    }
+
+    pub fn advance(
+        &mut self,
+        event: Event,
+        now_ms: u64,
+    ) -> Result<AdvanceResult, RecoveryEngineError> {
         match self.status {
             OperationStatus::Pending => {}
             OperationStatus::Completed { .. } => {
                 return Err(RecoveryEngineError::AlreadyCompleted);
+            }
+            OperationStatus::Failed { .. } => {
+                return Err(RecoveryEngineError::AlreadyFailed);
             }
             OperationStatus::Cancelled => {
                 return Err(RecoveryEngineError::AlreadyCancelled);
@@ -221,58 +313,122 @@ impl OperationEngine {
             }
         }
 
+        let event_operation_id = match &event {
+            Event::StorageProviderReply { operation_id, .. } => operation_id,
+            Event::Cancel { operation_id, .. } => operation_id,
+            Event::Timeout { operation_id, .. } => operation_id,
+        };
+
+        self.ensure_operation(event_operation_id)?;
+
+        match &event {
+            Event::StorageProviderReply { .. } => {}
+            Event::Cancel { request_ids, .. } | Event::Timeout { request_ids, .. } => {
+                self.ensure_request_correlation(request_ids)?;
+            }
+        }
+
+        // Deadline is checked before any state-advancing event is processed.
+        if self.deadline_ms.is_some_and(|deadline| now_ms >= deadline) {
+            self.status = OperationStatus::TimedOut;
+
+            return Ok(AdvanceResult {
+                status: self.status.clone(),
+                effects: vec![Effect::TimeoutOperation {
+                    operation_id: self.operation_id.clone(),
+                    request_ids: self.outstanding_request_ids(),
+                }],
+            });
+        }
+
         match event {
             Event::StorageProviderReply {
-                operation_id,
+                operation_id: _,
                 request_id,
                 provider_id,
                 accepted,
                 state_digest,
             } => {
-                self.ensure_operation(&operation_id)?;
                 self.record_provider_reply(provider_id, request_id, accepted, state_digest)?;
                 Ok(self.recompute_status())
             }
-            Event::Cancel { operation_id } => {
-                self.ensure_operation(&operation_id)?;
-
+            Event::Cancel {
+                operation_id: _,
+                request_ids: _,
+            } => {
                 self.status = OperationStatus::Cancelled;
 
                 Ok(AdvanceResult {
                     status: self.status.clone(),
                     effects: vec![Effect::CancelOperation {
                         operation_id: self.operation_id.clone(),
+                        request_ids: self.outstanding_request_ids(),
                     }],
                 })
             }
             Event::Timeout {
-                operation_id,
-                now_ms,
-            } => {
-                self.ensure_operation(&operation_id)?;
-
-                if self.deadline_ms.is_some_and(|deadline| now_ms >= deadline) {
-                    self.status = OperationStatus::TimedOut;
-
-                    Ok(AdvanceResult {
-                        status: self.status.clone(),
-                        effects: vec![Effect::TimeoutOperation {
-                            operation_id: self.operation_id.clone(),
-                        }],
-                    })
-                } else {
-                    Ok(AdvanceResult {
-                        status: self.status.clone(),
-                        effects: Vec::new(),
-                    })
-                }
-            }
+                operation_id: _,
+                request_ids: _,
+            } => Ok(AdvanceResult {
+                status: self.status.clone(),
+                effects: Vec::new(),
+            }),
         }
     }
 
     fn ensure_operation(&self, operation_id: &OperationId) -> Result<(), RecoveryEngineError> {
         if operation_id != &self.operation_id {
             return Err(RecoveryEngineError::OperationMismatch);
+        }
+
+        Ok(())
+    }
+
+    fn all_request_ids(&self) -> Vec<RequestId> {
+        self.storage_providers
+            .iter()
+            .filter_map(|provider| self.pending_requests.get(provider).cloned())
+            .collect()
+    }
+
+    pub fn outstanding_request_ids(&self) -> Vec<RequestId> {
+        self.storage_providers
+            .iter()
+            .filter_map(|provider| {
+                if self.replies.contains_key(provider) {
+                    None
+                } else {
+                    self.pending_requests.get(provider).cloned()
+                }
+            })
+            .collect()
+    }
+
+    fn matching_request_ids(&self, digest: &str) -> Vec<RequestId> {
+        self.storage_providers
+            .iter()
+            .filter_map(|provider| {
+                let reply = self.replies.get(provider)?;
+
+                if reply.accepted && reply.state_digest.as_str() == digest {
+                    Some(reply.request_id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn ensure_request_correlation(
+        &self,
+        request_ids: &[RequestId],
+    ) -> Result<(), RecoveryEngineError> {
+        let expected: BTreeSet<_> = self.outstanding_request_ids().into_iter().collect();
+
+        let actual: BTreeSet<_> = request_ids.iter().cloned().collect();
+
+        if actual.len() != request_ids.len() || actual != expected {
+            return Err(RecoveryEngineError::RequestCorrelationMismatch);
         }
 
         Ok(())
@@ -323,30 +479,50 @@ impl OperationEngine {
     }
 
     fn recompute_status(&mut self) -> AdvanceResult {
-        let mut digest_counts: BTreeMap<String, usize> = BTreeMap::new();
+        let digest_counts = accepted_digest_counts(&self.replies);
 
-        for reply in self.replies.values() {
-            if reply.accepted {
-                *digest_counts.entry(reply.state_digest.clone()).or_insert(0) += 1;
-            }
+        if let Some((digest, count)) = digest_counts
+            .iter()
+            .find(|(_, count)| **count >= self.threshold)
+        {
+            self.status = OperationStatus::Completed {
+                committed_digest: digest.clone(),
+                matching_replies: *count,
+            };
+
+            let request_ids = self.matching_request_ids(digest);
+
+            return AdvanceResult {
+                status: self.status.clone(),
+                effects: vec![Effect::CompleteOperation {
+                    operation_id: self.operation_id.clone(),
+                    request_ids,
+                    committed_digest: digest.clone(),
+                    matching_replies: *count,
+                }],
+            };
         }
 
-        for (digest, count) in digest_counts {
-            if count >= self.threshold {
-                self.status = OperationStatus::Completed {
-                    committed_digest: digest.clone(),
-                    matching_replies: count,
-                };
+        if quorum_is_unavailable(
+            self.storage_providers.len(),
+            self.threshold,
+            &self.replies,
+            &digest_counts,
+        ) {
+            let reason = OperationFailure::QuorumUnavailable;
 
-                return AdvanceResult {
-                    status: self.status.clone(),
-                    effects: vec![Effect::CompleteOperation {
-                        operation_id: self.operation_id.clone(),
-                        committed_digest: digest,
-                        matching_replies: count,
-                    }],
-                };
-            }
+            self.status = OperationStatus::Failed {
+                reason: reason.clone(),
+            };
+
+            return AdvanceResult {
+                status: self.status.clone(),
+                effects: vec![Effect::FailOperation {
+                    operation_id: self.operation_id.clone(),
+                    request_ids: self.all_request_ids(),
+                    reason,
+                }],
+            };
         }
 
         AdvanceResult {
@@ -369,6 +545,124 @@ fn validate_config(config: &OperationConfig) -> Result<(), RecoveryEngineError> 
 
     if unique.len() != config.storage_providers.len() {
         return Err(RecoveryEngineError::DuplicateStorageProvider);
+    }
+
+    Ok(())
+}
+
+fn accepted_digest_counts(
+    replies: &BTreeMap<StorageProviderId, ProviderReply>,
+) -> BTreeMap<String, usize> {
+    let mut counts = BTreeMap::new();
+
+    for reply in replies.values() {
+        if reply.accepted {
+            *counts.entry(reply.state_digest.clone()).or_insert(0) += 1;
+        }
+    }
+
+    counts
+}
+
+fn quorum_is_unavailable(
+    provider_count: usize,
+    threshold: usize,
+    replies: &BTreeMap<StorageProviderId, ProviderReply>,
+    digest_counts: &BTreeMap<String, usize>,
+) -> bool {
+    let remaining = provider_count.saturating_sub(replies.len());
+
+    let best_matching_count = digest_counts.values().copied().max().unwrap_or(0);
+
+    best_matching_count + remaining < threshold
+}
+
+fn validate_snapshot(snapshot: &OperationSnapshot) -> Result<(), RecoveryEngineError> {
+    let configured_providers: BTreeSet<_> = snapshot.storage_providers.iter().cloned().collect();
+    let request_providers: BTreeSet<_> = snapshot.pending_requests.keys().cloned().collect();
+
+    // Every configured provider must have exactly one deterministic request id,
+    // and no unknown provider may appear in the request map.
+    if configured_providers != request_providers {
+        return Err(RecoveryEngineError::InvalidSnapshotProviderMembership);
+    }
+
+    for provider in &snapshot.storage_providers {
+        let expected = request_id_for(&snapshot.operation_id, provider);
+
+        match snapshot.pending_requests.get(provider) {
+            Some(actual) if actual == &expected => {}
+            _ => return Err(RecoveryEngineError::InvalidSnapshotRequestIds),
+        }
+    }
+
+    // Every reply must belong to a configured provider and must carry the
+    // deterministic request id assigned to that provider.
+    for (provider, reply) in &snapshot.replies {
+        if !configured_providers.contains(provider) {
+            return Err(RecoveryEngineError::InvalidSnapshotReply);
+        }
+
+        let expected = snapshot
+            .pending_requests
+            .get(provider)
+            .ok_or(RecoveryEngineError::InvalidSnapshotReply)?;
+
+        if &reply.request_id != expected {
+            return Err(RecoveryEngineError::InvalidSnapshotReply);
+        }
+    }
+
+    let digest_counts = accepted_digest_counts(&snapshot.replies);
+
+    let reached_quorum = digest_counts
+        .iter()
+        .any(|(_, count)| *count >= snapshot.threshold);
+
+    let quorum_unavailable = quorum_is_unavailable(
+        snapshot.storage_providers.len(),
+        snapshot.threshold,
+        &snapshot.replies,
+        &digest_counts,
+    );
+
+    match &snapshot.status {
+        OperationStatus::Pending => {
+            if reached_quorum || quorum_unavailable {
+                return Err(RecoveryEngineError::InvalidSnapshotStatus);
+            }
+        }
+
+        OperationStatus::Completed {
+            committed_digest,
+            matching_replies,
+        } => {
+            let actual_count = digest_counts.get(committed_digest).copied().unwrap_or(0);
+
+            if actual_count != snapshot.threshold || *matching_replies != snapshot.threshold {
+                return Err(RecoveryEngineError::InvalidSnapshotStatus);
+            }
+        }
+
+        OperationStatus::Failed {
+            reason: OperationFailure::QuorumUnavailable,
+        } => {
+            if reached_quorum || !quorum_unavailable {
+                return Err(RecoveryEngineError::InvalidSnapshotStatus);
+            }
+        }
+
+        OperationStatus::Cancelled => {
+            if reached_quorum || quorum_unavailable {
+                return Err(RecoveryEngineError::InvalidSnapshotStatus);
+            }
+        }
+
+        OperationStatus::TimedOut => {
+            if snapshot.deadline_ms.is_none() || reached_quorum || quorum_unavailable {
+                return Err(RecoveryEngineError::InvalidSnapshotStatus);
+            }
+        }
     }
 
     Ok(())
