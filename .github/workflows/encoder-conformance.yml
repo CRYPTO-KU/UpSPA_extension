@@ -1,0 +1,124 @@
+name: Encoder Conformance
+
+on:
+  push:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "rust-toolchain.toml"
+      - "scripts/*encoder_conformance*"
+      - "scripts/verify_encoder_normalization.mjs"
+      - "crates/upspa-core/**"
+      - "packages/extension/src/shared/passwordPolicy*"
+      - "test-vectors/compatibility-profile-v1/**"
+      - "scripts/gen_password_vectors.mjs"
+      - "scripts/verify_corpus_corruption.sh"
+      - "scripts/run_encoder_conformance.sh"
+      - "tools/security-gates/**"
+      - ".github/workflows/encoder-conformance.yml"
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "rust-toolchain.toml"
+      - "scripts/*encoder_conformance*"
+      - "scripts/verify_encoder_normalization.mjs"
+      - "crates/upspa-core/**"
+      - "packages/extension/src/shared/passwordPolicy*"
+      - "test-vectors/compatibility-profile-v1/**"
+      - "scripts/gen_password_vectors.mjs"
+      - "scripts/verify_corpus_corruption.sh"
+      - "scripts/run_encoder_conformance.sh"
+      - "tools/security-gates/**"
+      - ".github/workflows/encoder-conformance.yml"
+  workflow_dispatch:
+
+jobs:
+  encoder-conformance:
+    runs-on: ubuntu-latest
+    env:
+      # Override the root stable selection for every cargo call, including helpers.
+      RUSTUP_TOOLCHAIN: "1.95.0"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24.19.0"
+          cache: "npm"
+
+      - name: Setup Pinned Rust Toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+
+      - name: Setup Pinned Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Verify Selected Toolchains
+        id: toolchains
+        run: |
+          rustc --version
+          cargo --version
+          node --version
+          test "$(rustc --version | cut -d ' ' -f 2)" = "$RUSTUP_TOOLCHAIN"
+          test "$(node --version)" = "v24.19.0"
+
+      - name: Install Node Dependencies
+        id: dependencies
+        run: npm ci
+
+      - name: Run Merged Rust Corpus Consumer
+        id: rust_corpus
+        run: cargo test --locked -p upspa-core --test vectors_password_encoder
+
+      - name: Run Rust Encoder Property & Boundary Tests
+        id: rust_properties
+        run: cargo test --locked -p upspa-core --test encoder_properties
+
+      - name: Run Merged TypeScript Corpus Consumer
+        id: ts_corpus
+        run: npm -w upspa-extension test -- src/shared/passwordPolicy.test.ts
+
+      - name: Verify Shared Normalization Boundary and Excluded Gap
+        id: normalization
+        run: node --import tsx scripts/verify_encoder_normalization.mjs
+
+      - name: Verify Deterministic Vector Regeneration
+        id: regeneration
+        run: |
+          ./node_modules/.bin/tsx scripts/gen_password_vectors.mjs
+          profile_changes=$(git status --porcelain --untracked-files=all -- test-vectors/compatibility-profile-v1/) && test -z "$profile_changes"
+
+      - name: Verify Corrupted Vector Detection
+        id: corruption
+        run: ./scripts/verify_corpus_corruption.sh
+
+      - name: Run Security Gates and Fixture Checks
+        id: security
+        run: |
+          python3 tools/security-gates/run_gates.py .
+          python3 tools/security-gates/test_negative_fixtures.py
+          python3 tools/security-gates/test_positive_fixtures.py
+
+      - name: Check Rust Formatting
+        id: formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Qualification Regression Controls
+        id: controls
+        run: python3 scripts/test_encoder_conformance.py
+
+      - name: Generate Job Summary
+        if: always()
+        env:
+          ENCODER_STEPS_JSON: ${{ toJSON(steps) }}
+        run: python3 scripts/encoder_conformance_summary.py >> "$GITHUB_STEP_SUMMARY"

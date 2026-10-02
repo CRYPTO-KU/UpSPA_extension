@@ -1,9 +1,9 @@
-use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
 use crate::aead::xchacha_encrypt_detached;
 use crate::hash::{hash_suid, hash_vinfo};
 use crate::protocol::{ciphersp_aad, decrypt_cid, decrypt_cj, CipherId, CipherSp, CIPHERSP_PT_LEN};
 use crate::types::UpspaError;
+use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretUpdateQueries {
     pub k0: [u8; 32],

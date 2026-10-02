@@ -1,9 +1,9 @@
+use crate::types::{CtBlob, UpspaError, NONCE_LEN, TAG_LEN};
 use chacha20poly1305::{
     aead::{generic_array::GenericArray, AeadInPlace, Error as AeadError, KeyInit},
     XChaCha20Poly1305, XNonce,
 };
 use rand_core::RngCore;
-use crate::types::{CtBlob, UpspaError, NONCE_LEN, TAG_LEN};
 pub fn xchacha_encrypt_detached<const PT_LEN: usize>(
     key: &[u8; 32],
     aad: &[u8],
