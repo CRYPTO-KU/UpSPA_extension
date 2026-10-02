@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/poison_title"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:text="@string/poison_expectation" />
+
+        <EditText
+            android:id="@+id/poison_search_query"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/poison_search"
+            android:importantForAutofill="yes"
+            android:inputType="text"
+            tools:ignore="Autofill" />
+
+        <EditText
+            android:id="@+id/poison_coupon_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/poison_coupon"
+            android:importantForAutofill="yes"
+            android:inputType="text"
+            tools:ignore="Autofill" />
+
+        <EditText
+            android:id="@+id/poison_card_number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/poison_card_number"
+            android:importantForAutofill="yes"
+            android:inputType="number"
+            tools:ignore="Autofill" />
+
+        <!--
+          A masked payment field. It looks exactly like a password to the input-type rule, so it is
+          the field that proves the poison veto runs before the password branch.
+        -->
+        <EditText
+            android:id="@+id/poison_card_cvv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/poison_card_cvv"
+            android:importantForAutofill="yes"
+            android:inputType="numberPassword"
+            tools:ignore="Autofill" />
+
+        <EditText
+            android:id="@+id/poison_postal_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/poison_postal_code"
+            android:importantForAutofill="yes"
+            android:inputType="text"
+            tools:ignore="Autofill" />
+
+        <EditText
+            android:id="@+id/poison_login_username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="username"
+            android:hint="@string/login_username"
+            android:importantForAutofill="yes"
+            android:inputType="text">
+
+            <!-- Focus on launch, so the fill request is raised without a synthetic tap. -->
+            <requestFocus />
+        </EditText>
+
+        <EditText
+            android:id="@+id/poison_login_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="password"
+            android:hint="@string/login_password"
+            android:importantForAutofill="yes"
+            android:inputType="textPassword" />
+
+        <Button
+            android:id="@+id/fixture_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fixture_submit" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/autofill_disabled_title"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:text="@string/autofill_disabled_expectation" />
+
+        <!--
+          noExcludeDescendants is the application saying "no autofill service may see this form".
+          The platform normally strips these nodes from the request; the classifier also refuses
+          them explicitly so that behaviour does not depend on the OEM implementation.
+        -->
+        <LinearLayout
+            android:id="@+id/autofill_disabled_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="noExcludeDescendants"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/autofill_disabled_username"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autofillHints="username"
+                android:hint="@string/autofill_disabled_username"
+                android:inputType="text">
+
+                <!-- Focus on launch, so the fill request is raised without a synthetic tap. -->
+                <requestFocus />
+            </EditText>
+
+            <EditText
+                android:id="@+id/autofill_disabled_password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autofillHints="password"
+                android:hint="@string/autofill_disabled_password"
+                android:inputType="textPassword" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/fixture_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/fixture_submit" />
+    </LinearLayout>
+</ScrollView>

@@ -4,20 +4,34 @@ import android.app.assist.AssistStructure
 import android.text.InputType
 import android.view.View
 import android.view.autofill.AutofillId
+import androidx.annotation.VisibleForTesting
 import androidx.autofill.HintConstants
 
 /**
  * Conservative bootstrap classifier derived from the Android research artifact.
  *
- * It never reads ViewNode text. Only visible, enabled text nodes can be fill targets.
+ * It never reads node text. A node can only become a fill target when it is a visible, enabled,
+ * autofill-important text node that the platform gave an autofill id, and when its attribute
+ * corpus does not match a poison term. The poison check is a true veto: it is evaluated before
+ * any other signal, including an explicit platform hint or HTML `autocomplete` token, so a
+ * poisoned field (e.g. a payment CVC that claims `autofillHints="password"`) can never be
+ * classified as fillable.
+ *
+ * Confidence tiers, highest first, once the poison veto has passed:
+ *  - tier 1: an explicit platform autofill hint or an HTML `autocomplete` token;
+ *  - tier 2: the attribute corpus plus the input type;
+ *  - tier 3: screen topology, used only to repair an otherwise incomplete form.
  */
-object FieldClassifier {
+class FieldClassifier @VisibleForTesting internal constructor(private val policy: Policy) {
+
     enum class Role { USERNAME, EMAIL, PASSWORD_CURRENT, PASSWORD_NEW, OTP, UNKNOWN }
 
     enum class ScreenIntent { LOGIN, REGISTRATION, PASSWORD_CHANGE, UNKNOWN }
 
     data class Field(
-        val autofillId: AutofillId,
+        /** Null only in unit tests; see [ViewNodeSnapshot.autofillId]. */
+        val autofillId: AutofillId?,
+        val debugKey: String,
         val hints: List<String>,
         val htmlAutocomplete: String?,
         val passwordInput: Boolean,
@@ -29,87 +43,107 @@ object FieldClassifier {
     data class Result(val fields: List<Field>, val intent: ScreenIntent) {
         val fillable: List<Field> get() = fields.filter { it.role != Role.UNKNOWN }
 
+        /** Roles and tiers only. Must never expose an attribute corpus or a field value. */
         fun safeSummary(): String = fillable.joinToString(",") { "${it.role}:T${it.tier}" }
     }
 
-    private val platformHints = mapOf(
-        View.AUTOFILL_HINT_USERNAME to Role.USERNAME,
-        View.AUTOFILL_HINT_EMAIL_ADDRESS to Role.EMAIL,
-        View.AUTOFILL_HINT_PASSWORD to Role.PASSWORD_CURRENT,
-        HintConstants.AUTOFILL_HINT_NEW_PASSWORD to Role.PASSWORD_NEW,
-        HintConstants.AUTOFILL_HINT_NEW_USERNAME to Role.USERNAME,
-        HintConstants.AUTOFILL_HINT_SMS_OTP to Role.OTP,
-    )
+    /**
+     * The guards that decide whether a node may be filled at all.
+     *
+     * Every value defaults to the safe setting and production code always uses [Policy.DEFAULT].
+     * A weakened policy can only be built inside this module, and exists so that unit tests can
+     * disable exactly one guard and prove that the guard is load-bearing. See
+     * `FieldClassifierNegativeControlTest`.
+     */
+    data class Policy(
+        val poison: Regex = DEFAULT_POISON,
+        val enforceVisibilityGate: Boolean = true,
+        val enforceEnabledGate: Boolean = true,
+        val enforceImportantForAutofill: Boolean = true,
+        val enforceNonCredentialHints: Boolean = true,
+    ) {
+        companion object {
+            val DEFAULT_POISON = Regex(
+                "search|captcha|coupon|promo|gift|card.?number|cvv|cvc|expir|amount|city|" +
+                    "zip|postal|street|address",
+                RegexOption.IGNORE_CASE,
+            )
 
-    private val htmlHints = mapOf(
-        "username" to Role.USERNAME,
-        "email" to Role.EMAIL,
-        "current-password" to Role.PASSWORD_CURRENT,
-        "new-password" to Role.PASSWORD_NEW,
-        "one-time-code" to Role.OTP,
-    )
-
-    private val poison = Regex(
-        "search|captcha|coupon|promo|gift|card.?number|cvv|cvc|expir|amount|city|zip|postal|street|address",
-        RegexOption.IGNORE_CASE,
-    )
-    private val email = Regex("e.?mail", RegexOption.IGNORE_CASE)
-    private val username = Regex("user|login|account|nick|identifier|member", RegexOption.IGNORE_CASE)
-    private val currentPassword = Regex("current|old|existing", RegexOption.IGNORE_CASE)
-    private val newPassword = Regex("new|confirm|repeat|again|retype|verify", RegexOption.IGNORE_CASE)
-
-    fun classify(structure: AssistStructure): Result {
-        val fields = mutableListOf<Field>()
-        for (windowIndex in 0 until structure.windowNodeCount) {
-            collect(structure.getWindowNodeAt(windowIndex).rootViewNode, fields)
+            val DEFAULT = Policy()
         }
+    }
+
+    fun classify(roots: List<ViewNodeSnapshot>): Result {
+        val fields = mutableListOf<Field>()
+        roots.forEach { collect(it, fields) }
         fields.forEach(::classifyField)
         return Result(fields, applyTopology(fields))
     }
 
-    private fun collect(node: AssistStructure.ViewNode, output: MutableList<Field>) {
-        val id = node.autofillId
-        if (
-            id != null &&
-            node.autofillType == View.AUTOFILL_TYPE_TEXT &&
-            node.visibility == View.VISIBLE &&
-            node.isEnabled
-        ) {
+    private fun collect(node: ViewNodeSnapshot, output: MutableList<Field>) {
+        // A visible child is still hidden when any ancestor is GONE or INVISIBLE.
+        if (policy.enforceVisibilityGate && node.visibility != View.VISIBLE) return
+        if (isCandidate(node)) {
             output += Field(
-                autofillId = id,
-                hints = node.autofillHints?.toList().orEmpty(),
-                htmlAutocomplete = htmlAttribute(node, "autocomplete"),
+                autofillId = node.autofillId,
+                debugKey = node.debugKey,
+                hints = node.hints,
+                htmlAutocomplete = node.htmlAttributes["autocomplete"],
                 passwordInput = isPasswordInput(node),
                 attributeCorpus = attributeCorpus(node),
             )
         }
-        for (childIndex in 0 until node.childCount) {
-            collect(node.getChildAt(childIndex), output)
+        if (excludesDescendants(node)) return
+        node.children.forEach { collect(it, output) }
+    }
+
+    private fun isCandidate(node: ViewNodeSnapshot): Boolean {
+        if (!node.hasAutofillId) return false
+        if (node.autofillType != View.AUTOFILL_TYPE_TEXT) return false
+        if (policy.enforceVisibilityGate && node.visibility != View.VISIBLE) return false
+        if (policy.enforceEnabledGate && !node.enabled) return false
+        val importance = node.importantForAutofill
+        if (policy.enforceImportantForAutofill && importance != null &&
+            importance in UNIMPORTANT_MODES
+        ) {
+            return false
         }
+        return true
+    }
+
+    private fun excludesDescendants(node: ViewNodeSnapshot): Boolean {
+        if (!policy.enforceImportantForAutofill) return false
+        val importance = node.importantForAutofill ?: return false
+        return importance in DESCENDANT_EXCLUDING_MODES
     }
 
     private fun classifyField(field: Field) {
-        field.hints.firstNotNullOfOrNull(platformHints::get)?.let { role ->
+        // The poison veto is evaluated first and unconditionally. A field whose attribute corpus
+        // matches a poison term (e.g. a payment CVC) must never be offered a value, regardless of
+        // what a platform hint or HTML autocomplete token claims about it. Checking this before
+        // tier 1 is what makes it a veto rather than a tie-breaker: an app-supplied hint is not a
+        // trusted enough signal to override it, because the hint and the poisoned attribute corpus
+        // can both be present on the same node (see FieldClassifierTest, "poison outranks...").
+        if (isVetoed(field)) return
+
+        field.hints.firstNotNullOfOrNull { PLATFORM_HINTS[it] }?.let { role ->
             field.role = role
             field.tier = 1
             return
         }
 
-        field.htmlAutocomplete
-            ?.split(' ')
-            ?.firstNotNullOfOrNull { htmlHints[it.trim().lowercase()] }
+        field.htmlTokens()
+            .firstNotNullOfOrNull { HTML_HINTS[it] }
             ?.let { role ->
                 field.role = role
                 field.tier = 1
                 return
             }
 
-        if (poison.containsMatchIn(field.attributeCorpus)) return
-
         if (field.passwordInput) {
             field.role = when {
-                currentPassword.containsMatchIn(field.attributeCorpus) -> Role.PASSWORD_CURRENT
-                newPassword.containsMatchIn(field.attributeCorpus) -> Role.PASSWORD_NEW
+                CURRENT_PASSWORD.containsMatchIn(field.attributeCorpus) -> Role.PASSWORD_CURRENT
+                NEW_PASSWORD.containsMatchIn(field.attributeCorpus) -> Role.PASSWORD_NEW
                 else -> Role.PASSWORD_CURRENT
             }
             field.tier = 2
@@ -117,8 +151,8 @@ object FieldClassifier {
         }
 
         field.role = when {
-            email.containsMatchIn(field.attributeCorpus) -> Role.EMAIL
-            username.containsMatchIn(field.attributeCorpus) -> Role.USERNAME
+            EMAIL.containsMatchIn(field.attributeCorpus) -> Role.EMAIL
+            USERNAME.containsMatchIn(field.attributeCorpus) -> Role.USERNAME
             else -> Role.UNKNOWN
         }
         if (field.role != Role.UNKNOWN) field.tier = 2
@@ -131,7 +165,7 @@ object FieldClassifier {
         val identifiers = fields.filter { it.role == Role.USERNAME || it.role == Role.EMAIL }
         val currentMarker = passwords.any {
             (it.tier == 1 && it.role == Role.PASSWORD_CURRENT) ||
-                currentPassword.containsMatchIn(it.attributeCorpus)
+                CURRENT_PASSWORD.containsMatchIn(it.attributeCorpus)
         }
 
         if (passwords.size == 1 && identifiers.isEmpty()) {
@@ -140,7 +174,7 @@ object FieldClassifier {
                 .lastOrNull {
                     it.role == Role.UNKNOWN &&
                         !it.passwordInput &&
-                        !poison.containsMatchIn(it.attributeCorpus)
+                        !isVetoed(it)
                 }
                 ?.assign(Role.USERNAME, 3)
         }
@@ -166,7 +200,7 @@ object FieldClassifier {
                 passwords.forEachIndexed { index, field ->
                     if (field.tier == 1) return@forEachIndexed
                     if (!currentAssigned &&
-                        (currentPassword.containsMatchIn(field.attributeCorpus) || index == 0)
+                        (CURRENT_PASSWORD.containsMatchIn(field.attributeCorpus) || index == 0)
                     ) {
                         field.assign(Role.PASSWORD_CURRENT, 3)
                         currentAssigned = true
@@ -184,29 +218,116 @@ object FieldClassifier {
         tier = newTier
     }
 
-    private fun isPasswordInput(node: AssistStructure.ViewNode): Boolean {
+    /** Apply the same veto before hint classification and before topology promotion. */
+    private fun isVetoed(field: Field): Boolean {
+        // Remove only the email-address phrase from the poison scan. A separate street/postal
+        // address signal in another attribute must still veto even an explicitly hinted email.
+        val physicalAddressCorpus = EMAIL_ADDRESS.replace(field.attributeCorpus, "email")
+        if (policy.poison.containsMatchIn(physicalAddressCorpus)) return true
+        return policy.enforceNonCredentialHints && (
+            field.hints.any { it in NON_CREDENTIAL_PLATFORM_HINTS } ||
+                field.htmlTokens().any { it in NON_CREDENTIAL_HTML_HINTS }
+            )
+    }
+
+    private fun Field.htmlTokens(): List<String> =
+        htmlAutocomplete?.trim()?.lowercase()?.split(HTML_WHITESPACE).orEmpty()
+
+    private fun isPasswordInput(node: ViewNodeSnapshot): Boolean {
         val inputClass = node.inputType and InputType.TYPE_MASK_CLASS
         val variation = node.inputType and InputType.TYPE_MASK_VARIATION
-        val textPassword = inputClass == InputType.TYPE_CLASS_TEXT && variation in setOf(
+        val textPassword = inputClass == InputType.TYPE_CLASS_TEXT && variation in PASSWORD_VARIATIONS
+        val numberPassword = inputClass == InputType.TYPE_CLASS_NUMBER &&
+            variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        return textPassword || numberPassword || node.htmlAttributes["type"] == "password"
+    }
+
+    private fun attributeCorpus(node: ViewNodeSnapshot): String = listOfNotNull(
+        node.idEntry,
+        node.hint,
+        node.contentDescription,
+        node.htmlAttributes["name"],
+        node.htmlAttributes["id"],
+        node.htmlAttributes["placeholder"],
+        node.htmlAttributes["label"],
+    ).joinToString("|")
+
+    companion object {
+        private val PLATFORM_HINTS = mapOf(
+            View.AUTOFILL_HINT_USERNAME to Role.USERNAME,
+            View.AUTOFILL_HINT_EMAIL_ADDRESS to Role.EMAIL,
+            View.AUTOFILL_HINT_PASSWORD to Role.PASSWORD_CURRENT,
+            HintConstants.AUTOFILL_HINT_NEW_PASSWORD to Role.PASSWORD_NEW,
+            HintConstants.AUTOFILL_HINT_NEW_USERNAME to Role.USERNAME,
+            HintConstants.AUTOFILL_HINT_SMS_OTP to Role.OTP,
+        )
+
+        private val HTML_HINTS = mapOf(
+            "username" to Role.USERNAME,
+            "email" to Role.EMAIL,
+            "current-password" to Role.PASSWORD_CURRENT,
+            "new-password" to Role.PASSWORD_NEW,
+            "one-time-code" to Role.OTP,
+        )
+
+        // Explicit payment/address metadata overrides credential hints and password-like input.
+        private val NON_CREDENTIAL_PLATFORM_HINTS = setOf(
+            View.AUTOFILL_HINT_CREDIT_CARD_NUMBER,
+            View.AUTOFILL_HINT_CREDIT_CARD_SECURITY_CODE,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_DATE,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_DAY,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_MONTH,
+            View.AUTOFILL_HINT_CREDIT_CARD_EXPIRATION_YEAR,
+            View.AUTOFILL_HINT_POSTAL_ADDRESS,
+            View.AUTOFILL_HINT_POSTAL_CODE,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_COUNTRY,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_REGION,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_LOCALITY,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_STREET_ADDRESS,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_EXTENDED_ADDRESS,
+            HintConstants.AUTOFILL_HINT_POSTAL_ADDRESS_EXTENDED_POSTAL_CODE,
+        )
+
+        // WHATWG autocomplete field names; section-*, shipping and billing are grouping tokens.
+        private val NON_CREDENTIAL_HTML_HINTS = setOf(
+            "cc-name", "cc-given-name", "cc-additional-name", "cc-family-name", "cc-number",
+            "cc-exp", "cc-exp-month", "cc-exp-year", "cc-csc", "cc-type",
+            "transaction-currency", "transaction-amount", "street-address", "address-line1",
+            "address-line2", "address-line3", "address-level1", "address-level2", "address-level3",
+            "address-level4", "country", "country-name", "postal-code",
+        )
+        private val HTML_WHITESPACE = Regex("[\\t\\n\\u000C\\r ]+")
+        private val EMAIL_ADDRESS = Regex(
+            "(?<![a-z])e[\\s_-]?mail[\\s_-]*address(?![a-z])",
+            RegexOption.IGNORE_CASE,
+        )
+
+        private val EMAIL = Regex("e.?mail", RegexOption.IGNORE_CASE)
+        private val USERNAME = Regex("user|login|account|nick|identifier|member", RegexOption.IGNORE_CASE)
+        private val CURRENT_PASSWORD = Regex("current|old|existing", RegexOption.IGNORE_CASE)
+        private val NEW_PASSWORD = Regex("new|confirm|repeat|again|retype|verify", RegexOption.IGNORE_CASE)
+
+        private val PASSWORD_VARIATIONS = setOf(
             InputType.TYPE_TEXT_VARIATION_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
         )
-        val numberPassword = inputClass == InputType.TYPE_CLASS_NUMBER &&
-            variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        return textPassword || numberPassword || htmlAttribute(node, "type") == "password"
+
+        /** Modes that make a node itself ineligible. */
+        private val UNIMPORTANT_MODES = setOf(
+            View.IMPORTANT_FOR_AUTOFILL_NO,
+            View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS,
+        )
+
+        /** Modes that stop the walk from descending into children. */
+        private val DESCENDANT_EXCLUDING_MODES = setOf(
+            View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS,
+            View.IMPORTANT_FOR_AUTOFILL_YES_EXCLUDE_DESCENDANTS,
+        )
+
+        private val default = FieldClassifier(Policy.DEFAULT)
+
+        fun classify(structure: AssistStructure): Result =
+            default.classify(AssistStructureAdapter.roots(structure))
     }
-
-    private fun attributeCorpus(node: AssistStructure.ViewNode): String = listOfNotNull(
-        node.idEntry,
-        node.hint,
-        node.contentDescription?.toString(),
-        htmlAttribute(node, "name"),
-        htmlAttribute(node, "id"),
-        htmlAttribute(node, "placeholder"),
-        htmlAttribute(node, "label"),
-    ).joinToString("|")
-
-    private fun htmlAttribute(node: AssistStructure.ViewNode, name: String): String? =
-        node.htmlInfo?.attributes?.firstOrNull { it.first == name }?.second
 }

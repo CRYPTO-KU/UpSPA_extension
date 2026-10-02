@@ -1,20 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The fixtures have no permissions: they never reach the network or storage. -->
+
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.UpSpaFixtures">
+
         <activity
-            android:name=".MainActivity"
+            android:name=".FixtureMenuActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Every scenario is exported so a reviewer can launch it directly with
+          `adb shell am start`. These screens hold nothing but synthetic, never-read input.
+        -->
+        <activity android:name=".LoginActivity" android:exported="true" />
+        <activity android:name=".RegistrationActivity" android:exported="true" />
+        <activity android:name=".PasswordChangeActivity" android:exported="true" />
+        <activity android:name=".SplitUsernameActivity" android:exported="true" />
+        <activity android:name=".SplitPasswordActivity" android:exported="true" />
+        <activity android:name=".NoHintsLoginActivity" android:exported="true" />
+        <activity android:name=".HiddenAndDisabledActivity" android:exported="true" />
+        <activity android:name=".PoisonFieldsActivity" android:exported="true" />
+        <activity android:name=".AutofillDisabledActivity" android:exported="true" />
+        <activity android:name=".UnknownFieldsActivity" android:exported="true" />
     </application>
 
 </manifest>

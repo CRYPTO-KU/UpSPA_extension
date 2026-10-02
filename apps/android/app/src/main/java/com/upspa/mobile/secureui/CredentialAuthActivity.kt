@@ -125,10 +125,16 @@ class CredentialAuthActivity : ComponentActivity() {
             requestToken: String,
             fields: List<FieldClassifier.Field>,
         ): Intent = Intent(context, CredentialAuthActivity::class.java).apply {
+            // Fields without an autofill id cannot be addressed; dropping them here keeps the id
+            // array and the role array index-aligned.
+            val addressable = fields.filter { it.autofillId != null }
             putExtra(EXTRA_TARGET_PACKAGE, targetPackage)
             putExtra(EXTRA_REQUEST_TOKEN, requestToken)
-            putParcelableArrayListExtra(EXTRA_AUTOFILL_IDS, ArrayList(fields.map { it.autofillId }))
-            putExtra(EXTRA_ROLES, fields.map { it.role.ordinal }.toIntArray())
+            putParcelableArrayListExtra(
+                EXTRA_AUTOFILL_IDS,
+                ArrayList(addressable.mapNotNull { it.autofillId }),
+            )
+            putExtra(EXTRA_ROLES, addressable.map { it.role.ordinal }.toIntArray())
         }
     }
 }

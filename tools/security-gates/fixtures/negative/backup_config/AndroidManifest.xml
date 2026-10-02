@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Seeded-negative fixture for gates/backup_config.py
+
+The ONLY intended failure here: android:allowBackup is not set at all on
+<application>, which behaves the same as an explicit "true"; app data can
+be extracted via adb backup or cloud auto-backup.
+
+The one activity present is a correctly-configured launcher entry point
+(exported=true with a MAIN/LAUNCHER filter, which is the legitimate
+exception in exported_components.py) so this fixture doesn't also trip
+that gate.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:label="fixture">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
