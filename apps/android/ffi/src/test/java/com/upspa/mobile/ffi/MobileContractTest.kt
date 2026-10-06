@@ -51,7 +51,7 @@ class MobileContractTest {
         )
 
         val effect = engine.submit(probe(t0 + 5_000))
-        assertEquals("op-000001", effect.operation.value)
+        assertTrue(Regex("op-[0-9a-f]{16}-000001").matches(effect.operation.value))
         assertTrue(effect.body is EffectBody.AckImmediately)
 
         clock.advance(250)
