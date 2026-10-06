@@ -47,6 +47,17 @@ impl From<NormalizedPasswordPolicy> for PasswordPolicy {
     }
 }
 
+/// True when the browser encoder (`packages/extension/src/shared/passwordPolicy.ts`) would also
+/// leave this Rust-normalized policy unchanged, so both derive the same password. Rejects rather than
+/// rewrites, so a credential's encoding never changes silently. Where the two normalizers differ:
+/// - TS replaces an empty `allowedSymbols` with the default set even when no symbol is required;
+/// - Unicode whitespace, `trim`, case mapping and JS UTF-16 indexing only agree on ASCII.
+fn browser_normalizes_identically(policy: &PasswordPolicy) -> bool {
+    !policy.allowed_symbols.is_empty()
+        && policy.allowed_symbols.is_ascii()
+        && policy.forbidden_substrings.iter().all(|s| s.is_ascii())
+}
+
 fn encoding_error(reason_code: &str) -> MobileError {
     MobileError::PasswordEncoding {
         reason_code: reason_code.to_owned(),
@@ -70,6 +81,9 @@ pub fn encode_password(
     let policy = PasswordPolicy::from(policy);
     if !is_normalized_policy(&policy) {
         return Err(encoding_error("policy-not-normalized"));
+    }
+    if !browser_normalizes_identically(&policy) {
+        return Err(encoding_error("policy-not-portable"));
     }
 
     // Borrowed view, no copy of the secret bytes.
@@ -137,6 +151,40 @@ mod tests {
             })
         );
         assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    /// REVIEW 2 / P1: Rust leaves `allowed_symbols = ""` alone when no symbol is required, but the
+    /// browser encoder replaces it with the default set, so the two would derive different passwords.
+    #[test]
+    fn rejects_policy_the_browser_normalizes_differently() {
+        erasure_probe::take();
+        let mut policy = default_policy();
+        policy.require_symbol = false;
+        policy.allowed_symbols = String::new();
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                policy,
+                "alice@example.com".to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "policy-not-portable".to_owned()
+            })
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+
+        // Control: the browser-normalized form of the same policy is accepted and matches v006.
+        let mut policy = default_policy();
+        policy.require_symbol = false;
+        let out = encode_password(
+            SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+            policy,
+            "alice@example.com".to_owned(),
+            0,
+        )
+        .expect("encodes");
+        assert_eq!(out.bytes, b"gaVBYE1RRI6vozum0xTZhxGbtI47rLyW");
     }
 
     #[test]
