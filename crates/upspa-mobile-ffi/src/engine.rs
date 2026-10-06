@@ -10,12 +10,16 @@
 //!   success or a cancellation.
 //! - Operation IDs and diagnostic correlation IDs are engine-minted and never contain host text.
 //!   `MobileCommand::request_tag` is an idempotency key for the host only; it is discarded on entry.
+//!   Each ID embeds a per-instance tag, so an event for another engine instance is unknown here.
+//! - Nothing the host sends is reflected back: unknown IDs and failure reasons map to fixed codes.
 //! - Every secret buffer that crosses the boundary into the engine is moved into a
 //!   [`SecretGuard`] before any check runs, so it is erased on success and on every early return.
 
+use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::hash::{BuildHasher, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use zeroize::Zeroize;
 
@@ -99,7 +103,7 @@ impl From<CommandBody> for GuardedCommandBody {
 /// Host outcome after secrets have been moved into guards.
 enum GuardedOutcome {
     ProbeAck { echo_tag: String },
-    RequestSucceeded { response: Vec<u8> },
+    RequestSucceeded { _response: Vec<u8> },
     BlobRead { _value: SecretGuard },
     BlobWritten,
     HostFailed { reason_code: String },
@@ -109,7 +113,9 @@ impl From<HostOutcome> for GuardedOutcome {
     fn from(outcome: HostOutcome) -> Self {
         match outcome {
             HostOutcome::ProbeAck { echo_tag } => Self::ProbeAck { echo_tag },
-            HostOutcome::RequestSucceeded { response } => Self::RequestSucceeded { response },
+            HostOutcome::RequestSucceeded { response } => Self::RequestSucceeded {
+                _response: response,
+            },
             HostOutcome::BlobRead { value } => Self::BlobRead {
                 _value: SecretGuard::new(value),
             },
@@ -124,6 +130,8 @@ pub struct MobileEngine {
     ports: HostPorts,
     operations: Mutex<HashMap<String, OperationRecord>>,
     counter: AtomicU64,
+    // Per-instance tag embedded in every operation ID (see `fresh_instance_tag`).
+    instance: u64,
 }
 
 /// The public host contract. Only methods in this block are exported through UniFFI; internal
@@ -150,6 +158,7 @@ impl MobileEngine {
             },
             operations: Mutex::new(HashMap::new()),
             counter: AtomicU64::new(0),
+            instance: fresh_instance_tag(),
         })
     }
 
@@ -274,9 +283,7 @@ impl MobileEngine {
         // Unknown operation: typed error, never a success event.
         let record = registry
             .get_mut(&operation.value)
-            .ok_or_else(|| MobileError::UnknownOperation {
-                operation: operation.value.clone(),
-            })?;
+            .ok_or_else(unknown_operation)?;
 
         if record.settled {
             return Err(MobileError::OperationAlreadySettled {
@@ -302,9 +309,11 @@ impl MobileEngine {
                 }
                 EventBody::ProbeCompleted { echo_tag: got }
             }
-            (PendingKind::Request, GuardedOutcome::RequestSucceeded { response }) => {
-                EventBody::CredentialReady {
-                    handle: credential_handle(&operation, &response),
+            // Derivation is still a placeholder: no credential is derived or validated, so a
+            // transport success must not become `CredentialReady`.
+            (PendingKind::Request, GuardedOutcome::RequestSucceeded { .. }) => {
+                EventBody::OperationFailed {
+                    reason_code: "derivation-unimplemented".to_owned(),
                 }
             }
             (PendingKind::BlobWrite { policy_revision }, GuardedOutcome::BlobWritten) => {
@@ -313,7 +322,7 @@ impl MobileEngine {
                 }
             }
             (_, GuardedOutcome::HostFailed { reason_code }) => EventBody::OperationFailed {
-                reason_code: sanitize_reason(&reason_code),
+                reason_code: host_failure_code(&reason_code),
             },
             _ => {
                 return Err(MobileError::OutcomeMismatch {
@@ -352,9 +361,7 @@ impl MobileEngine {
 
         let record = registry
             .get_mut(&operation.value)
-            .ok_or_else(|| MobileError::UnknownOperation {
-                operation: operation.value.clone(),
-            })?;
+            .ok_or_else(unknown_operation)?;
 
         if record.settled {
             return Err(MobileError::OperationAlreadySettled {
@@ -417,10 +424,10 @@ impl MobileEngine {
         Ok(())
     }
 
-    /// Deterministic, monotonic, and free of host-supplied text.
+    /// Monotonic per instance, bound to this instance, and free of host-supplied text.
     fn next_operation_id(&self) -> OperationId {
         let n = self.counter.fetch_add(1, Ordering::SeqCst) + 1;
-        OperationId::new(format!("op-{n:06}"))
+        OperationId::new(format!("op-{:016x}-{n:06}", self.instance))
     }
 
     /// Emit the expiry diagnostic and build the typed error. The caller has already settled the
@@ -450,22 +457,40 @@ fn derivation_request_payload(selector: &AccountSelector, master_secret: &Secret
     payload
 }
 
-fn credential_handle(operation: &OperationId, response: &[u8]) -> String {
-    format!("handle:{}:{}", operation.value, response.len())
+/// Distinct per engine instance: a random per-process salt plus a per-process counter, so two
+/// engines in one process never share a tag and engines in different processes almost never do.
+fn fresh_instance_tag() -> u64 {
+    static PROCESS_SALT: OnceLock<u64> = OnceLock::new();
+    static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(0);
+    let salt = *PROCESS_SALT.get_or_init(|| RandomState::new().build_hasher().finish());
+    salt.wrapping_add(NEXT_INSTANCE.fetch_add(1, Ordering::SeqCst))
 }
 
-/// Reason codes are constrained to a safe alphabet so a host cannot smuggle user data into logs.
-fn sanitize_reason(raw: &str) -> String {
-    let cleaned: String = raw
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .take(48)
-        .collect();
-    if cleaned.is_empty() {
-        "unspecified".to_owned()
-    } else {
-        cleaned
+/// The host-supplied ID is not echoed: it is host text and may carry user data.
+fn unknown_operation() -> MobileError {
+    MobileError::UnknownOperation {
+        operation: "unrecognized".to_owned(),
     }
+}
+
+/// Host failure reasons the engine passes through. Anything else becomes one fixed code, so a host
+/// cannot smuggle user data into an event, a log, or debug output; character filtering is not enough.
+const HOST_FAILURE_CODES: &[&str] = &[
+    "timeout",
+    "network-unavailable",
+    "server-error",
+    "storage-unavailable",
+    "authentication-failed",
+    "user-cancelled",
+];
+
+fn host_failure_code(raw: &str) -> String {
+    HOST_FAILURE_CODES
+        .iter()
+        .find(|code| **code == raw)
+        .copied()
+        .unwrap_or("host-failure-unclassified")
+        .to_owned()
 }
 
 /// Test-only observation point for secret erasure. Thread-local so parallel tests don't interfere.
