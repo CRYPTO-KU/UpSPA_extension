@@ -30,6 +30,10 @@ echo "==> corrupted accepted vector $CORRUPTED_ID in a temporary copy"
 COPY_FOR_GRADLE="$COPY"
 command -v cygpath >/dev/null 2>&1 && COPY_FOR_GRADLE="$(cygpath -m "$COPY")"
 
+# Delete reports from earlier runs first, so any evidence below comes from this invocation only.
+REPORT_DIR="$REPO_ROOT/apps/android/ffi/build/test-results/testDebugUnitTest"
+rm -rf "$REPORT_DIR"
+
 cd "$REPO_ROOT/apps/android"
 OUTPUT="$TMP/gradle.log"
 if ./gradlew :ffi:cleanTestDebugUnitTest :ffi:testDebugUnitTest \
@@ -41,7 +45,6 @@ fi
 # Must fail for the right reason: the corrupted ID is reported, not a build or setup error.
 # Checked in both the console output and the JUnit XML report, so it does not depend on
 # Gradle's console formatting.
-REPORT_DIR="$REPO_ROOT/apps/android/ffi/build/test-results/testDebugUnitTest"
 if ! grep -q "mismatch for IDs: \[$CORRUPTED_ID\]" "$OUTPUT" \
    && ! grep -qs "mismatch for IDs: \[$CORRUPTED_ID\]" "$REPORT_DIR"/TEST-*EncoderConformanceTest*.xml; then
   echo "ERROR: Gradle failed, but not with the expected vector mismatch. Output:" >&2
