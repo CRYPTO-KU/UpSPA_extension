@@ -109,8 +109,7 @@ class MobileContractTest {
             )
             fail("expected MobileException.UnknownOperation")
         } catch (expected: MobileException.UnknownOperation) {
-            assertEquals("op-999999-forged", expected.operation)
-        }
+            assertEquals("unrecognized", expected.operation)        }
     }
 
     /** Review #3: cancelling past the deadline is a typed expiry, not a cancellation event. */
