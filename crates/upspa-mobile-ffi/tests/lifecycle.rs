@@ -56,7 +56,9 @@ fn deterministic_probe_lifecycle() {
 
     // 2. Effect out, correlated and version-stamped.
     assert_eq!(effect.contract_version, MOBILE_CONTRACT_VERSION);
-    assert_eq!(effect.operation.value, "op-000001");
+    assert!(
+        effect.operation.value.starts_with("op-") && effect.operation.value.ends_with("-000001")
+    );
     assert_eq!(
         effect.body,
         EffectBody::AckImmediately {
@@ -299,7 +301,7 @@ fn hostile_request_tag_never_reaches_diagnostics_on_the_happy_path() {
         )
         .expect("delivered");
 
-    assert_eq!(effect.operation.value, "op-000001");
+    assert!(effect.operation.value.ends_with("-000001"));
     assert!(!h.diagnostics.all_fields().is_empty());
     assert_tag_absent(&h, &[effect.operation.value, event.operation.value]);
 }
@@ -346,4 +348,141 @@ fn hostile_request_tag_never_reaches_diagnostics_on_cancel_and_expiry() {
         ]
     );
     assert_tag_absent(&h, &[]);
+}
+
+const PRIVATE_MARKER: &str = "SYNTHETIC_PRIVATE_IDENTIFIER_123";
+
+fn ack() -> HostOutcome {
+    HostOutcome::ProbeAck {
+        echo_tag: "lifecycle-demo".to_owned(),
+    }
+}
+
+/// REVIEW 2 / P1: an acknowledgement for engine A's operation cannot settle engine B's operation,
+/// even though both are the first operation of their engine and use the same probe tag.
+#[test]
+fn acknowledgement_from_another_engine_instance_is_rejected() {
+    let a = harness();
+    let b = harness();
+    let op_a = a.engine.submit(probe(T0 + 5_000)).expect("a").operation;
+    a.engine.deliver(op_a.clone(), ack()).expect("a settles");
+    let op_b = b.engine.submit(probe(T0 + 5_000)).expect("b").operation;
+
+    assert_ne!(op_a, op_b);
+    assert!(matches!(
+        b.engine.deliver(op_a, ack()),
+        Err(MobileError::UnknownOperation { .. })
+    ));
+    assert_eq!(b.engine.open_operation_count(), 1);
+    // Control: B's own acknowledgement is still accepted.
+    assert!(b
+        .engine
+        .deliver(op_b, ack())
+        .expect("b settles")
+        .is_success());
+}
+
+/// REVIEW 2 / P2: a host failure reason is mapped to a fixed engine code, never reflected.
+#[test]
+fn host_failure_reason_is_not_reflected() {
+    let h = harness();
+    let op = h
+        .engine
+        .submit(probe(T0 + 5_000))
+        .expect("submit")
+        .operation;
+    let event = h
+        .engine
+        .deliver(
+            op,
+            HostOutcome::HostFailed {
+                reason_code: PRIVATE_MARKER.to_owned(),
+            },
+        )
+        .expect("failure event");
+    assert!(!event.is_success());
+    assert!(!format!("{event:?}").contains(PRIVATE_MARKER));
+    assert_eq!(
+        event.body,
+        EventBody::OperationFailed {
+            reason_code: "host-failure-unclassified".to_owned()
+        }
+    );
+
+    // Control: an allowlisted code still gets through.
+    let op = h
+        .engine
+        .submit(probe(T0 + 5_000))
+        .expect("submit")
+        .operation;
+    let event = h
+        .engine
+        .deliver(
+            op,
+            HostOutcome::HostFailed {
+                reason_code: "timeout".to_owned(),
+            },
+        )
+        .expect("failure event");
+    assert_eq!(
+        event.body,
+        EventBody::OperationFailed {
+            reason_code: "timeout".to_owned()
+        }
+    );
+}
+
+/// REVIEW 2 / P2: an unknown operation ID is not echoed back in the error.
+#[test]
+fn unknown_operation_id_is_not_echoed() {
+    let h = harness();
+    let forged = OperationId::new(format!("op-{PRIVATE_MARKER}"));
+    for err in [
+        h.engine
+            .deliver(forged.clone(), ack())
+            .expect_err("unknown"),
+        h.engine.cancel(forged.clone()).expect_err("unknown"),
+    ] {
+        assert!(matches!(err, MobileError::UnknownOperation { .. }));
+        assert!(!format!("{err:?} {err}").contains(PRIVATE_MARKER));
+    }
+}
+
+/// REVIEW 2 / P2: credential derivation is a placeholder, so a transport "success" (even an empty
+/// one) must not be reported as a ready credential.
+#[test]
+fn placeholder_derivation_never_reports_credential_success() {
+    let h = harness();
+    let effect = h
+        .engine
+        .submit(MobileCommand {
+            contract_version: MOBILE_CONTRACT_VERSION,
+            request_tag: "derive".to_owned(),
+            deadline: Deadline {
+                epoch_millis: T0 + 5_000,
+            },
+            body: CommandBody::DeriveCredential {
+                selector: AccountSelector {
+                    site_tag: "example.org".to_owned(),
+                    account_label: "user".to_owned(),
+                    policy_revision: 1,
+                },
+                master_secret: SecretBytes::new(b"synthetic-master-secret".to_vec()),
+            },
+        })
+        .expect("submit");
+    let event = h
+        .engine
+        .deliver(
+            effect.operation,
+            HostOutcome::RequestSucceeded { response: vec![] },
+        )
+        .expect("event");
+    assert!(!event.is_success());
+    assert_eq!(
+        event.body,
+        EventBody::OperationFailed {
+            reason_code: "derivation-unimplemented".to_owned()
+        }
+    );
 }
