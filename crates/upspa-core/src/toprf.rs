@@ -1,3 +1,5 @@
+use crate::hash::{hash_to_point, oprf_finalize};
+use crate::types::UpspaError;
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
@@ -5,8 +7,6 @@ use curve25519_dalek::{
 };
 use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
-use crate::hash::{hash_to_point, oprf_finalize};
-use crate::types::UpspaError;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToprfPartial {
     pub id: u32,

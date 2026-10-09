@@ -1,5 +1,5 @@
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use crate::types::UpspaError;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 pub const ED25519_PK_LEN: usize = 32;
 pub const ED25519_SIG_LEN: usize = 64;
 pub fn sign_detached(signing_key: &SigningKey, msg: &[u8]) -> [u8; ED25519_SIG_LEN] {

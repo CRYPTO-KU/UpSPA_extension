@@ -62,6 +62,30 @@ describe('password policy encoding', () => {
     expect(passwordSatisfiesPolicy(out.password, policy, 'alice@example.com')).toBe(true);
   });
 
+  test('default policy is unchanged by repeated browser normalization', () => {
+    const policy = defaultPasswordPolicy();
+    expect(normalizePasswordPolicy(policy)).toEqual(policy);
+    expect(normalizePasswordPolicy(normalizePasswordPolicy(policy))).toEqual(policy);
+  });
+
+  test('one browser pass can leave a non-idempotent empty-symbol policy', async () => {
+    const once = normalizePasswordPolicy({
+      ...defaultPasswordPolicy(),
+      minLen: 16,
+      maxLen: 20,
+      requireSymbol: false,
+      allowedSymbols: ' \t',
+    });
+    const twice = normalizePasswordPolicy(once);
+    expect(once.allowedSymbols).toBe('');
+    expect(twice).toEqual({ ...once, allowedSymbols: defaultPasswordPolicy().allowedSymbols });
+    expect(normalizePasswordPolicy(twice)).toEqual(twice);
+    const fromOnce = await encodeSecretAsPassword(SECRET, once, 'alice@example.com', 0);
+    const fromTwice = await encodeSecretAsPassword(SECRET, twice, 'alice@example.com', 0);
+    // Assert only a boolean so a failure does not print synthetic candidate values.
+    expect(fromOnce.password === fromTwice.password).toBe(true);
+  });
+
   test('accountId forbidden substring is avoided', async () => {
     const policy = normalizePasswordPolicy({
       minLen: 12,
@@ -128,6 +152,15 @@ describe('deterministic encoder (Task 6 guarantees)', () => {
     expect(passwordSatisfiesPolicy(out.password, policy, 'alice')).toBe(true);
   });
 
+  test('minimum above 64 overrides the requested maximum cap', async () => {
+    const policy = normalizePasswordPolicy({ minLen: 65, maxLen: 65 });
+    expect(policy.minLen).toBe(65);
+    expect(policy.maxLen).toBe(65);
+    const out = await encodeSecretAsPassword(SECRET, policy, 'alice', 0);
+    expect(out.password.length).toBe(65);
+    expect(passwordSatisfiesPolicy(out.password, policy, 'alice')).toBe(true);
+  });
+
   test('honours a restricted allowed-symbol set', async () => {
     const policy = normalizePasswordPolicy({
       minLen: 16,
@@ -161,7 +194,11 @@ describe('compatibility-profile-v1 corpus', () => {
 
   beforeAll(() => {
     const repoRoot = join(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
-    const corpusPath = join(repoRoot, 'test-vectors/compatibility-profile-v1/vectors.json');
+    const customPath = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env?.UPSPA_TEST_VECTORS_PATH;
+    const corpusPath = customPath
+      ? customPath
+      : join(repoRoot, 'test-vectors/compatibility-profile-v1/vectors.json');
     vectors = JSON.parse(readFileSync(corpusPath, 'utf8')) as CorpusVector[];
   });
 
