@@ -53,6 +53,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":ffi"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.autofill)

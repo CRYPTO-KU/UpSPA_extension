@@ -23,4 +23,5 @@ dependencyResolutionManagement {
 rootProject.name = "upspa-mobile-android"
 
 include(":app")
+include(":ffi")
 include(":fixtures")
