@@ -49,7 +49,7 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 | `entries[].policy.requireLower` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireDigit` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireSymbol` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
-| `entries[].policy.allowedSymbols` | `String` | Yes | No duplicate code points; non-empty if `requireSymbol`; no whitespace if `forbidWhitespace` | S3 | Enrolled Account Lifetime | Yes |
+| `entries[].policy.allowedSymbols` | `String` | Yes | No duplicate code points; non-empty (for both `requireSymbol=true` [`EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL`] and `requireSymbol=false` [`EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL`] for browser/Rust parity); no whitespace if `forbidWhitespace` | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.forbidWhitespace` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.forbiddenSubstrings` | `List<String>` | Yes | Every item non-empty and equals `trim().lowercase()` | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].aliasEvidence` | `Object` | Yes | Valid status and cross-field evidence reference/reason | S4 / S2 | Dynamic / Refreshable | No (Reference contains S2) |
@@ -110,7 +110,7 @@ Validation executes strictly fail-closed and deterministic. The validator halts 
    b. **Account Reference:** Missing/wrong type -> `MissingField`/`WrongType`. Invariant checks -> `InvalidAccountReference(index, code)`.
    c. **Compatibility Profile Version:** Present, integer, supported -> `UnsupportedCompatibilityProfileVersion(index, found)`.
    d. **Encoder Counter:** Present, integer lexeme, $0 \le c \le 2^{32}-1$ -> `InvalidEncoderCounter(index)`.
-   e. **Normalized Password Policy:** All 9 fields mandatory -> `PartialPolicy(index)`. Invariants -> `MalformedPolicy(index, code)`.
+   e. **Normalized Password Policy:** All 9 fields mandatory -> `PartialPolicy(index)`. Invariants -> `MalformedPolicy(index, code)` (including `EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL` and `EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL`).
    f. **Alias Evidence:** Syntax, status, cross-field rules -> `MalformedAliasEvidence(index, code)`.
    g. **Entry-Level Binding:**
       - If `reference != null`, `reference.sourceOrigin == enrolledOrigin` -> `AliasOriginMismatch(index)`.

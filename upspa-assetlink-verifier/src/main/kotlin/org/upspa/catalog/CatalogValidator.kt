@@ -484,6 +484,9 @@ open class StrictCatalogValidator : CatalogValidator {
         if (requireSymbol && allowedSymbols.isEmpty()) {
             return CatalogRejection.MalformedPolicy(entryIdx, MalformedPolicyCode.EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL)
         }
+        if (!requireSymbol && allowedSymbols.isEmpty()) {
+            return CatalogRejection.MalformedPolicy(entryIdx, MalformedPolicyCode.EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL)
+        }
         for (sub in forbiddenSubstrings) {
             if (sub.isEmpty() || sub != sub.trim().lowercase(Locale.ROOT)) {
                 return CatalogRejection.MalformedPolicy(entryIdx, MalformedPolicyCode.FORBIDDEN_SUBSTRING_NOT_NORMALIZED)

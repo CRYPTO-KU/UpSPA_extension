@@ -73,6 +73,10 @@ class ReviewRound2RegressionTest {
             result is CatalogValidationResult.Rejected,
             "Policy with requireSymbol=false and empty allowedSymbols must be rejected due to browser/Rust divergence"
         )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertTrue(rejection is CatalogRejection.MalformedPolicy)
+        assertEquals(MalformedPolicyCode.EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL, (rejection as CatalogRejection.MalformedPolicy).code)
+        assertEquals(0, rejection.entryIndex)
     }
 
     @Test
@@ -93,6 +97,10 @@ class ReviewRound2RegressionTest {
             result is CatalogValidationResult.Rejected,
             "Policy with requireSymbol=false and empty allowedSymbols must be rejected due to browser/Rust divergence"
         )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertTrue(rejection is CatalogRejection.MalformedPolicy)
+        assertEquals(MalformedPolicyCode.EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL, (rejection as CatalogRejection.MalformedPolicy).code)
+        assertEquals(0, rejection.entryIndex)
     }
 
     @Test

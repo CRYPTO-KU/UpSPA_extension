@@ -47,6 +47,8 @@ data class NormalizedPasswordPolicy(
         }
         if (requireSymbol) {
             require(allowedSymbols.isNotEmpty()) { "allowedSymbols must not be empty when requireSymbol is true" }
+        } else {
+            require(allowedSymbols.isNotEmpty()) { "allowedSymbols must not be empty when requireSymbol is false" }
         }
         for (sub in forbiddenSubstrings) {
             require(sub.isNotEmpty()) { "forbiddenSubstrings items must be non-empty" }

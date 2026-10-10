@@ -279,10 +279,22 @@
     "code": "DUPLICATE_SYMBOLS"
   },
   {
+    "file": "invalid/policy_empty_symbols_not_required.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL"
+  },
+  {
     "file": "invalid/policy_empty_symbols_required.json",
     "expected": "MalformedPolicy",
     "entryIndex": 0,
     "code": "EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL"
+  },
+  {
+    "file": "invalid/policy_empty_symbols_unrequired_no_digit.json",
+    "expected": "MalformedPolicy",
+    "entryIndex": 0,
+    "code": "EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL"
   },
   {
     "file": "invalid/policy_forbidden_substring_empty.json",

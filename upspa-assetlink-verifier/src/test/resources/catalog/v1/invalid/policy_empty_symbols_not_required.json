@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "enrolledOrigin": "https://example.com",
+      "accountReference": "policy2",
+      "compatibilityProfileVersion": 1,
+      "encoderCounter": 0,
+      "policy": {
+        "minLen": 16,
+        "maxLen": 16,
+        "requireUpper": true,
+        "requireLower": true,
+        "requireDigit": true,
+        "requireSymbol": false,
+        "allowedSymbols": "",
+        "forbidWhitespace": true,
+        "forbiddenSubstrings": []
+      },
+      "aliasEvidence": {
+        "status": "MANUAL"
+      }
+    }
+  ]
+}
