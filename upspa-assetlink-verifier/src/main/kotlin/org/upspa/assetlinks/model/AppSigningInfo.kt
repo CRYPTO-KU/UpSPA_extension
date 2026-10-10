@@ -2,6 +2,7 @@ package org.upspa.assetlinks.model
 
 import org.upspa.assetlinks.crypto.CertificateUtils
 import java.security.cert.X509Certificate
+import java.util.Collections
 
 /**
  * Encapsulates the package identity and signing certificate information of an Android app.
@@ -19,23 +20,36 @@ import java.security.cert.X509Certificate
  * Multi-signer state is structural: `hasMultipleSigners` is derived from the count of
  * current signers (> 1) strictly within the single active family.
  *
+ * Owns immutable snapshots of all collections and deep copies of all byte arrays at construction time.
+ *
  * @property packageName The claimed Android application package name (e.g. "com.example.app").
- * @property currentFingerprints The set of current active signing certificate digests.
- * @property rotationHistory The lineage of signing certificate digests (oldest to newest) when key rotation is present.
- * @property signingCertificates The raw DER-encoded signing certificates of the application.
- * @property signingCertificateHistory The lineage of raw DER-encoded signing certificates when key rotation is present.
- * @property rawCurrentFingerprints Raw string representations of current signers (e.g. for malformed fingerprint test cases).
- * @property rawRotationHistory Raw string representations of rotation history (e.g. for malformed fingerprint test cases).
+ * @property currentFingerprints The unmodifiable set of current active signing certificate digests.
+ * @property rotationHistory The unmodifiable lineage of signing certificate digests (oldest to newest) when key rotation is present.
+ * @property signingCertificates The defensive copies of raw DER-encoded signing certificates of the application.
+ * @property signingCertificateHistory The defensive copies of lineage of raw DER-encoded signing certificates when key rotation is present.
+ * @property rawCurrentFingerprints Unmodifiable raw string representations of current signers (e.g. for malformed fingerprint test cases).
+ * @property rawRotationHistory Unmodifiable raw string representations of rotation history (e.g. for malformed fingerprint test cases).
  */
-data class AppSigningInfo(
+class AppSigningInfo(
     val packageName: String,
-    val currentFingerprints: Set<CertificateDigest> = emptySet(),
-    val rotationHistory: List<CertificateDigest> = emptyList(),
-    val signingCertificates: List<ByteArray> = emptyList(),
-    val signingCertificateHistory: List<ByteArray> = emptyList(),
-    val rawCurrentFingerprints: List<String> = emptyList(),
-    val rawRotationHistory: List<String> = emptyList()
+    currentFingerprints: Set<CertificateDigest> = emptySet(),
+    rotationHistory: List<CertificateDigest> = emptyList(),
+    signingCertificates: List<ByteArray> = emptyList(),
+    signingCertificateHistory: List<ByteArray> = emptyList(),
+    rawCurrentFingerprints: List<String> = emptyList(),
+    rawRotationHistory: List<String> = emptyList()
 ) {
+    val currentFingerprints: Set<CertificateDigest> = Collections.unmodifiableSet(currentFingerprints.toSet())
+    val rotationHistory: List<CertificateDigest> = Collections.unmodifiableList(rotationHistory.toList())
+    private val _signingCertificates: List<ByteArray> = Collections.unmodifiableList(signingCertificates.map { it.clone() })
+    val signingCertificates: List<ByteArray>
+        get() = _signingCertificates.map { it.clone() }
+    private val _signingCertificateHistory: List<ByteArray> = Collections.unmodifiableList(signingCertificateHistory.map { it.clone() })
+    val signingCertificateHistory: List<ByteArray>
+        get() = _signingCertificateHistory.map { it.clone() }
+    val rawCurrentFingerprints: List<String> = Collections.unmodifiableList(rawCurrentFingerprints.toList())
+    val rawRotationHistory: List<String> = Collections.unmodifiableList(rawRotationHistory.toList())
+
     /**
      * Derives whether the application has multiple concurrent APK signers (> 1).
      *
@@ -43,14 +57,14 @@ data class AppSigningInfo(
      * this property is derived strictly from the single active family.
      */
     val hasMultipleSigners: Boolean
-        get() = currentFingerprints.size > 1 || rawCurrentFingerprints.size > 1 || signingCertificates.size > 1
+        get() = currentFingerprints.size > 1 || rawCurrentFingerprints.size > 1 || _signingCertificates.size > 1
 
     init {
         require(packageName.isNotBlank()) { "Package name must not be blank" }
 
         val hasTyped = currentFingerprints.isNotEmpty() || rotationHistory.isNotEmpty()
         val hasRawString = rawCurrentFingerprints.isNotEmpty() || rawRotationHistory.isNotEmpty()
-        val hasRawBytes = signingCertificates.isNotEmpty() || signingCertificateHistory.isNotEmpty()
+        val hasRawBytes = _signingCertificates.isNotEmpty() || _signingCertificateHistory.isNotEmpty()
 
         val populatedFamilies = (if (hasTyped) 1 else 0) + (if (hasRawString) 1 else 0) + (if (hasRawBytes) 1 else 0)
 
@@ -66,7 +80,7 @@ data class AppSigningInfo(
         require(!(hasMultipleSigners && effectiveHistorySize > 0)) {
             "Ambiguous signing evidence: multi-signer application cannot have rotation history"
         }
-        require(!(hasMultipleSigners && signingCertificateHistory.isNotEmpty())) {
+        require(!(hasMultipleSigners && _signingCertificateHistory.isNotEmpty())) {
             "Ambiguous signing evidence: multi-signer application cannot have certificate history"
         }
         val effectiveCurrentSize = currentFingerprints.size + rawCurrentFingerprints.size
@@ -83,9 +97,9 @@ data class AppSigningInfo(
                 "Ambiguous signing evidence: raw current signer must be part of raw rotation history"
             }
         }
-        if (signingCertificateHistory.isNotEmpty() && signingCertificates.isNotEmpty()) {
-            require(signingCertificates.all { currentCert ->
-                signingCertificateHistory.any { histCert -> currentCert.contentEquals(histCert) }
+        if (_signingCertificateHistory.isNotEmpty() && _signingCertificates.isNotEmpty()) {
+            require(_signingCertificates.all { currentCert ->
+                _signingCertificateHistory.any { histCert -> currentCert.contentEquals(histCert) }
             }) {
                 "Ambiguous signing evidence: current signing certificate must be part of certificate history"
             }
@@ -102,10 +116,10 @@ data class AppSigningInfo(
      * Returns true if no raw certificates are configured, or if all configured raw certificates parse successfully.
      */
     fun validateCertificates(): Boolean {
-        val certs = if (signingCertificateHistory.isNotEmpty()) {
-            signingCertificateHistory
+        val certs = if (_signingCertificateHistory.isNotEmpty()) {
+            _signingCertificateHistory
         } else {
-            signingCertificates
+            _signingCertificates
         }
         if (certs.isEmpty()) return true
         return certs.all { CertificateUtils.isValidX509Certificate(it) }
@@ -133,10 +147,10 @@ data class AppSigningInfo(
         if (currentFingerprints.isNotEmpty()) {
             return currentFingerprints.map { it.value }
         }
-        val certs = if (signingCertificateHistory.isNotEmpty()) {
-            signingCertificateHistory
+        val certs = if (_signingCertificateHistory.isNotEmpty()) {
+            _signingCertificateHistory
         } else {
-            signingCertificates
+            _signingCertificates
         }
         return certs.map { certBytes ->
             if (CertificateUtils.isValidX509Certificate(certBytes)) {
@@ -179,10 +193,10 @@ data class AppSigningInfo(
         if (currentFingerprints.isNotEmpty()) {
             return currentFingerprints.toList()
         }
-        val certs = if (signingCertificateHistory.isNotEmpty()) {
-            signingCertificateHistory
+        val certs = if (_signingCertificateHistory.isNotEmpty()) {
+            _signingCertificateHistory
         } else {
-            signingCertificates
+            _signingCertificates
         }
         if (certs.isEmpty()) return emptyList()
         val digests = mutableListOf<CertificateDigest>()
@@ -222,7 +236,7 @@ data class AppSigningInfo(
         if (rotationHistory.isNotEmpty()) {
             return rotationHistory.lastOrNull()?.value
         }
-        val targetCert = signingCertificateHistory.lastOrNull() ?: signingCertificates.firstOrNull()
+        val targetCert = _signingCertificateHistory.lastOrNull() ?: _signingCertificates.firstOrNull()
         return targetCert?.let { CertificateUtils.computeSha256FingerprintOrNull(it) }
     }
 
@@ -243,14 +257,14 @@ data class AppSigningInfo(
         if (rotationHistory != other.rotationHistory) return false
         if (rawCurrentFingerprints != other.rawCurrentFingerprints) return false
         if (rawRotationHistory != other.rawRotationHistory) return false
-        if (signingCertificates.size != other.signingCertificates.size) return false
-        if (signingCertificateHistory.size != other.signingCertificateHistory.size) return false
+        if (_signingCertificates.size != other._signingCertificates.size) return false
+        if (_signingCertificateHistory.size != other._signingCertificateHistory.size) return false
 
-        for (i in signingCertificates.indices) {
-            if (!signingCertificates[i].contentEquals(other.signingCertificates[i])) return false
+        for (i in _signingCertificates.indices) {
+            if (!_signingCertificates[i].contentEquals(other._signingCertificates[i])) return false
         }
-        for (i in signingCertificateHistory.indices) {
-            if (!signingCertificateHistory[i].contentEquals(other.signingCertificateHistory[i])) return false
+        for (i in _signingCertificateHistory.indices) {
+            if (!_signingCertificateHistory[i].contentEquals(other._signingCertificateHistory[i])) return false
         }
         return true
     }
@@ -261,9 +275,21 @@ data class AppSigningInfo(
         result = 31 * result + rotationHistory.hashCode()
         result = 31 * result + rawCurrentFingerprints.hashCode()
         result = 31 * result + rawRotationHistory.hashCode()
-        result = 31 * result + signingCertificates.fold(0) { acc, bytes -> acc * 31 + bytes.contentHashCode() }
-        result = 31 * result + signingCertificateHistory.fold(0) { acc, bytes -> acc * 31 + bytes.contentHashCode() }
+        result = 31 * result + _signingCertificates.fold(0) { acc, bytes -> acc * 31 + bytes.contentHashCode() }
+        result = 31 * result + _signingCertificateHistory.fold(0) { acc, bytes -> acc * 31 + bytes.contentHashCode() }
         return result
+    }
+
+    override fun toString(): String {
+        return "AppSigningInfo(" +
+            "packageName='$packageName', " +
+            "currentFingerprints=$currentFingerprints, " +
+            "rotationHistory=$rotationHistory, " +
+            "signingCertificates=${_signingCertificates.size} cert(s), " +
+            "signingCertificateHistory=${_signingCertificateHistory.size} cert(s), " +
+            "rawCurrentFingerprints=$rawCurrentFingerprints, " +
+            "rawRotationHistory=$rawRotationHistory" +
+            ")"
     }
 
     companion object {
@@ -289,7 +315,7 @@ data class AppSigningInfo(
             }
             return AppSigningInfo(
                 packageName = packageName,
-                rawCurrentFingerprints = fingerprints
+                rawCurrentFingerprints = fingerprints.toList()
             )
         }
 
@@ -307,7 +333,7 @@ data class AppSigningInfo(
             require(certificates.isNotEmpty()) { "Certificates list must not be empty" }
             return AppSigningInfo(
                 packageName = packageName,
-                signingCertificates = certificates.map { it.encoded }
+                signingCertificates = certificates.map { it.encoded.clone() }
             )
         }
 
@@ -327,7 +353,7 @@ data class AppSigningInfo(
             }
             return AppSigningInfo(
                 packageName = packageName,
-                rawCurrentFingerprints = fingerprints
+                rawCurrentFingerprints = fingerprints.toList()
             )
         }
 
@@ -342,10 +368,11 @@ data class AppSigningInfo(
             historyFingerprints: List<String>
         ): AppSigningInfo {
             require(historyFingerprints.isNotEmpty()) { "Rotation history must not be empty" }
+            val snapshot = historyFingerprints.toList()
             return AppSigningInfo(
                 packageName = packageName,
-                rawCurrentFingerprints = listOfNotNull(historyFingerprints.lastOrNull()),
-                rawRotationHistory = historyFingerprints
+                rawCurrentFingerprints = listOfNotNull(snapshot.lastOrNull()),
+                rawRotationHistory = snapshot
             )
         }
 
@@ -361,15 +388,16 @@ data class AppSigningInfo(
             rotationHistory: List<CertificateDigest> = emptyList()
         ): AppSigningInfo {
             val currentSet = currentSigners.toSet()
-            if (rotationHistory.isNotEmpty()) {
-                require(rotationHistory.containsAll(currentSet)) {
+            val historySnapshot = rotationHistory.toList()
+            if (historySnapshot.isNotEmpty()) {
+                require(historySnapshot.containsAll(currentSet)) {
                     "Inconsistent signing evidence: rotation history must contain all current signing certificates"
                 }
             }
             return AppSigningInfo(
                 packageName = packageIdentity.value,
                 currentFingerprints = currentSet,
-                rotationHistory = rotationHistory
+                rotationHistory = historySnapshot
             )
         }
     }
