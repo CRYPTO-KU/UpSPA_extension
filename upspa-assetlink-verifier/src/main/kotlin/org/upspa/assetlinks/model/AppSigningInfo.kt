@@ -62,8 +62,8 @@ class AppSigningInfo(
     init {
         require(packageName.isNotBlank()) { "Package name must not be blank" }
 
-        val hasTyped = currentFingerprints.isNotEmpty() || rotationHistory.isNotEmpty()
-        val hasRawString = rawCurrentFingerprints.isNotEmpty() || rawRotationHistory.isNotEmpty()
+        val hasTyped = this.currentFingerprints.isNotEmpty() || this.rotationHistory.isNotEmpty()
+        val hasRawString = this.rawCurrentFingerprints.isNotEmpty() || this.rawRotationHistory.isNotEmpty()
         val hasRawBytes = _signingCertificates.isNotEmpty() || _signingCertificateHistory.isNotEmpty()
 
         val populatedFamilies = (if (hasTyped) 1 else 0) + (if (hasRawString) 1 else 0) + (if (hasRawBytes) 1 else 0)
@@ -75,7 +75,7 @@ class AppSigningInfo(
             "Empty signing evidence: exactly one representation family must be provided."
         }
 
-        val effectiveHistorySize = rotationHistory.size + rawRotationHistory.size
+        val effectiveHistorySize = this.rotationHistory.size + this.rawRotationHistory.size
         // Reject ambiguous evidence: multi-signer apps cannot have rotation history
         require(!(hasMultipleSigners && effectiveHistorySize > 0)) {
             "Ambiguous signing evidence: multi-signer application cannot have rotation history"
@@ -83,17 +83,17 @@ class AppSigningInfo(
         require(!(hasMultipleSigners && _signingCertificateHistory.isNotEmpty())) {
             "Ambiguous signing evidence: multi-signer application cannot have certificate history"
         }
-        val effectiveCurrentSize = currentFingerprints.size + rawCurrentFingerprints.size
+        val effectiveCurrentSize = this.currentFingerprints.size + this.rawCurrentFingerprints.size
         require(!(effectiveCurrentSize == 0 && effectiveHistorySize > 0)) {
             "Ambiguous signing evidence: rotation history provided without current signer"
         }
-        if (rotationHistory.isNotEmpty() && currentFingerprints.isNotEmpty()) {
-            require(rotationHistory.containsAll(currentFingerprints)) {
+        if (this.rotationHistory.isNotEmpty() && this.currentFingerprints.isNotEmpty()) {
+            require(this.rotationHistory.containsAll(this.currentFingerprints)) {
                 "Ambiguous signing evidence: current signer must be part of rotation history"
             }
         }
-        if (rawRotationHistory.isNotEmpty() && rawCurrentFingerprints.isNotEmpty()) {
-            require(rawRotationHistory.containsAll(rawCurrentFingerprints)) {
+        if (this.rawRotationHistory.isNotEmpty() && this.rawCurrentFingerprints.isNotEmpty()) {
+            require(this.rawRotationHistory.containsAll(this.rawCurrentFingerprints)) {
                 "Ambiguous signing evidence: raw current signer must be part of raw rotation history"
             }
         }

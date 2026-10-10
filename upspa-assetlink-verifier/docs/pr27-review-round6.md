@@ -50,17 +50,20 @@ To observe the fixed state: check out `eb7ab0a` (or current branch head) and run
 ### Fix
 1. Converted `AppSigningInfo` from `data class` to a normal `final class` (without compiler-generated `copy()` or destructuring components).
 2. Constructor parameters now immediately create unmodifiable snapshots (`Collections.unmodifiableList` / `Collections.unmodifiableSet`) and defensive deep copies of all byte arrays (`map { it.clone() }`).
-3. Class body property initialization creates the snapshots before the `init` block runs, so `init` invariants validate the held snapshots rather than caller-owned parameters.
+3. Class body property initialization creates the snapshots before the `init` block runs, and the `init` block explicitly references `this.currentFingerprints`, `this.rotationHistory`, `this.rawCurrentFingerprints`, and `this.rawRotationHistory` (alongside private `_signingCertificates` and `_signingCertificateHistory`), validating the held snapshots rather than constructor parameters (which shadow properties in Kotlin `init`).
 4. Getters for `signingCertificates` and `signingCertificateHistory` return defensive byte array clones on each call.
 5. Implemented explicit `equals()`, `hashCode()`, and `toString()`.
 6. Updated companion factories (`fromFingerprints`, `fromMultiSigners`, `fromRotationHistory`, `fromTypedValues`, `fromX509Certificates`) to copy inputs defensively.
+
+### Note on reproduction (a)
+With a consistent lineage [A, B] and current signer B, a statement authorizing only the older key A still verifies. This is the existing key-rotation lineage behavior (see the positive control `ISSUE1_control_unmutated_history_verifies_historical_key` and the known limitations of PR #27). The defect fixed here is that a caller mutation after construction could change the evidence that was validated: before the fix, removing B from the caller's list made a statement authorizing the real current signer B fail, and left inconsistent evidence in a validated object. After the fix the snapshot keeps [A, B] and a statement authorizing B verifies (tests `ISSUE1_scenario1_*`). Whether an A-only statement should authorize the rotated app is a separate open question for the reviewer.
 
 ### Test Commands
 ```powershell
 .\gradlew test --tests '*ReviewRound6RegressionTest*'
 ```
 
-### Output before fix (commit `3ba3d19`)
+### Output before fix (commit `3ba3d19`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE1_scenario1_app_owns_immutable_history_snapshot FAILED
     org.opentest4j.AssertionFailedError at ReviewRound6RegressionTest.kt:84
@@ -89,7 +92,7 @@ ReviewRound6RegressionTest > ISSUE1_exposed_getters_return_defensive_copies_and_
 ReviewRound6RegressionTest > ISSUE1_control_unmutated_history_verifies_historical_key PASSED
 ```
 
-### Output after fix (commit `eb7ab0a`)
+### Output after fix (commit `eb7ab0a`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE1_scenario1_app_owns_immutable_history_snapshot PASSED
 ReviewRound6RegressionTest > ISSUE1_scenario1_history_mutation_pure_verifier PASSED
@@ -123,7 +126,7 @@ In `PureAssetLinkVerifier.kt`, `verifyRawJson` performed a post-parsing type che
 .\gradlew test --tests '*ReviewRound6RegressionTest*'
 ```
 
-### Output before fix (commit `3ba3d19`)
+### Output before fix (commit `3ba3d19`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_pure_verifier FAILED
     org.opentest4j.AssertionFailedError at ReviewRound6RegressionTest.kt:308
@@ -147,7 +150,7 @@ ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_
 ReviewRound6RegressionTest > ISSUE2_control_valid_all_string_relation_array_verifies PASSED
 ```
 
-### Output after fix (commit `eb7ab0a`)
+### Output after fix (commit `eb7ab0a`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_pure_verifier PASSED
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_upspa_verifier PASSED
@@ -171,7 +174,7 @@ BUILD SUCCESSFUL in 10s
 5 actionable tasks: 5 executed
 ```
 
-Per-class test counts from `build/test-results/test/*.xml`:
+Per-class test counts from `build/test-results/test/*.xml` (excerpt):
 ```xml
 <testsuite name="org.upspa.assetlinks.crypto.CertificateUtilsTest" tests="4" skipped="0" failures="0" errors="0" />
 <testsuite name="org.upspa.assetlinks.model.OriginTest" tests="5" skipped="0" failures="0" errors="0" />
