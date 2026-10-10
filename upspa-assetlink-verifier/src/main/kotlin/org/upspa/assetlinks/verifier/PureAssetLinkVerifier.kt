@@ -2,6 +2,8 @@ package org.upspa.assetlinks.verifier
 
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.JsonDataException
+import com.squareup.moshi.JsonReader
+import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -30,7 +32,24 @@ class PureAssetLinkVerifier internal constructor(
 ) {
     constructor() : this(allowInsecureHttp = false)
 
+    private object StrictStringAdapter : JsonAdapter<String>() {
+        override fun fromJson(reader: JsonReader): String? {
+            if (reader.peek() == JsonReader.Token.NULL) {
+                return reader.nextNull()
+            }
+            if (reader.peek() != JsonReader.Token.STRING) {
+                throw JsonDataException("Expected string token but was ${reader.peek()} at path ${reader.path}")
+            }
+            return reader.nextString()
+        }
+
+        override fun toJson(writer: JsonWriter, value: String?) {
+            writer.value(value)
+        }
+    }
+
     private val moshi: Moshi = Moshi.Builder()
+        .add(String::class.java, StrictStringAdapter)
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
