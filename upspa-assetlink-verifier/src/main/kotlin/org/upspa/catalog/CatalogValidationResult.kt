@@ -24,6 +24,10 @@ sealed class CatalogRejection {
         override fun toString(): String = "MalformedJson"
     }
 
+    object UnpairedSurrogate : CatalogRejection() {
+        override fun toString(): String = "UnpairedSurrogate"
+    }
+
     object TrailingData : CatalogRejection() {
         override fun toString(): String = "TrailingData"
     }

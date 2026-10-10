@@ -34,6 +34,11 @@ open class StrictCatalogValidator : CatalogValidator {
     }
 
     internal open fun doValidate(rawJson: String): CatalogValidationResult {
+        // Reject unpaired surrogates in raw string before UTF-8 conversion
+        if (hasUnpairedSurrogate(rawJson)) {
+            return CatalogValidationResult.Rejected(CatalogRejection.UnpairedSurrogate)
+        }
+
         // 1. Size check: max 64 KiB (65,536 UTF-8 bytes)
         val utf8Bytes = rawJson.toByteArray(Charsets.UTF_8)
         if (utf8Bytes.size > MAX_INPUT_BYTES) {
@@ -428,6 +433,9 @@ open class StrictCatalogValidator : CatalogValidator {
     }
 
     private fun validateAccountReferenceString(entryIdx: Int, str: String): CatalogRejection? {
+        if (hasUnpairedSurrogate(str)) {
+            return CatalogRejection.UnpairedSurrogate
+        }
         if (str.isEmpty()) {
             return CatalogRejection.InvalidAccountReference(entryIdx, InvalidAccountReferenceCode.EMPTY)
         }
@@ -532,6 +540,9 @@ open class StrictCatalogValidator : CatalogValidator {
 
                 while (reader.hasNext()) {
                     val keyName = reader.nextName()
+                    if (hasUnpairedSurrogate(keyName)) {
+                        return AstNode.RejectedNode(CatalogRejection.UnpairedSurrogate)
+                    }
                     if (!seenKeys.add(keyName) && duplicateKeyPath == null) {
                         duplicateKeyPath = currentPath
                     }
@@ -562,7 +573,11 @@ open class StrictCatalogValidator : CatalogValidator {
                 AstNode.JsonArray(elements)
             }
             JsonReader.Token.STRING -> {
-                AstNode.JsonString(reader.nextString())
+                val s = reader.nextString()
+                if (hasUnpairedSurrogate(s)) {
+                    return AstNode.RejectedNode(CatalogRejection.UnpairedSurrogate)
+                }
+                AstNode.JsonString(s)
             }
             JsonReader.Token.NUMBER -> {
                 AstNode.JsonNumber(reader.nextString())

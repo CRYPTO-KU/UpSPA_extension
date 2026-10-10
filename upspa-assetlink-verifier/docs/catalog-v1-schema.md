@@ -39,7 +39,7 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 | `schemaVersion` | `Int` | Yes | Must equal `1` | S4 | Static / Catalog Lifecycle | Yes |
 | `entries` | `List<CatalogEntry>` | Yes | Array of entries; no duplicate `(enrolledOrigin, accountReference)` pairs | Composite | Account Lifecycle | No (Aggregate count only) |
 | `entries[].enrolledOrigin` | `String` (Origin) | Yes | Canonical WHATWG origin (`Origin.parse(s).toOriginString() == s`); exact scheme, lowercase host, port | S2 | Enrolled Account Lifetime | **No** (Redacted) |
-| `entries[].accountReference` | `String` | Yes | Non-empty, no edge whitespace, no `\|`, no control chars, max 256 UTF-16 chars | S1 | Enrolled Account Lifetime | **No** (Redacted) |
+| `entries[].accountReference` | `String` | Yes | Non-empty, no edge whitespace, no `\|`, no control chars, no unpaired surrogates, max 256 UTF-16 chars | S1 | Enrolled Account Lifetime | **No** (Redacted) |
 | `entries[].compatibilityProfileVersion` | `Int` | Yes | Must equal `1` | S4 | Enrolled Account Lifetime | Yes |
 | `entries[].encoderCounter` | `Long` | Yes | Range `0..4294967295` (Rust `u32`) | S3 | Monotonic / Dynamic | Yes |
 | `entries[].policy` | `Object` | Yes | Fully normalized 9-field policy; meets 7 cross-language invariants | S3 | Enrolled Account Lifetime | Yes (Structured form) |
@@ -99,6 +99,7 @@ derivationIdentity = enrolledOrigin.toOriginString() + "|" + accountReference.va
 Validation executes strictly fail-closed and deterministic. The validator halts and returns the FIRST detected violation.
 
 ### Order of Checks:
+0. **Surrogate Well-Formedness:** Pre-scan raw string before UTF-8 conversion and inspect unescaped strings/keys to reject unpaired surrogates (`UnpairedSurrogate`). Adheres strictly to rejection hygiene: zero echoed content.
 1. **Input Size Limit:** Max 65,536 bytes (64 KiB) UTF-8 (`InputTooLarge`).
 2. **JSON Syntax & Nesting:** Strict JSON grammar, max depth 8 (`MalformedJson`, `NestingTooDeep`).
 3. **No Trailing Data:** Zero unconsumed non-whitespace tokens after top-level object (`TrailingData`).

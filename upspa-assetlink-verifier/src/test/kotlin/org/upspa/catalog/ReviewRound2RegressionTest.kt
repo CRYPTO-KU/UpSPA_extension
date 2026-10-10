@@ -159,43 +159,25 @@ class ReviewRound2RegressionTest {
             result is CatalogValidationResult.Rejected,
             "Literal lone surrogate in raw JSON must be rejected"
         )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(CatalogRejection.UnpairedSurrogate, rejection)
     }
 
     @Test
     fun `Finding 2 - JSON containing escaped lone surrogate in account reference is rejected`() {
-        // Escaped \uD800 in JSON string
-        val json = """
-        {
-          "schemaVersion": 1,
-          "entries": [
-            {
-              "enrolledOrigin": "https://example.com",
-              "accountReference": "synthetic\u005CuD800",
-              "compatibilityProfileVersion": 1,
-              "encoderCounter": 0,
-              "policy": {
-                "minLen": 20,
-                "maxLen": 32,
-                "requireUpper": true,
-                "requireLower": true,
-                "requireDigit": true,
-                "requireSymbol": false,
-                "allowedSymbols": "!@#$",
-                "forbidWhitespace": true,
-                "forbiddenSubstrings": []
-              },
-              "aliasEvidence": {
-                "status": "MANUAL"
-              }
-            }
-          ]
-        }
-        """.trimIndent()
+        // Escaped \uD800 in JSON string: raw JSON contains ASCII \ u D 8 0 0
+        val escapedRef = "synthetic" + "\\" + "uD800"
+        val json = jsonForPolicy(
+            accountRef = escapedRef,
+            allowedSymbols = "!@#$"
+        )
         val result = validator.validate(json)
         assertTrue(
             result is CatalogValidationResult.Rejected,
             "Escaped lone surrogate \\uD800 in account reference must be rejected"
         )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(CatalogRejection.UnpairedSurrogate, rejection)
     }
 
     @Test

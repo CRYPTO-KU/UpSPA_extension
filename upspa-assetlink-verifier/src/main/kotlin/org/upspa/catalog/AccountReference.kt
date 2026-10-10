@@ -19,6 +19,7 @@ value class AccountReference(val value: String) {
         require(value == value.trim()) { "Account reference must not contain leading or trailing whitespace" }
         require(!value.contains('|')) { "Account reference must not contain separator '|'" }
         require(value.length <= 256) { "Account reference length must be <= 256 characters, got ${value.length}" }
+        require(!hasUnpairedSurrogate(value)) { "Account reference must not contain unpaired surrogates" }
         var i = 0
         while (i < value.length) {
             val cp = value.codePointAt(i)
@@ -29,3 +30,24 @@ value class AccountReference(val value: String) {
 
     override fun toString(): String = "AccountReference(<redacted>)"
 }
+
+internal fun hasUnpairedSurrogate(s: CharSequence): Boolean {
+    var i = 0
+    val len = s.length
+    while (i < len) {
+        val ch = s[i]
+        if (ch.isHighSurrogate()) {
+            if (i + 1 < len && s[i + 1].isLowSurrogate()) {
+                i += 2
+            } else {
+                return true
+            }
+        } else if (ch.isLowSurrogate()) {
+            return true
+        } else {
+            i += 1
+        }
+    }
+    return false
+}
+
