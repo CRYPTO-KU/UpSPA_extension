@@ -206,5 +206,93 @@ class ReviewRound2RegressionTest {
             "Valid surrogate pair (emoji) must be accepted"
         )
     }
+
+    // -------------------------------------------------------------
+    // Finding 3: Literal newline/control chars inside JSON strings
+    // -------------------------------------------------------------
+
+    @Test
+    fun `Finding 3 - literal newline inside JSON string is rejected as MalformedJson`() {
+        val jsonWithLiteralNewline = jsonForPolicy(
+            accountRef = "user1",
+            allowedSymbols = "!\n@",
+            forbidWhitespace = false
+        )
+        val result = validator.validate(jsonWithLiteralNewline)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Literal newline inside JSON string must be rejected"
+        )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(CatalogRejection.MalformedJson, rejection)
+    }
+
+    @Test
+    fun `Finding 3 - literal tab inside JSON string is rejected as MalformedJson`() {
+        val jsonWithLiteralTab = jsonForPolicy(
+            accountRef = "user1",
+            allowedSymbols = "!\t@",
+            forbidWhitespace = false
+        )
+        val result = validator.validate(jsonWithLiteralTab)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Literal tab inside JSON string must be rejected"
+        )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(CatalogRejection.MalformedJson, rejection)
+    }
+
+    @Test
+    fun `Finding 3 - valid control - escaped newline and tab inside JSON string remain valid`() {
+        // Escaped \n and \t in allowedSymbols
+        val jsonWithEscapes = jsonForPolicy(
+            accountRef = "user1",
+            allowedSymbols = "!\\n\\t@",
+            forbidWhitespace = false
+        )
+        val result = validator.validate(jsonWithEscapes)
+        assertTrue(
+            result is CatalogValidationResult.Accepted,
+            "Escaped \\n and \\t inside string must be accepted when forbidWhitespace=false"
+        )
+    }
+
+    @Test
+    fun `Finding 3 - valid control - whitespace between JSON tokens remains allowed`() {
+        val prettyJson = """
+        {
+        	"schemaVersion": 1,
+        	"entries": [
+        		{
+        			"enrolledOrigin": "https://example.com",
+        			"accountReference": "user_tokens",
+        			"compatibilityProfileVersion": 1,
+        			"encoderCounter": 0,
+        			"policy": {
+        				"minLen": 20,
+        				"maxLen": 32,
+        				"requireUpper": true,
+        				"requireLower": true,
+        				"requireDigit": true,
+        				"requireSymbol": false,
+        				"allowedSymbols": "!@#$",
+        				"forbidWhitespace": true,
+        				"forbiddenSubstrings": []
+        			},
+        			"aliasEvidence": {
+        				"status": "MANUAL"
+        			}
+        		}
+        	]
+        }
+        """.trimIndent()
+        val result = validator.validate(prettyJson)
+        assertTrue(
+            result is CatalogValidationResult.Accepted,
+            "Whitespace outside of JSON strings between tokens must be accepted"
+        )
+    }
 }
+
 
