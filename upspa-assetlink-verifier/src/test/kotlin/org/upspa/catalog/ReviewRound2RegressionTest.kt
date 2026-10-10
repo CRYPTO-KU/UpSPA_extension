@@ -380,8 +380,12 @@ class ReviewRound2RegressionTest {
         val scriptFile = java.io.File("scripts/mutation-check.sh").canonicalFile
         assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
 
+        val rootDir = scriptFile.parentFile.parentFile
+        val isGitRepo = java.io.File(rootDir, ".git").exists() || java.io.File(rootDir.parentFile, ".git").exists()
+        org.junit.jupiter.api.Assumptions.assumeTrue(isGitRepo, "Selftest requires a git repository environment")
+
         val process = ProcessBuilder(bashPath, scriptFile.path, "--selftest-compile-fault")
-            .directory(scriptFile.parentFile.parentFile)
+            .directory(rootDir)
             .redirectErrorStream(true)
             .start()
 
