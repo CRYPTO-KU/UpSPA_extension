@@ -13,14 +13,14 @@ All tests and security gates below were executed locally on Windows (PowerShell)
 | Step | Commit | What it contains |
 |---|---|---|
 | Unfixed baseline | `01a2414` | previous head of this PR (round 5 head) |
-| Tests only | `3ba3d19` | adds `ReviewRound6RegressionTest.kt`, production code unchanged |
-| Fixes | `eb7ab0a` | the production fixes in `AppSigningInfo.kt` and `PureAssetLinkVerifier.kt` |
+| Tests only | `8dac0a8` | adds `ReviewRound6RegressionTest.kt`, production code unchanged |
+| Fixes | `ebd1031` | the production fixes in `AppSigningInfo.kt` and `PureAssetLinkVerifier.kt` |
 
-To observe the failures before fix: check out `3ba3d19` and run:
+To observe the failures before fix: check out `8dac0a8` and run:
 ```powershell
 .\gradlew test --tests '*ReviewRound6RegressionTest*'
 ```
-To observe the fixed state: check out `eb7ab0a` (or current branch head) and run:
+To observe the fixed state: check out `ebd1031` (or current branch head) and run:
 ```powershell
 .\gradlew clean test
 ```
@@ -63,7 +63,7 @@ With a consistent lineage [A, B] and current signer B, a statement authorizing o
 .\gradlew test --tests '*ReviewRound6RegressionTest*'
 ```
 
-### Output before fix (commit `3ba3d19`) [excerpt]
+### Output before fix (commit `8dac0a8`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE1_scenario1_app_owns_immutable_history_snapshot FAILED
     org.opentest4j.AssertionFailedError at ReviewRound6RegressionTest.kt:84
@@ -92,7 +92,7 @@ ReviewRound6RegressionTest > ISSUE1_exposed_getters_return_defensive_copies_and_
 ReviewRound6RegressionTest > ISSUE1_control_unmutated_history_verifies_historical_key PASSED
 ```
 
-### Output after fix (commit `eb7ab0a`) [excerpt]
+### Output after fix (commit `ebd1031`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE1_scenario1_app_owns_immutable_history_snapshot PASSED
 ReviewRound6RegressionTest > ISSUE1_scenario1_history_mutation_pure_verifier PASSED
@@ -126,7 +126,7 @@ In `PureAssetLinkVerifier.kt`, `verifyRawJson` performed a post-parsing type che
 .\gradlew test --tests '*ReviewRound6RegressionTest*'
 ```
 
-### Output before fix (commit `3ba3d19`) [excerpt]
+### Output before fix (commit `8dac0a8`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_pure_verifier FAILED
     org.opentest4j.AssertionFailedError at ReviewRound6RegressionTest.kt:308
@@ -150,7 +150,7 @@ ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_
 ReviewRound6RegressionTest > ISSUE2_control_valid_all_string_relation_array_verifies PASSED
 ```
 
-### Output after fix (commit `eb7ab0a`) [excerpt]
+### Output after fix (commit `ebd1031`) [excerpt]
 ```
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_pure_verifier PASSED
 ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_upspa_verifier PASSED
