@@ -37,7 +37,7 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 | Field Path | Type | Required | Validation Invariant | Sensitivity | Lifetime / Persistence | Allowed in Logs |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `schemaVersion` | `Int` | Yes | Must equal `1` | S4 | Static / Catalog Lifecycle | Yes |
-| `entries` | `List<CatalogEntry>` | Yes | Array of entries; no duplicate `(enrolledOrigin, accountReference)` pairs | Composite | Account Lifecycle | No (Aggregate count only) |
+| `entries` | `List<CatalogEntry>` | Yes | Immutable snapshot; no duplicate `(enrolledOrigin, accountReference)` pairs | Composite | Account Lifecycle | No (Aggregate count only) |
 | `entries[].enrolledOrigin` | `String` (Origin) | Yes | Canonical WHATWG origin (`Origin.parse(s).toOriginString() == s`); exact scheme, lowercase host, port | S2 | Enrolled Account Lifetime | **No** (Redacted) |
 | `entries[].accountReference` | `String` | Yes | Non-empty, no edge whitespace, no `\|`, no control chars, no unpaired surrogates, max 256 UTF-16 chars | S1 | Enrolled Account Lifetime | **No** (Redacted) |
 | `entries[].compatibilityProfileVersion` | `Int` | Yes | Must equal `1` | S4 | Enrolled Account Lifetime | Yes |
@@ -51,7 +51,7 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 | `entries[].policy.requireSymbol` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.allowedSymbols` | `String` | Yes | No duplicate code points; non-empty (for both `requireSymbol=true` [`EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL`] and `requireSymbol=false` [`EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL`] for browser/Rust parity); no whitespace if `forbidWhitespace` | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.forbidWhitespace` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
-| `entries[].policy.forbiddenSubstrings` | `List<String>` | Yes | Every item non-empty and equals `trim().lowercase()` | S3 | Enrolled Account Lifetime | Yes |
+| `entries[].policy.forbiddenSubstrings` | `List<String>` | Yes | Immutable snapshot; every item non-empty and equals `trim().lowercase()` | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].aliasEvidence` | `Object` | Yes | Valid status and cross-field evidence reference/reason | S4 / S2 | Dynamic / Refreshable | No (Reference contains S2) |
 | `entries[].aliasEvidence.status` | `Enum` | Yes | One of `VERIFIED`, `UNVERIFIED`, `PENDING`, `MANUAL` | S4 | Dynamic / Refreshable | Yes (Status enum only) |
 | `entries[].aliasEvidence.reference` | `Object?` | Conditional | Required for `VERIFIED`; forbidden for `MANUAL`; optional for `UNVERIFIED`/`PENDING` | S4 / S2 | Dynamic / Refreshable | No |
