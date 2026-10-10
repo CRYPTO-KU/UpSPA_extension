@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.upspa.assetlinks.model.EnrolledOrigin
 
 class ReviewRound2RegressionTest {
 
@@ -293,6 +294,74 @@ class ReviewRound2RegressionTest {
             "Whitespace outside of JSON strings between tokens must be accepted"
         )
     }
+
+    // -------------------------------------------------------------
+    // Finding 4: CatalogDocument and value types mutable collection snapshot
+    // -------------------------------------------------------------
+
+    private val sampleEntry = CatalogEntry(
+        enrolledOrigin = EnrolledOrigin.parse("https://example.com"),
+        accountReference = AccountReference("alice"),
+        policy = NormalizedPasswordPolicy(
+            minLen = 20,
+            maxLen = 32,
+            requireUpper = true,
+            requireLower = true,
+            requireDigit = true,
+            requireSymbol = true,
+            allowedSymbols = "!@#$%^&*",
+            forbidWhitespace = true,
+            forbiddenSubstrings = emptyList()
+        ),
+        encoderCounter = EncoderCounter(0L),
+        compatibilityProfileVersion = CompatibilityProfileVersion(1),
+        aliasEvidence = AliasEvidence(AliasEvidenceStatus.MANUAL)
+    )
+
+    @Test
+    fun `Finding 4 - caller mutating entries list after CatalogDocument construction does not affect document or bypass uniqueness`() {
+        val mutableEntries = mutableListOf(sampleEntry)
+        val doc = CatalogDocument(CatalogSchemaVersion(1), mutableEntries)
+        assertEquals(1, doc.entries.size)
+
+        // Caller mutates the list passed to constructor: appends duplicate entry with different counter
+        val duplicateEntry = sampleEntry.copy(encoderCounter = EncoderCounter(1L))
+        mutableEntries.add(duplicateEntry)
+
+        // Document MUST NOT be mutated!
+        assertEquals(1, doc.entries.size, "CatalogDocument entries must remain unchanged after caller list mutation")
+        assertFalse(doc.entries.contains(duplicateEntry), "Document must not contain appended duplicate entry")
+    }
+
+    @Test
+    fun `Finding 4 - caller mutating forbiddenSubstrings after NormalizedPasswordPolicy construction does not affect policy`() {
+        val mutableSubs = mutableListOf("admin")
+        val policy = NormalizedPasswordPolicy(
+            minLen = 20,
+            maxLen = 32,
+            requireUpper = true,
+            requireLower = true,
+            requireDigit = true,
+            requireSymbol = true,
+            allowedSymbols = "!@#$",
+            forbidWhitespace = true,
+            forbiddenSubstrings = mutableSubs
+        )
+        assertEquals(1, policy.forbiddenSubstrings.size)
+
+        mutableSubs.add("INVALID_UPPERCASE")
+        assertEquals(1, policy.forbiddenSubstrings.size, "Policy forbiddenSubstrings must remain unchanged after caller list mutation")
+        assertFalse(policy.forbiddenSubstrings.contains("INVALID_UPPERCASE"))
+    }
+
+    @Test
+    fun `Finding 4 - valid control - duplicate entry at construction time is rejected`() {
+        val duplicateEntry = sampleEntry.copy(encoderCounter = EncoderCounter(1L))
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogDocument(CatalogSchemaVersion(1), listOf(sampleEntry, duplicateEntry))
+        }
+    }
 }
+
 
 
