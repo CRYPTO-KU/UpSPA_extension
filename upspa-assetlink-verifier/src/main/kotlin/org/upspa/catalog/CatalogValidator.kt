@@ -503,7 +503,37 @@ open class StrictCatalogValidator : CatalogValidator {
         return null
     }
 
+    private fun validateStrictJsonStringSyntax(utf8Bytes: ByteArray): CatalogRejection? {
+        var inString = false
+        var escaped = false
+        for (b in utf8Bytes) {
+            val unsigned = b.toInt() and 0xFF
+            if (!inString) {
+                if (unsigned == '"'.code) {
+                    inString = true
+                    escaped = false
+                }
+            } else {
+                if (escaped) {
+                    escaped = false
+                } else if (unsigned == '\\'.code) {
+                    escaped = true
+                } else if (unsigned == '"'.code) {
+                    inString = false
+                } else if (unsigned < 0x20) {
+                    // RFC 8259 Section 7: unescaped control characters (< 0x20) are forbidden inside JSON strings
+                    return CatalogRejection.MalformedJson
+                }
+            }
+        }
+        return null
+    }
+
     private fun parseJsonAst(utf8Bytes: ByteArray): AstResult {
+        val syntaxRejection = validateStrictJsonStringSyntax(utf8Bytes)
+        if (syntaxRejection != null) {
+            return AstResult.Rejected(syntaxRejection)
+        }
         val buffer = Buffer().write(utf8Bytes)
         val reader = JsonReader.of(buffer)
         reader.isLenient = false

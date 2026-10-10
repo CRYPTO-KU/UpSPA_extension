@@ -101,7 +101,7 @@ Validation executes strictly fail-closed and deterministic. The validator halts 
 ### Order of Checks:
 0. **Surrogate Well-Formedness:** Pre-scan raw string before UTF-8 conversion and inspect unescaped strings/keys to reject unpaired surrogates (`UnpairedSurrogate`). Adheres strictly to rejection hygiene: zero echoed content.
 1. **Input Size Limit:** Max 65,536 bytes (64 KiB) UTF-8 (`InputTooLarge`).
-2. **JSON Syntax & Nesting:** Strict JSON grammar, max depth 8 (`MalformedJson`, `NestingTooDeep`).
+2. **JSON Syntax & Nesting:** Strict JSON grammar, max depth 8 (`MalformedJson`, `NestingTooDeep`). Enforces strict RFC 8259 Section 7 string grammar: pre-scans UTF-8 bytes to reject any unescaped code points below `0x20` inside quoted strings (including literal newlines and tabs), while escaped controls (`\n`, `\t`) and inter-token whitespace remain valid.
 3. **No Trailing Data:** Zero unconsumed non-whitespace tokens after top-level object (`TrailingData`).
 4. **Key Uniqueness & Strictness:** No duplicate keys (`DuplicateJsonKey`), no unknown keys (`UnknownField`).
 5. **Document Structure:** `schemaVersion` present, integer, supported (`MissingField`, `WrongType`, `UnsupportedSchemaVersion`).
