@@ -6,7 +6,7 @@ To guarantee that the `IdentityAdversarialSuite` is genuinely capable of detecti
 ### Strict Temporary Isolation and Verification Guarantees
 All mutations are applied and evaluated exclusively inside a **throw-away temporary directory** created via `mktemp -d`.
 - **Zero Real Working Tree Modification:** The script captures `git status --porcelain -- .` before and after execution to assert that the real source repository was never modified or weakened.
-- **Trap Cleanup:** A shell trap automatically deletes the temporary directory upon exit, abort, or interruption (Ctrl+C).
+- **Trap Cleanup:** A shell trap automatically deletes the temporary directory upon exit, abort, or interruption (Ctrl+C). Note: `./gradlew --stop` was deliberately removed from cleanup to prevent terminating the system Gradle daemon and disrupting concurrent or caller builds.
 - **Hermetic Testing:** Each mutation restores the target file fresh from the repository, checks pattern occurrence count ($= 1$), applies a portable `sed` modification (`sed -i.bak ... && rm -f ...bak`), and confirms file divergence via `cmp -s`.
 - **Compilation Gate:** Before running tests, `./gradlew compileKotlin compileTestKotlin` is executed. A mutation MUST compile; any compilation or build setup failure terminates execution immediately with exit code 2 and is never counted as a killed mutation.
 - **Fresh XML Result Verification:** `build/test-results` is purged prior to every test execution. The suite then executes with `--rerun-tasks --tests '*IdentityAdversarialSuite*'`, and the resulting `TEST-org.upspa.assetlinks.adversarial.IdentityAdversarialSuite.xml` is inspected directly. The test count must be strictly greater than 0.
@@ -21,10 +21,11 @@ bash scripts/mutation-check.sh
 ```
 *(On Windows, execute via Git Bash: `"C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh`).*
 
-To run the self-test mode that verifies compile faults are rejected and not counted as killed:
+To run the self-test mode manually (verifying that compile faults are rejected and not counted as killed):
 ```bash
 bash scripts/mutation-check.sh --selftest-compile-fault
 ```
+The self-test verifies that deliberate compilation errors produce exit code 2 and are never treated as killed mutations.
 
 ---
 
