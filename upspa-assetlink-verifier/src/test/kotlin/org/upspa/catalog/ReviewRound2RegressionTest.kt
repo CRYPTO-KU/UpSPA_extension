@@ -2,6 +2,7 @@ package org.upspa.catalog
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -142,4 +143,86 @@ class ReviewRound2RegressionTest {
             "Policy with requireSymbol=true and valid allowedSymbols must be accepted"
         )
     }
+
+    // -------------------------------------------------------------
+    // Finding 2: Unpaired surrogates
+    // -------------------------------------------------------------
+
+    @Test
+    fun `Finding 2 - raw JSON containing literal lone surrogate is rejected`() {
+        val rawJson = jsonForPolicy(
+            accountRef = "synthetic\uD800",
+            allowedSymbols = "!@#$"
+        )
+        val result = validator.validate(rawJson)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Literal lone surrogate in raw JSON must be rejected"
+        )
+    }
+
+    @Test
+    fun `Finding 2 - JSON containing escaped lone surrogate in account reference is rejected`() {
+        // Escaped \uD800 in JSON string
+        val json = """
+        {
+          "schemaVersion": 1,
+          "entries": [
+            {
+              "enrolledOrigin": "https://example.com",
+              "accountReference": "synthetic\u005CuD800",
+              "compatibilityProfileVersion": 1,
+              "encoderCounter": 0,
+              "policy": {
+                "minLen": 20,
+                "maxLen": 32,
+                "requireUpper": true,
+                "requireLower": true,
+                "requireDigit": true,
+                "requireSymbol": false,
+                "allowedSymbols": "!@#$",
+                "forbidWhitespace": true,
+                "forbiddenSubstrings": []
+              },
+              "aliasEvidence": {
+                "status": "MANUAL"
+              }
+            }
+          ]
+        }
+        """.trimIndent()
+        val result = validator.validate(json)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Escaped lone surrogate \\uD800 in account reference must be rejected"
+        )
+    }
+
+    @Test
+    fun `Finding 2 - AccountReference constructor rejects unpaired surrogate`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            AccountReference("synthetic\uD800")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            AccountReference("\uDC00synthetic")
+        }
+    }
+
+    @Test
+    fun `Finding 2 - valid control - valid surrogate pair emoji in account reference is accepted`() {
+        // Emoji grinning face 😀 is \uD83D\uDE00 (valid surrogate pair)
+        val ref = AccountReference("user_😀_valid")
+        assertEquals("user_😀_valid", ref.value)
+
+        val json = jsonForPolicy(
+            accountRef = "user_😀_valid",
+            allowedSymbols = "!@#$"
+        )
+        val result = validator.validate(json)
+        assertTrue(
+            result is CatalogValidationResult.Accepted,
+            "Valid surrogate pair (emoji) must be accepted"
+        )
+    }
 }
+
