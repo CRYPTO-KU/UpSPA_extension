@@ -4,6 +4,8 @@
 //! - accepts the secret as `SecretBytes` (never a `String`) and erases it on every exit path;
 //! - accepts only fully normalized policies, because the Rust/TypeScript parity contract covers
 //!   normalized policies only and the two implementations normalize raw policies differently;
+//! - accepts only printable-ASCII account IDs, for the same reason: outside ASCII the two
+//!   implementations trim and normalize account IDs differently;
 //! - returns the password as `SecretBytes`, so the host receives a `ByteArray` it can overwrite
 //!   rather than an immutable, internable JVM `String`.
 //!
@@ -58,6 +60,15 @@ fn browser_normalizes_identically(policy: &PasswordPolicy) -> bool {
         && policy.forbidden_substrings.iter().all(|s| s.is_ascii())
 }
 
+/// True when the account ID is printable ASCII (U+0020..=U+007E). Outside that range the browser
+/// and Rust encoders can trim and normalize differently (their whitespace definitions differ, e.g.
+/// JavaScript treats U+FEFF as whitespace but not U+0085, and Rust does the reverse), so identical
+/// inputs could derive different passwords. Rejects rather than rewrites, so a credential's
+/// encoding never changes silently.
+fn account_id_is_portable(account_id: &str) -> bool {
+    account_id.bytes().all(|b| (0x20..=0x7e).contains(&b))
+}
+
 fn encoding_error(reason_code: &str) -> MobileError {
     MobileError::PasswordEncoding {
         reason_code: reason_code.to_owned(),
@@ -84,6 +95,9 @@ pub fn encode_password(
     }
     if !browser_normalizes_identically(&policy) {
         return Err(encoding_error("policy-not-portable"));
+    }
+    if !account_id_is_portable(&account_id) {
+        return Err(encoding_error("account-not-portable"));
     }
 
     // Borrowed view, no copy of the secret bytes.
