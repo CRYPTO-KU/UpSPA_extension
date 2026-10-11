@@ -186,3 +186,24 @@ python3 tools/security-gates/run_gates.py .             # mobile security gates
 ```
 
 CI runs all of the above in `.github/workflows/mobile-ffi.yml`.
+
+## Account ID portability
+
+`encode_password` accepts an account ID only if every character is printable ASCII (U+0020 to
+U+007E). Outside that range the browser encoder and the Rust encoder can trim and normalize
+differently; their whitespace definitions already disagree (JavaScript treats U+FEFF as whitespace
+but not U+0085, Rust does the reverse). Identical inputs could therefore derive different
+passwords. Such account IDs are rejected with
+`MobileError::PasswordEncoding { reason_code: "account-not-portable" }` and are never rewritten, so
+an accepted account ID always encodes exactly as it does in the browser. Widening the accepted
+range requires parity vectors generated from the canonical browser encoder.
+
+## Unimplemented commands
+
+`CommandBody::DeriveCredential` and `CommandBody::RotateBlob` are part of the contract but are not
+implemented yet. After the contract-version and deadline checks, `submit` rejects them with
+`MobileError::OperationUnsupported` (`derivation-unimplemented` or `rotation-unimplemented`). No
+operation is registered and no effect is emitted, and a master secret is erased on the rejection
+path, so a placeholder cannot send a request, change secure storage or report success.
+`EventBody::CredentialReady` and `EventBody::BlobRotated` are reserved for the real
+implementations and are currently never emitted.
