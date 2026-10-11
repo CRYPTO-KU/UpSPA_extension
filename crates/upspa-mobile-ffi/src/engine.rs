@@ -12,6 +12,9 @@
 //!   `MobileCommand::request_tag` is an idempotency key for the host only; it is discarded on entry.
 //!   Each ID embeds a per-instance tag, so an event for another engine instance is unknown here.
 //! - Nothing the host sends is reflected back: unknown IDs and failure reasons map to fixed codes.
+//! - Commands the engine does not implement yet (credential derivation, blob rotation) are
+//!   rejected with `OperationUnsupported` before an operation is registered or an effect is
+//!   emitted, so a placeholder can never change host state or report success.
 //! - Every secret buffer that crosses the boundary into the engine is moved into a
 //!   [`SecretGuard`] before any check runs, so it is erased on success and on every early return.
 
@@ -38,8 +41,6 @@ struct OperationRecord {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PendingKind {
     Probe { echo_tag: String },
-    Request,
-    BlobWrite { policy_revision: u32 },
 }
 
 /// Owns a secret for as long as the engine holds it and erases it on drop.
@@ -68,34 +69,24 @@ impl Drop for SecretGuard {
 }
 
 /// Command body after secrets have been moved into guards.
+///
+/// Derivation and rotation are not implemented yet and are rejected in `submit`, so only what that
+/// rejection needs is kept. The master secret is still guarded, so it is erased on the rejection
+/// path like on every other path.
 enum GuardedCommandBody {
-    Probe {
-        echo_tag: String,
-    },
-    DeriveCredential {
-        selector: AccountSelector,
-        master_secret: SecretGuard,
-    },
-    RotateBlob {
-        selector: AccountSelector,
-        evidence: IdentityEvidence,
-    },
+    Probe { echo_tag: String },
+    DeriveCredential { _master_secret: SecretGuard },
+    RotateBlob,
 }
 
 impl From<CommandBody> for GuardedCommandBody {
     fn from(body: CommandBody) -> Self {
         match body {
             CommandBody::Probe { echo_tag } => Self::Probe { echo_tag },
-            CommandBody::DeriveCredential {
-                selector,
-                master_secret,
-            } => Self::DeriveCredential {
-                selector,
-                master_secret: SecretGuard::new(master_secret),
+            CommandBody::DeriveCredential { master_secret, .. } => Self::DeriveCredential {
+                _master_secret: SecretGuard::new(master_secret),
             },
-            CommandBody::RotateBlob { selector, evidence } => {
-                Self::RotateBlob { selector, evidence }
-            }
+            CommandBody::RotateBlob { .. } => Self::RotateBlob,
         }
     }
 }
@@ -206,42 +197,14 @@ impl MobileEngine {
                 },
                 EffectBody::AckImmediately { echo_tag },
             ),
-            GuardedCommandBody::DeriveCredential {
-                selector,
-                master_secret,
-            } => {
-                if master_secret.expose().is_empty() {
-                    return Err(MobileError::IdentityRejected {
-                        reason_code: "empty-master-secret".to_owned(),
-                    });
-                }
-                // Only the length reaches the payload; no secret byte is copied into the effect.
-                let payload = derivation_request_payload(&selector, master_secret.expose());
-                drop(master_secret); // erased here; also erased on every early return above
-                (
-                    PendingKind::Request,
-                    EffectBody::SendRequest {
-                        endpoint: "oprf/evaluate".to_owned(),
-                        payload,
-                        attempt: 1,
-                    },
-                )
+            // Not implemented yet. Rejected before an operation is registered or an effect is
+            // emitted, so a placeholder can neither change host state nor report success. A guarded
+            // master secret is erased when `body` drops on this return.
+            GuardedCommandBody::DeriveCredential { .. } => {
+                return Err(self.unsupported(operation, "derivation-unimplemented"));
             }
-            GuardedCommandBody::RotateBlob { selector, evidence } => {
-                if !self.ports.identity.is_fresh(evidence, now) {
-                    return Err(MobileError::IdentityRejected {
-                        reason_code: "stale-identity-evidence".to_owned(),
-                    });
-                }
-                (
-                    PendingKind::BlobWrite {
-                        policy_revision: selector.policy_revision,
-                    },
-                    EffectBody::WriteSecureBlob {
-                        slot: format!("blob/{}/{}", selector.site_tag, selector.account_label),
-                        value: SecretBytes::new(Vec::new()),
-                    },
-                )
+            GuardedCommandBody::RotateBlob => {
+                return Err(self.unsupported(operation, "rotation-unimplemented"));
             }
         };
 
@@ -308,18 +271,6 @@ impl MobileEngine {
                     });
                 }
                 EventBody::ProbeCompleted { echo_tag: got }
-            }
-            // Derivation is still a placeholder: no credential is derived or validated, so a
-            // transport success must not become `CredentialReady`.
-            (PendingKind::Request, GuardedOutcome::RequestSucceeded { .. }) => {
-                EventBody::OperationFailed {
-                    reason_code: "derivation-unimplemented".to_owned(),
-                }
-            }
-            (PendingKind::BlobWrite { policy_revision }, GuardedOutcome::BlobWritten) => {
-                EventBody::BlobRotated {
-                    policy_revision: *policy_revision,
-                }
             }
             (_, GuardedOutcome::HostFailed { reason_code }) => EventBody::OperationFailed {
                 reason_code: host_failure_code(&reason_code),
@@ -430,6 +381,19 @@ impl MobileEngine {
         OperationId::new(format!("op-{:016x}-{n:06}", self.instance))
     }
 
+    /// Emit the rejection diagnostic for a command this engine does not implement yet and build
+    /// the typed error. The minted ID is used only for correlation and is never registered.
+    fn unsupported(&self, operation: OperationId, reason_code: &str) -> MobileError {
+        self.ports.diagnostics.record(
+            "command.rejected".to_owned(),
+            operation.value,
+            reason_code.to_owned(),
+        );
+        MobileError::OperationUnsupported {
+            reason_code: reason_code.to_owned(),
+        }
+    }
+
     /// Emit the expiry diagnostic and build the typed error. The caller has already settled the
     /// record and released the registry lock.
     fn expired(&self, operation: OperationId, deadline_millis: u64, now: u64) -> MobileError {
@@ -444,17 +408,6 @@ impl MobileEngine {
             now_millis: now,
         }
     }
-}
-
-/// Placeholder derivation payload. Length-only, so no secret bytes are copied into the effect.
-fn derivation_request_payload(selector: &AccountSelector, master_secret: &SecretBytes) -> Vec<u8> {
-    let mut payload = Vec::new();
-    payload.extend_from_slice(selector.site_tag.as_bytes());
-    payload.push(0x1f);
-    payload.extend_from_slice(selector.account_label.as_bytes());
-    payload.push(0x1f);
-    payload.extend_from_slice(&(master_secret.len() as u32).to_be_bytes());
-    payload
 }
 
 /// Distinct per engine instance: a random per-process salt plus a per-process counter, so two
@@ -549,11 +502,15 @@ mod tests {
     }
 
     #[test]
-    fn secret_erased_on_success() {
+    fn secret_erased_when_derivation_is_rejected_as_unsupported() {
         let e = engine(Arc::new(FakeClock::new(T0)));
         erasure_probe::take();
-        e.submit(derive(MOBILE_CONTRACT_VERSION, T0 + 5_000, b"s3cret"))
-            .expect("accepted");
+        assert_eq!(
+            e.submit(derive(MOBILE_CONTRACT_VERSION, T0 + 5_000, b"s3cret")),
+            Err(MobileError::OperationUnsupported {
+                reason_code: "derivation-unimplemented".to_owned()
+            })
+        );
         assert_eq!(erasure_probe::take(), vec![true]);
     }
 
@@ -580,12 +537,12 @@ mod tests {
     }
 
     #[test]
-    fn empty_secret_rejection_still_runs_the_guard() {
+    fn empty_secret_derivation_rejection_still_runs_the_guard() {
         let e = engine(Arc::new(FakeClock::new(T0)));
         erasure_probe::take();
         assert!(matches!(
             e.submit(derive(MOBILE_CONTRACT_VERSION, T0 + 5_000, b"")),
-            Err(MobileError::IdentityRejected { .. })
+            Err(MobileError::OperationUnsupported { .. })
         ));
         assert_eq!(erasure_probe::take(), vec![true]);
     }

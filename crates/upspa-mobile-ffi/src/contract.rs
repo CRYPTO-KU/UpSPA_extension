@@ -110,11 +110,17 @@ pub enum CommandBody {
     /// Deterministic no-secret probe used by the lifecycle demo and by host smoke tests.
     Probe { echo_tag: String },
     /// Begin a credential derivation for one account.
+    ///
+    /// Not implemented yet: `submit` rejects it with `MobileError::OperationUnsupported` before an
+    /// operation is registered or an effect is emitted.
     DeriveCredential {
         selector: AccountSelector,
         master_secret: SecretBytes,
     },
     /// Rotate the stored blob for one account.
+    ///
+    /// Not implemented yet: `submit` rejects it with `MobileError::OperationUnsupported` before an
+    /// operation is registered or an effect is emitted.
     RotateBlob {
         selector: AccountSelector,
         evidence: IdentityEvidence,
