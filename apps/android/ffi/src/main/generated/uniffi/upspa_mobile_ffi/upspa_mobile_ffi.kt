@@ -3737,6 +3737,9 @@ sealed class CommandBody {
     
     /**
      * Begin a credential derivation for one account.
+     *
+     * Not implemented yet: `submit` rejects it with `MobileError::OperationUnsupported` before an
+     * operation is registered or an effect is emitted.
      */
     data class DeriveCredential(
         val `selector`: AccountSelector, 
@@ -3746,6 +3749,9 @@ sealed class CommandBody {
     
     /**
      * Rotate the stored blob for one account.
+     *
+     * Not implemented yet: `submit` rejects it with `MobileError::OperationUnsupported` before an
+     * operation is registered or an effect is emitted.
      */
     data class RotateBlob(
         val `selector`: AccountSelector, 
@@ -4338,6 +4344,18 @@ sealed class MobileException: kotlin.Exception() {
             get() = "reasonCode=${ `reasonCode` }"
     }
     
+    /**
+     * The command is part of the contract but not implemented by this engine yet. No operation
+     * is registered and no effect is emitted. `reason_code` is a fixed engine code.
+     */
+    class OperationUnsupported(
+        
+        val `reasonCode`: kotlin.String
+        ) : MobileException() {
+        override val message
+            get() = "reasonCode=${ `reasonCode` }"
+    }
+    
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<MobileException> {
         override fun lift(error_buf: RustBuffer.ByValue): MobileException = FfiConverterTypeMobileError.lift(error_buf)
@@ -4389,6 +4407,9 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
                 FfiConverterString.read(buf),
                 )
             11 -> MobileException.PasswordEncoding(
+                FfiConverterString.read(buf),
+                )
+            12 -> MobileException.OperationUnsupported(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -4456,6 +4477,11 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
                 4UL
                 + FfiConverterString.allocationSize(value.`reasonCode`)
             )
+            is MobileException.OperationUnsupported -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reasonCode`)
+            )
         }
     }
 
@@ -4517,6 +4543,11 @@ public object FfiConverterTypeMobileError : FfiConverterRustBuffer<MobileExcepti
             }
             is MobileException.PasswordEncoding -> {
                 buf.putInt(11)
+                FfiConverterString.write(value.`reasonCode`, buf)
+                Unit
+            }
+            is MobileException.OperationUnsupported -> {
+                buf.putInt(12)
                 FfiConverterString.write(value.`reasonCode`, buf)
                 Unit
             }
