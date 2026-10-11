@@ -14,14 +14,16 @@ struct Harness {
     engine: Arc<MobileEngine>,
     clock: Arc<FakeClock>,
     diagnostics: Arc<RecordingDiagnostics>,
+    storage: Arc<FakeSecureStorage>,
 }
 
 fn harness() -> Harness {
     let clock = Arc::new(FakeClock::new(T0));
     let diagnostics = Arc::new(RecordingDiagnostics::default());
+    let storage = Arc::new(FakeSecureStorage::default());
     let engine = MobileEngine::new(
         Arc::new(FakeTransport::default()),
-        Arc::new(FakeSecureStorage::default()),
+        storage.clone(),
         clock.clone(),
         Arc::new(FakeIdentity::default()),
         diagnostics.clone(),
@@ -30,6 +32,7 @@ fn harness() -> Harness {
         engine,
         clock,
         diagnostics,
+        storage,
     }
 }
 
@@ -448,41 +451,115 @@ fn unknown_operation_id_is_not_echoed() {
     }
 }
 
-/// REVIEW 2 / P2: credential derivation is a placeholder, so a transport "success" (even an empty
-/// one) must not be reported as a ready credential.
+const EXISTING_SLOT: &str = "blob/example.org/user";
+const EXISTING_BLOB: &[u8] = b"synthetic-existing-blob";
+
+fn synthetic_selector() -> AccountSelector {
+    AccountSelector {
+        site_tag: "example.org".to_owned(),
+        account_label: "user".to_owned(),
+        policy_revision: 1,
+    }
+}
+
+fn unimplemented_command(body: CommandBody) -> MobileCommand {
+    MobileCommand {
+        contract_version: MOBILE_CONTRACT_VERSION,
+        request_tag: HOSTILE_TAG.to_owned(),
+        deadline: Deadline {
+            epoch_millis: T0 + 5_000,
+        },
+        body,
+    }
+}
+
+/// REVIEW 3 / P2 (derivation follows the same rule): derivation is a placeholder, so it must be
+/// rejected before any effect exists. Previously it emitted a `SendRequest` carrying the account
+/// label and the master secret's length, and only failed after the host had run it. Keeps the
+/// earlier check that an empty transport "success" can never become a credential success.
 #[test]
-fn placeholder_derivation_never_reports_credential_success() {
+fn derivation_is_rejected_before_any_effect() {
     let h = harness();
-    let effect = h
+    let result = h
         .engine
-        .submit(MobileCommand {
-            contract_version: MOBILE_CONTRACT_VERSION,
-            request_tag: "derive".to_owned(),
-            deadline: Deadline {
-                epoch_millis: T0 + 5_000,
-            },
-            body: CommandBody::DeriveCredential {
-                selector: AccountSelector {
-                    site_tag: "example.org".to_owned(),
-                    account_label: "user".to_owned(),
-                    policy_revision: 1,
-                },
-                master_secret: SecretBytes::new(b"synthetic-master-secret".to_vec()),
-            },
-        })
-        .expect("submit");
-    let event = h
-        .engine
-        .deliver(
-            effect.operation,
-            HostOutcome::RequestSucceeded { response: vec![] },
-        )
-        .expect("event");
-    assert!(!event.is_success());
+        .submit(unimplemented_command(CommandBody::DeriveCredential {
+            selector: synthetic_selector(),
+            master_secret: SecretBytes::new(b"synthetic-master-secret".to_vec()),
+        }));
+
+    // Run whatever effect came back the way a host would.
+    let mut sent_request = false;
+    let mut reported_success = false;
+    if let Ok(effect) = &result {
+        sent_request = matches!(effect.body, EffectBody::SendRequest { .. });
+        reported_success = h
+            .engine
+            .deliver(
+                effect.operation.clone(),
+                HostOutcome::RequestSucceeded { response: vec![] },
+            )
+            .is_ok_and(|event| event.is_success());
+    }
+
+    assert!(!sent_request, "placeholder derivation emitted a request effect");
+    assert!(!reported_success, "placeholder derivation reported success");
     assert_eq!(
-        event.body,
-        EventBody::OperationFailed {
+        result,
+        Err(MobileError::OperationUnsupported {
             reason_code: "derivation-unimplemented".to_owned()
-        }
+        })
     );
+    assert_eq!(h.engine.open_operation_count(), 0);
+    assert_eq!(h.diagnostics.codes(), vec!["command.rejected"]);
+    assert_tag_absent(&h, &[format!("{result:?}")]);
+}
+
+/// REVIEW 3 / P2: rotation is not implemented, so it must be rejected before any effect exists.
+/// Previously it emitted `WriteSecureBlob` with empty bytes, which cleared an existing blob, and a
+/// following `BlobWritten` produced a successful `BlobRotated`.
+#[test]
+fn rotation_is_rejected_and_never_touches_storage() {
+    let h = harness();
+    h.storage.seed(EXISTING_SLOT, EXISTING_BLOB);
+    // Control: the fake really holds the blob, so the final storage check can fail.
+    assert_eq!(h.storage.peek(EXISTING_SLOT).as_deref(), Some(EXISTING_BLOB));
+
+    let result = h
+        .engine
+        .submit(unimplemented_command(CommandBody::RotateBlob {
+            selector: synthetic_selector(),
+            evidence: IdentityEvidence {
+                subject_tag: "fake-subject".to_owned(),
+                authenticated_at_millis: T0,
+                attestation: vec![0x01, 0x02, 0x03],
+            },
+        }));
+
+    // Run whatever effect came back the way a host would.
+    let mut reported_success = false;
+    if let Ok(effect) = &result {
+        if let EffectBody::WriteSecureBlob { slot, value } = &effect.body {
+            h.storage.seed(slot, &value.bytes);
+        }
+        reported_success = h
+            .engine
+            .deliver(effect.operation.clone(), HostOutcome::BlobWritten)
+            .is_ok_and(|event| event.is_success());
+    }
+
+    assert_eq!(
+        h.storage.peek(EXISTING_SLOT).as_deref(),
+        Some(EXISTING_BLOB),
+        "existing blob was overwritten"
+    );
+    assert!(!reported_success, "placeholder rotation reported success");
+    assert_eq!(
+        result,
+        Err(MobileError::OperationUnsupported {
+            reason_code: "rotation-unimplemented".to_owned()
+        })
+    );
+    assert_eq!(h.engine.open_operation_count(), 0);
+    assert_eq!(h.diagnostics.codes(), vec!["command.rejected"]);
+    assert_tag_absent(&h, &[format!("{result:?}")]);
 }

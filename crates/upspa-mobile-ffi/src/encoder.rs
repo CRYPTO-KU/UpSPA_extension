@@ -203,4 +203,70 @@ mod tests {
         );
         assert_eq!(erasure_probe::take(), vec![true]);
     }
+
+    fn assert_account_rejected(account_id: &str) {
+        erasure_probe::take();
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                default_policy(),
+                account_id.to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "account-not-portable".to_owned()
+            }),
+            "account ID {account_id:?} was accepted"
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    /// REVIEW 3 / P1: with a leading U+FEFF the browser and Rust encoders derive different
+    /// passwords from identical synthetic inputs, so the facade must reject the account ID.
+    #[test]
+    fn rejects_account_id_with_leading_bom_and_erases_secret() {
+        assert_account_rejected("\u{FEFF}alice@example.com");
+    }
+
+    /// REVIEW 3 / P1: the same for a leading U+0085.
+    #[test]
+    fn rejects_account_id_with_leading_nel_and_erases_secret() {
+        assert_account_rejected("\u{0085}alice@example.com");
+    }
+
+    /// REVIEW 3 / P1, whole class: every character outside printable ASCII is rejected, not only
+    /// the two reported code points. Full sweep of all scalar values in the leading position (the
+    /// reported failure mode), plus inner and trailing positions for characters whose whitespace or
+    /// normalization status differs between the two encoders.
+    #[test]
+    fn rejects_every_account_character_outside_printable_ascii() {
+        let reject = |account_id: String| {
+            let result = encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                default_policy(),
+                account_id.clone(),
+                0,
+            );
+            assert_eq!(
+                result,
+                Err(MobileError::PasswordEncoding {
+                    reason_code: "account-not-portable".to_owned()
+                }),
+                "account ID {account_id:?} was accepted"
+            );
+        };
+        for c in (0u32..=0x10_FFFF).filter_map(char::from_u32) {
+            if !(' '..='~').contains(&c) {
+                reject(format!("{c}alice@example.com"));
+            }
+        }
+        for c in [
+            '\u{0}', '\t', '\n', '\r', '\u{7F}', '\u{85}', '\u{A0}', '\u{180E}', '\u{200B}',
+            '\u{2028}', '\u{202F}', '\u{3000}', '\u{FEFF}', '\u{E9}',
+        ] {
+            reject(format!("alice{c}@example.com"));
+            reject(format!("alice@example.com{c}"));
+        }
+        erasure_probe::take();
+    }
 }

@@ -53,6 +53,21 @@ pub struct FakeSecureStorage {
     entries: Mutex<HashMap<String, Vec<u8>>>,
 }
 
+impl FakeSecureStorage {
+    /// Put bytes into a slot directly, as a pre-existing keystore entry. Test setup only.
+    pub fn seed(&self, slot: &str, bytes: &[u8]) {
+        self.entries
+            .lock()
+            .expect("poisoned")
+            .insert(slot.to_owned(), bytes.to_vec());
+    }
+
+    /// The raw bytes currently held in a slot, read without going through the port.
+    pub fn peek(&self, slot: &str) -> Option<Vec<u8>> {
+        self.entries.lock().expect("poisoned").get(slot).cloned()
+    }
+}
+
 impl SecureStoragePort for FakeSecureStorage {
     fn load(&self, slot: String) -> Result<Option<SecretBytes>, MobileError> {
         Ok(self
