@@ -23,7 +23,7 @@ pub enum PasswordEncoderError {
 }
 
 /// Rules that a generated password must follow.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PasswordPolicy {
     pub min_len: u32,
@@ -47,6 +47,14 @@ const MAX_ATTEMPTS: u32 = 128;
 fn unique_chars(s: &str) -> String {
     let mut seen = std::collections::BTreeSet::new();
     s.chars().filter(|c| seen.insert(*c)).collect()
+}
+
+/// True when `policy` is already in the fully normalized form the encoder would produce itself.
+///
+/// The Rust/TypeScript parity contract only covers normalized policies, so native hosts must
+/// reject a raw policy rather than let the two implementations normalize it differently.
+pub fn is_normalized_policy(policy: &PasswordPolicy) -> bool {
+    normalize_policy(policy) == *policy
 }
 
 /// Normalizes policy bounds and cleans up symbol sets and forbidden substrings.

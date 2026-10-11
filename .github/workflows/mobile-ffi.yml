@@ -1,0 +1,56 @@
+name: Mobile FFI
+
+# Rust contract tests, binding/API drift check, and Kotlin JVM tests (lifecycle + encoder
+# conformance) for the UniFFI boundary.
+on:
+  push:
+    paths:
+      - "crates/upspa-mobile-ffi/**"
+      - "crates/upspa-core/**"
+      - "apps/android/**"
+      - "test-vectors/**"
+      - "scripts/*mobile*"
+      - "scripts/demo_corrupted_vector.sh"
+      - "Cargo.lock"
+      - ".github/workflows/mobile-ffi.yml"
+  pull_request:
+    paths:
+      - "crates/upspa-mobile-ffi/**"
+      - "crates/upspa-core/**"
+      - "apps/android/**"
+      - "test-vectors/**"
+      - "scripts/*mobile*"
+      - "scripts/demo_corrupted_vector.sh"
+      - "Cargo.lock"
+      - ".github/workflows/mobile-ffi.yml"
+
+jobs:
+  rust-and-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Rust tests (core vectors + FFI contract)
+        run: cargo test --locked -p upspa-core -p upspa-mobile-ffi
+      - name: Binding drift and exported-API check
+        run: python3 scripts/check_mobile_bindings.py
+      - name: Drift check self-test (seeded drift must fail)
+        run: python3 scripts/check_mobile_bindings.py --self-test
+
+  android-jvm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Kotlin JVM tests (builds the host cdylib first)
+        working-directory: apps/android
+        run: ./gradlew :ffi:testDebugUnitTest :ffi:assembleDebug :app:assembleDebug --no-daemon
+      - name: Corrupted-vector demo must fail the conformance run
+        run: scripts/demo_corrupted_vector.sh
