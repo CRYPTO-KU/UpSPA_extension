@@ -267,6 +267,11 @@ pub enum MobileError {
     /// Password encoding refused or failed. `reason_code` is a fixed engine code, never input data.
     #[error("password encoding failed: {reason_code}")]
     PasswordEncoding { reason_code: String },
+
+    /// The command is part of the contract but not implemented by this engine yet. No operation
+    /// is registered and no effect is emitted. `reason_code` is a fixed engine code.
+    #[error("operation not supported: {reason_code}")]
+    OperationUnsupported { reason_code: String },
 }
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for MobileError {
