@@ -148,10 +148,7 @@ fn unknown_operation_cannot_be_reported_successful() {
         },
     );
 
-    assert!(matches!(
-        result,
-        Err(MobileError::UnknownOperation { .. })
-    ));
+    assert!(matches!(result, Err(MobileError::UnknownOperation { .. })));
     assert!(matches!(
         h.engine.cancel(OperationId::new("op-999999")),
         Err(MobileError::UnknownOperation { .. })
@@ -501,7 +498,10 @@ fn derivation_is_rejected_before_any_effect() {
             .is_ok_and(|event| event.is_success());
     }
 
-    assert!(!sent_request, "placeholder derivation emitted a request effect");
+    assert!(
+        !sent_request,
+        "placeholder derivation emitted a request effect"
+    );
     assert!(!reported_success, "placeholder derivation reported success");
     assert_eq!(
         result,
@@ -522,7 +522,10 @@ fn rotation_is_rejected_and_never_touches_storage() {
     let h = harness();
     h.storage.seed(EXISTING_SLOT, EXISTING_BLOB);
     // Control: the fake really holds the blob, so the final storage check can fail.
-    assert_eq!(h.storage.peek(EXISTING_SLOT).as_deref(), Some(EXISTING_BLOB));
+    assert_eq!(
+        h.storage.peek(EXISTING_SLOT).as_deref(),
+        Some(EXISTING_BLOB)
+    );
 
     let result = h
         .engine
