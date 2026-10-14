@@ -577,6 +577,51 @@ fn quorum_is_unavailable(
     best_matching_count + remaining < threshold
 }
 
+fn reply_set_is_pending(
+    provider_count: usize,
+    threshold: usize,
+    replies: &BTreeMap<StorageProviderId, ProviderReply>,
+) -> bool {
+    let digest_counts = accepted_digest_counts(replies);
+
+    let reached_quorum = digest_counts.values().any(|count| *count >= threshold);
+
+    let quorum_unavailable =
+        quorum_is_unavailable(provider_count, threshold, replies, &digest_counts);
+
+    !reached_quorum && !quorum_unavailable
+}
+
+fn completed_snapshot_is_reachable(snapshot: &OperationSnapshot, committed_digest: &str) -> bool {
+    snapshot.replies.iter().any(|(provider, reply)| {
+        if !reply.accepted || reply.state_digest != committed_digest {
+            return false;
+        }
+
+        let mut prior_replies = snapshot.replies.clone();
+        prior_replies.remove(provider);
+
+        reply_set_is_pending(
+            snapshot.storage_providers.len(),
+            snapshot.threshold,
+            &prior_replies,
+        )
+    })
+}
+
+fn failed_snapshot_is_reachable(snapshot: &OperationSnapshot) -> bool {
+    snapshot.replies.keys().any(|provider| {
+        let mut prior_replies = snapshot.replies.clone();
+        prior_replies.remove(provider);
+
+        reply_set_is_pending(
+            snapshot.storage_providers.len(),
+            snapshot.threshold,
+            &prior_replies,
+        )
+    })
+}
+
 fn validate_snapshot(snapshot: &OperationSnapshot) -> Result<(), RecoveryEngineError> {
     let configured_providers: BTreeSet<_> = snapshot.storage_providers.iter().cloned().collect();
     let request_providers: BTreeSet<_> = snapshot.pending_requests.keys().cloned().collect();
@@ -639,7 +684,10 @@ fn validate_snapshot(snapshot: &OperationSnapshot) -> Result<(), RecoveryEngineE
         } => {
             let actual_count = digest_counts.get(committed_digest).copied().unwrap_or(0);
 
-            if actual_count != snapshot.threshold || *matching_replies != snapshot.threshold {
+            if actual_count != snapshot.threshold
+                || *matching_replies != snapshot.threshold
+                || !completed_snapshot_is_reachable(snapshot, committed_digest)
+            {
                 return Err(RecoveryEngineError::InvalidSnapshotStatus);
             }
         }
@@ -647,7 +695,7 @@ fn validate_snapshot(snapshot: &OperationSnapshot) -> Result<(), RecoveryEngineE
         OperationStatus::Failed {
             reason: OperationFailure::QuorumUnavailable,
         } => {
-            if reached_quorum || !quorum_unavailable {
+            if reached_quorum || !quorum_unavailable || !failed_snapshot_is_reachable(snapshot) {
                 return Err(RecoveryEngineError::InvalidSnapshotStatus);
             }
         }

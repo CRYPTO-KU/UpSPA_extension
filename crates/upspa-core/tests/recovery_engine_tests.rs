@@ -918,3 +918,235 @@ fn restore_after_deadline_times_out_without_reemitting_requests() {
         .iter()
         .all(|effect| !matches!(effect, Effect::SendStorageProviderRequest { .. })));
 }
+
+#[test]
+fn restore_rejects_completed_snapshot_with_two_disjoint_quorums() {
+    let config = OperationConfig {
+        operation_id: op_id(),
+        storage_providers: vec![
+            provider("sp-1"),
+            provider("sp-2"),
+            provider("sp-3"),
+            provider("sp-4"),
+        ],
+        threshold: 2,
+        deadline_ms: Some(1_000),
+    };
+
+    let (engine, effects) =
+        OperationEngine::start(config).expect("four-provider engine should start");
+
+    let mut snapshot = engine.snapshot();
+
+    for (provider_id, digest) in [
+        ("sp-1", "digest-a"),
+        ("sp-2", "digest-a"),
+        ("sp-3", "digest-b"),
+        ("sp-4", "digest-b"),
+    ] {
+        snapshot.replies.insert(
+            provider(provider_id),
+            upspa_core::recovery_engine::ProviderReply {
+                request_id: request_for(&effects, provider_id),
+                accepted: true,
+                state_digest: digest.to_string(),
+            },
+        );
+    }
+
+    snapshot.status = OperationStatus::Completed {
+        committed_digest: "digest-a".to_string(),
+        matching_replies: 2,
+    };
+
+    let err = OperationEngine::restore(snapshot, 500)
+        .expect_err("two independently formed quorums are unreachable in the live engine");
+
+    assert_eq!(err, RecoveryEngineError::InvalidSnapshotStatus);
+}
+
+#[test]
+fn restore_rejects_failed_snapshot_with_post_terminal_rejection() {
+    let (mut engine, effects) = start_default();
+
+    engine
+        .advance(
+            rejected_reply("sp-1", request_for(&effects, "sp-1"), "digest-a"),
+            500,
+        )
+        .expect("first rejection should remain pending");
+
+    let failed = engine
+        .advance(
+            rejected_reply("sp-2", request_for(&effects, "sp-2"), "digest-a"),
+            500,
+        )
+        .expect("second rejection should make quorum unavailable");
+
+    assert_eq!(
+        failed.status,
+        OperationStatus::Failed {
+            reason: OperationFailure::QuorumUnavailable,
+        }
+    );
+
+    let mut snapshot = engine.snapshot();
+
+    snapshot.replies.insert(
+        provider("sp-3"),
+        upspa_core::recovery_engine::ProviderReply {
+            request_id: request_for(&effects, "sp-3"),
+            accepted: false,
+            state_digest: "digest-a".to_string(),
+        },
+    );
+
+    let err = OperationEngine::restore(snapshot, 500)
+        .expect_err("reply recorded after terminal failure must be rejected");
+
+    assert_eq!(err, RecoveryEngineError::InvalidSnapshotStatus);
+}
+
+#[test]
+fn restore_rejects_failed_snapshot_with_late_reply_in_four_provider_operation() {
+    let config = OperationConfig {
+        operation_id: op_id(),
+        storage_providers: vec![
+            provider("sp-1"),
+            provider("sp-2"),
+            provider("sp-3"),
+            provider("sp-4"),
+        ],
+        threshold: 2,
+        deadline_ms: Some(1_000),
+    };
+
+    let (mut engine, effects) =
+        OperationEngine::start(config).expect("four-provider engine should start");
+
+    engine
+        .advance(
+            rejected_reply("sp-1", request_for(&effects, "sp-1"), "digest-a"),
+            500,
+        )
+        .expect("first rejection should remain pending");
+
+    engine
+        .advance(
+            rejected_reply("sp-2", request_for(&effects, "sp-2"), "digest-a"),
+            500,
+        )
+        .expect("second rejection should remain pending");
+
+    let failed = engine
+        .advance(
+            rejected_reply("sp-3", request_for(&effects, "sp-3"), "digest-a"),
+            500,
+        )
+        .expect("third rejection should make quorum unavailable");
+
+    assert_eq!(
+        failed.status,
+        OperationStatus::Failed {
+            reason: OperationFailure::QuorumUnavailable,
+        }
+    );
+
+    let mut snapshot = engine.snapshot();
+
+    snapshot.replies.insert(
+        provider("sp-4"),
+        upspa_core::recovery_engine::ProviderReply {
+            request_id: request_for(&effects, "sp-4"),
+            accepted: false,
+            state_digest: "digest-a".to_string(),
+        },
+    );
+
+    let err = OperationEngine::restore(snapshot, 500)
+        .expect_err("reply recorded after four-provider terminal failure must be rejected");
+
+    assert_eq!(err, RecoveryEngineError::InvalidSnapshotStatus);
+}
+
+#[test]
+fn restore_accepts_reachable_completed_snapshot() {
+    let (mut engine, effects) = start_default();
+
+    engine
+        .advance(
+            reply("sp-1", request_for(&effects, "sp-1"), "digest-a"),
+            500,
+        )
+        .expect("first matching reply should remain pending");
+
+    let completed = engine
+        .advance(
+            reply("sp-2", request_for(&effects, "sp-2"), "digest-a"),
+            500,
+        )
+        .expect("second matching reply should complete");
+
+    assert_eq!(
+        completed.status,
+        OperationStatus::Completed {
+            committed_digest: "digest-a".to_string(),
+            matching_replies: 2,
+        }
+    );
+
+    let snapshot = engine.snapshot();
+
+    let (restored, restored_effects) =
+        OperationEngine::restore(snapshot, 500).expect("live completed snapshot should restore");
+
+    assert_eq!(
+        restored.status(),
+        &OperationStatus::Completed {
+            committed_digest: "digest-a".to_string(),
+            matching_replies: 2,
+        }
+    );
+
+    assert!(restored_effects.is_empty());
+}
+
+#[test]
+fn restore_accepts_reachable_failed_snapshot() {
+    let (mut engine, effects) = start_default();
+
+    engine
+        .advance(
+            rejected_reply("sp-1", request_for(&effects, "sp-1"), "digest-a"),
+            500,
+        )
+        .expect("first rejection should remain pending");
+
+    let failed = engine
+        .advance(
+            rejected_reply("sp-2", request_for(&effects, "sp-2"), "digest-a"),
+            500,
+        )
+        .expect("second rejection should make quorum unavailable");
+
+    assert_eq!(
+        failed.status,
+        OperationStatus::Failed {
+            reason: OperationFailure::QuorumUnavailable,
+        }
+    );
+
+    let snapshot = engine.snapshot();
+
+    let (restored, restored_effects) =
+        OperationEngine::restore(snapshot, 500).expect("live failed snapshot should restore");
+
+    assert_eq!(
+        restored.status(),
+        &OperationStatus::Failed {
+            reason: OperationFailure::QuorumUnavailable,
+        }
+    );
+
+    assert!(restored_effects.is_empty());
+}
