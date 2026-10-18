@@ -123,7 +123,7 @@ class ReviewRound7RegressionTest {
                 "relation": ["delegate_permission/common.handle_all_urls"],
                 "target": {
                   "namespace": "android_app",
-                  "package_name": "com.example\n.app",
+                  "package_name": "com.example.${'\n'}app",
                   "sha256_cert_fingerprints": ["$HEX_B"]
                 }
               }
@@ -140,7 +140,7 @@ class ReviewRound7RegressionTest {
               {
                 "relation": ["delegate_permission/common.handle_all_urls"],
                 "target": {
-                  "namespace": "android_\napp",
+                  "namespace": "android_${'\n'}app",
                   "package_name": "$PACKAGE_NAME",
                   "sha256_cert_fingerprints": ["$HEX_B"]
                 }
@@ -160,7 +160,7 @@ class ReviewRound7RegressionTest {
                 "target": {
                   "namespace": "android_app",
                   "package_name": "$PACKAGE_NAME",
-                  "sha256_cert_fingerprints": ["${HEX_B.substring(0, 16)}\n${HEX_B.substring(16)}"]
+                  "sha256_cert_fingerprints": ["${HEX_B.substring(0, 16)}${'\n'}${HEX_B.substring(16)}"]
                 }
               }
             ]
@@ -174,7 +174,7 @@ class ReviewRound7RegressionTest {
         val json = """
             [
               {
-                "extra\nkey": "value",
+                "extra${'\n'}key": "value",
                 "relation": ["delegate_permission/common.handle_all_urls"],
                 "target": {
                   "namespace": "android_app",
@@ -196,7 +196,7 @@ class ReviewRound7RegressionTest {
               {
                 "relation": [
                   "delegate_permission/common.handle_all_urls",
-                  "second\nwith_control"
+                  "second${'\n'}with_control"
                 ],
                 "target": {
                   "namespace": "android_app",
