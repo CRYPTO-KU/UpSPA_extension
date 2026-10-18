@@ -95,6 +95,12 @@ class PureAssetLinkVerifier internal constructor(
         rawJson: String,
         requiredRelation: String = AssetLinkVerifier.DEFAULT_RELATION
     ): VerificationResult {
+        if (hasUnescapedControlCharInString(rawJson)) {
+            return VerificationResult.Rejected.InvalidJsonFormat(
+                "JSON contains unescaped control character (U+0000 to U+001F) in string"
+            )
+        }
+
         val statements = try {
             statementsAdapter.fromJson(rawJson)
                 ?: return VerificationResult.Rejected.InvalidJsonFormat("assetlinks.json evaluated to null")
@@ -276,5 +282,30 @@ class PureAssetLinkVerifier internal constructor(
             statementFingerprints = authorizedFingerprints.distinct(),
             allClaimedFingerprints = normalizedClaimedFingerprints
         )
+    }
+
+    private fun hasUnescapedControlCharInString(rawJson: String): Boolean {
+        var inString = false
+        var escaped = false
+        for (i in 0 until rawJson.length) {
+            val c = rawJson[i]
+            if (inString) {
+                if (escaped) {
+                    escaped = false
+                    if (c < ' ') {
+                        return true
+                    }
+                } else if (c == '\\') {
+                    escaped = true
+                } else if (c == '"') {
+                    inString = false
+                } else if (c < ' ') {
+                    return true
+                }
+            } else if (c == '"') {
+                inString = true
+            }
+        }
+        return false
     }
 }
