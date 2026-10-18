@@ -1,7 +1,7 @@
-use rand_chacha::ChaCha20Rng;
-use rand_core::SeedableRng;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use rand_chacha::ChaCha20Rng;
+use rand_core::SeedableRng;
 use upspa_core::hash::{hash_to_point, oprf_finalize};
 use upspa_core::toprf::toprf_gen;
 use upspa_core::types::UpspaError;
