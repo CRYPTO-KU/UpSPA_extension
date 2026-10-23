@@ -82,3 +82,17 @@ fn reject_vector_does_not_match_mutated_expected() {
         }
     }
 }
+
+#[test]
+fn every_corpus_policy_is_already_normalized() {
+    let not_normalized: Vec<_> = load_corpus()
+        .into_iter()
+        .filter(|v| !upspa_core::password_encoder::is_normalized_policy(&v.policy))
+        .map(|v| v.id)
+        .collect();
+    assert!(
+        not_normalized.is_empty(),
+        "non-normalized policy in vector IDs: {}",
+        not_normalized.join(", ")
+    );
+}

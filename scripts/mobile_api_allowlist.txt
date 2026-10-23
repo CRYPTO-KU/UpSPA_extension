@@ -1,0 +1,25 @@
+# Exported callables of the UpSPA mobile UniFFI contract (generated Kotlin view).
+# Checked by: python3 scripts/check_mobile_bindings.py
+#
+# Format: <Interface>.<method> for exported objects and host ports,
+#         <top>.<function>    for exported free functions.
+# Adding a line here is a contract change: say why in the PR description.
+# Internal helpers (nextOperationId, checkVersion, openOperationCount) must never appear.
+
+<top>.bootstrapInfo
+<top>.encodePassword
+<top>.mobileContractVersion
+
+MobileEngineInterface.cancel
+MobileEngineInterface.contractVersion
+MobileEngineInterface.deliver
+MobileEngineInterface.submit
+
+ClockPort.nowEpochMillis
+IdentityEvidencePort.currentEvidence
+IdentityEvidencePort.isFresh
+RedactedDiagnosticsPort.record
+SecureStoragePort.load
+SecureStoragePort.remove
+SecureStoragePort.store
+TransportPort.send
