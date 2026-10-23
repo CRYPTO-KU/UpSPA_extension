@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "enrolledOrigin": "https://example.com",
+      "accountReference": "alice@example.com",
+      "compatibilityProfileVersion": 1,
+      "encoderCounter": 0,
+      "policy": {
+        "minLen": 20, "maxLen": 32,
+        "requireUpper": true, "requireLower": true, "requireDigit": true, "requireSymbol": true,
+        "allowedSymbols": "!@#$%^&*", "forbidWhitespace": true, "forbiddenSubstrings": []
+      },
+      "aliasEvidence": {
+        "status": "UNVERIFIED"
+      }
+    }
+  ]
+}
