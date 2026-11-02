@@ -1,0 +1,546 @@
+package org.upspa.catalog
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
+import java.util.concurrent.TimeUnit
+
+/**
+ * Review round 3 regression tests targeting:
+ *
+ * Finding 1 (CatalogValidator.kt):
+ * The validator clears its escape flag after a backslash without checking whether the next
+ * character is a literal control character (U+0000..U+001F).
+ *
+ * Finding 2 (upspa-assetlink-verifier/scripts/mutation-check.sh):
+ * The script is committed with mode 100644. Running `bash scripts/mutation-check.sh --selftest-compile-fault`
+ * executes the non-executable file directly as its child, prints "Permission denied", gets status 126,
+ * then prints "Self-test PASSED" and exits 0. The self-test must work when the script mode is 100644 and
+ * must require baseline execution, compilation fault reachability, and child exit code 2.
+ * These tests run the real script in a hermetic temp-dir fixture (git repo, stub gradlew); no real
+ * Gradle is started.
+ */
+class ReviewRound3RegressionTest {
+
+    private val validator = StrictCatalogValidator()
+
+    // -------------------------------------------------------------
+    // Finding 1 Helpers & Assertions
+    // -------------------------------------------------------------
+
+    private fun jsonForPolicy(
+        accountRef: String = "synthetic_user",
+        minLen: Int = 16,
+        maxLen: Int = 16,
+        requireUpper: Boolean = true,
+        requireLower: Boolean = true,
+        requireDigit: Boolean = true,
+        requireSymbol: Boolean = false,
+        allowedSymbols: String = "!@#$",
+        forbidWhitespace: Boolean = true,
+        forbiddenSubstrings: List<String> = emptyList()
+    ): String {
+        val forbiddenJson = forbiddenSubstrings.joinToString(",") { "\"$it\"" }
+        return "{\n" +
+            "  \"schemaVersion\": 1,\n" +
+            "  \"entries\": [\n" +
+            "    {\n" +
+            "      \"enrolledOrigin\": \"https://example.com\",\n" +
+            "      \"accountReference\": \"$accountRef\",\n" +
+            "      \"compatibilityProfileVersion\": 1,\n" +
+            "      \"encoderCounter\": 0,\n" +
+            "      \"policy\": {\n" +
+            "        \"minLen\": $minLen,\n" +
+            "        \"maxLen\": $maxLen,\n" +
+            "        \"requireUpper\": $requireUpper,\n" +
+            "        \"requireLower\": $requireLower,\n" +
+            "        \"requireDigit\": $requireDigit,\n" +
+            "        \"requireSymbol\": $requireSymbol,\n" +
+            "        \"allowedSymbols\": \"$allowedSymbols\",\n" +
+            "        \"forbidWhitespace\": $forbidWhitespace,\n" +
+            "        \"forbiddenSubstrings\": [$forbiddenJson]\n" +
+            "      },\n" +
+            "      \"aliasEvidence\": {\n" +
+            "        \"status\": \"MANUAL\"\n" +
+            "      }\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}"
+    }
+
+    private fun assertContainsCodePointsAt(rawJson: String, expectedCodePoints: List<Int>) {
+        val needle = expectedCodePoints.map { it.toChar() }.joinToString("")
+        val idx = rawJson.indexOf(needle)
+        assertTrue(idx >= 0, "Input JSON must contain expected code point sequence: $expectedCodePoints")
+        val actualCodePoints = (0 until expectedCodePoints.size).map { rawJson.codePointAt(idx + it) }
+        assertEquals(expectedCodePoints, actualCodePoints, "Input code points must exactly match before validation")
+    }
+
+    // -------------------------------------------------------------
+    // Finding 1: Backslash followed by literal control character
+    // -------------------------------------------------------------
+
+    @Test
+    fun `Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson`() {
+        val reproSymbols = "" + 33.toChar() + 92.toChar() + 10.toChar() + 64.toChar()
+        val json = jsonForPolicy(
+            allowedSymbols = reproSymbols,
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 10, 64))
+
+        val result = validator.validate(json)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Expected Rejected for backslash followed by literal LF, but got $result"
+        )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(
+            CatalogRejection.MalformedJson,
+            rejection,
+            "Rejection must be MalformedJson per RFC 8259 Section 7"
+        )
+    }
+
+    @ParameterizedTest(name = "code point {0}")
+    @ValueSource(ints = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+    ])
+    fun `Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson`(cp: Int) {
+        val symbols = "!" + '\\' + cp.toChar() + "@"
+        val json = jsonForPolicy(
+            allowedSymbols = symbols,
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, cp, 64))
+
+        val result = validator.validate(json)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Expected Rejected for backslash followed by literal control character U+%04X, but got %s".format(cp, result)
+        )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(
+            CatalogRejection.MalformedJson,
+            rejection,
+            "Rejection must be MalformedJson for literal control char U+%04X after backslash".format(cp)
+        )
+    }
+
+    @Test
+    fun `Finding 1 - backslash followed by literal control character inside object key is rejected as MalformedJson`() {
+        val keyWithLiteralControl = "key_" + '\\' + '\n' + "_field"
+        val json = "{\n" +
+            "  \"schemaVersion\": 1,\n" +
+            "  \"$keyWithLiteralControl\": \"val\",\n" +
+            "  \"entries\": []\n" +
+            "}"
+        assertContainsCodePointsAt(json, listOf(92, 10))
+
+        val result = validator.validate(json)
+        assertTrue(
+            result is CatalogValidationResult.Rejected,
+            "Expected Rejected for backslash followed by literal control character inside object key, but got $result"
+        )
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(
+            CatalogRejection.MalformedJson,
+            rejection,
+            "Rejection for literal control char after backslash inside key must be MalformedJson, not UnknownField"
+        )
+    }
+
+    // -------------------------------------------------------------
+    // Finding 1 Valid Controls
+    // -------------------------------------------------------------
+
+    @Test
+    fun `Finding 1 - valid control - JSON-escaped newline backslash-n is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\n@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 110, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped \\n, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\n@", decoded, "Decoded allowedSymbols must contain literal newline")
+        assertEquals(listOf(33, 10, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - escaped backslash double backslash is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\\\@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 92, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped backslash, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\\@", decoded, "Decoded allowedSymbols must contain literal backslash")
+        assertEquals(listOf(33, 92, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - escaped tab backslash-t is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\t@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 116, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped tab, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\t@", decoded, "Decoded allowedSymbols must contain literal tab")
+        assertEquals(listOf(33, 9, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - escaped carriage return backslash-r is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\r@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 114, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped CR, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\r@", decoded, "Decoded allowedSymbols must contain literal CR")
+        assertEquals(listOf(33, 13, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - escaped unicode null backslash-u0000 is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\u0000@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 117, 48, 48, 48, 48, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped \\u0000, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\u0000@", decoded, "Decoded allowedSymbols must contain null character")
+        assertEquals(listOf(33, 0, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - escaped unicode unit separator backslash-u001f is accepted and preserves decoded value`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!\\u001f@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 92, 117, 48, 48, 49, 102, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Accepted, "Expected Accepted for escaped \\u001f, got $result")
+        val doc = (result as CatalogValidationResult.Accepted).document
+        val decoded = doc.entries[0].policy.allowedSymbols
+        assertEquals("!\u001f@", decoded, "Decoded allowedSymbols must contain U+001F character")
+        assertEquals(listOf(33, 31, 64), decoded.map { it.code })
+    }
+
+    @Test
+    fun `Finding 1 - valid control - ordinary literal LF inside string without backslash is rejected`() {
+        val json = jsonForPolicy(
+            allowedSymbols = "!" + '\n' + "@",
+            forbidWhitespace = false
+        )
+        assertContainsCodePointsAt(json, listOf(33, 10, 64))
+
+        val result = validator.validate(json)
+        assertTrue(result is CatalogValidationResult.Rejected, "Expected Rejected for literal LF without backslash, got $result")
+        val rejection = (result as CatalogValidationResult.Rejected).rejection
+        assertEquals(CatalogRejection.MalformedJson, rejection)
+    }
+
+    // -------------------------------------------------------------
+    // Finding 2 Helpers & Fixture
+    // -------------------------------------------------------------
+
+    private class ProcessResult(val exitCode: Int, val output: String)
+
+    companion object {
+        private const val PROCESS_TIMEOUT_SECONDS = 120L
+        private const val COMPILE_FAULT_MARKER = "SYNTAX_ERROR_INJECTED_FOR_COMPILE_FAULT"
+        private const val FIXTURE_VERIFIER_PATH =
+            "src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt"
+
+        // Synthetic verifier source: contains the M1 grep pattern exactly once. It is never compiled.
+        private val FIXTURE_VERIFIER_SOURCE = """
+            package org.upspa.assetlinks.verifier
+
+            // Synthetic fixture for the mutation-check self-test. Not production code.
+            object FixturePackageCheck {
+                fun matches(target: Target, appSigningInfo: Info): Boolean =
+                    target.packageName == appSigningInfo.packageName
+            }
+        """.trimIndent() + "\n"
+
+        // Stub Gradle wrapper: starts no real Gradle.
+        private val STUB_GRADLEW = """
+            #!/usr/bin/env bash
+            # Synthetic Gradle wrapper stub for the mutation-check self-test fixture.
+            case "${'$'}*" in
+                "test")
+                    echo "3 tests completed"
+                    exit 0
+                    ;;
+                "compileKotlin compileTestKotlin")
+                    if grep -rq "$COMPILE_FAULT_MARKER" src; then
+                        echo "e: stub compile failure: $COMPILE_FAULT_MARKER found under src/"
+                        exit 1
+                    fi
+                    exit 0
+                    ;;
+                *)
+                    echo "gradlew stub: unsupported arguments: ${'$'}*"
+                    exit 99
+                    ;;
+            esac
+        """.trimIndent() + "\n"
+
+        private val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+
+        /**
+         * Resolves bash from PATH. On Windows, %SystemRoot%\System32\bash.exe and WindowsApps\bash.exe
+         * are WSL launchers, not a bash for this host, so they are ignored.
+         */
+        private val bashExecutable: File? by lazy {
+            val systemRoot = System.getenv("SystemRoot")?.let { File(it).canonicalPath.lowercase() }
+            val name = if (isWindows) "bash.exe" else "bash"
+            System.getenv("PATH").orEmpty().split(File.pathSeparator)
+                .filter { it.isNotBlank() }
+                .map { File(it, name) }
+                .filter { it.isFile }
+                .filterNot { candidate ->
+                    val path = candidate.canonicalPath.lowercase()
+                    isWindows && ((systemRoot != null && path.startsWith(systemRoot)) || path.contains("windowsapps"))
+                }
+                .firstOrNull { candidate ->
+                    try {
+                        val process = ProcessBuilder(candidate.path, "--version").redirectErrorStream(true).start()
+                        val finished = process.waitFor(10, TimeUnit.SECONDS)
+                        if (!finished) process.destroyForcibly()
+                        finished && process.exitValue() == 0
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+        }
+    }
+
+    private fun realScriptFile(): File = File("scripts/mutation-check.sh").canonicalFile
+
+    private fun requireBash(): File {
+        val bash = bashExecutable
+        assumeTrue(
+            bash != null,
+            "No usable bash on PATH (WSL launchers under %SystemRoot% are ignored). " +
+                "On Windows, prepend Git for Windows' bin directory to PATH to run this test."
+        )
+        return bash!!
+    }
+
+    private fun runProcess(directory: File, vararg command: String): ProcessResult {
+        val process = ProcessBuilder(*command)
+            .directory(directory)
+            .redirectErrorStream(true)
+            .start()
+        process.outputStream.close()
+        val output = StringBuilder()
+        val reader = Thread { output.append(process.inputStream.bufferedReader().readText()) }
+        reader.start()
+        if (!process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            reader.join(5_000)
+            throw AssertionError("Command timed out after ${PROCESS_TIMEOUT_SECONDS}s: ${command.joinToString(" ")}\n$output")
+        }
+        reader.join()
+        return ProcessResult(process.exitValue(), output.toString())
+    }
+
+    private fun runSelfTest(bash: File, fixture: File): ProcessResult =
+        runProcess(fixture, bash.path, "scripts/mutation-check.sh", "--selftest-compile-fault")
+
+    /**
+     * Builds a hermetic module fixture: a git repository holding a copy of [scriptText] as
+     * scripts/mutation-check.sh, minimal Gradle files, a stub gradlew, gradle/, docs/ and a synthetic
+     * PureAssetLinkVerifier.kt that matches the real script's M1 grep pattern exactly once.
+     */
+    private fun buildSelfTestFixture(bash: File, scriptText: String): File {
+        val m1 = scriptText.lines().map { it.trim() }.single { it.startsWith("\"M1|") }
+            .removePrefix("\"").split("|")
+        assertEquals(FIXTURE_VERIFIER_PATH, m1[1], "Real script M1 mutation must target the fixture verifier path")
+
+        val root = Files.createTempDirectory("mutation-selftest-fixture").toFile()
+        File(root, "scripts").mkdirs()
+        File(root, "scripts/mutation-check.sh").writeText(scriptText)
+        File(root, "build.gradle.kts").writeText("// Synthetic fixture: no real Gradle build.\n")
+        File(root, "settings.gradle.kts").writeText("rootProject.name = \"mutation-selftest-fixture\"\n")
+        File(root, "gradlew").writeText(STUB_GRADLEW)
+        File(root, "gradlew.bat").writeText("@rem Synthetic fixture stub; never executed.\r\nexit /b 1\r\n")
+        File(root, "gradle").mkdirs()
+        File(root, "docs").mkdirs()
+        File(root, "docs/README.md").writeText("Synthetic mutation-check self-test fixture.\n")
+        val verifier = File(root, FIXTURE_VERIFIER_PATH)
+        verifier.parentFile.mkdirs()
+        verifier.writeText(FIXTURE_VERIFIER_SOURCE)
+        if (root.toPath().fileSystem.supportedFileAttributeViews().contains("posix")) {
+            Files.setPosixFilePermissions(File(root, "gradlew").toPath(), PosixFilePermissions.fromString("rwxr-xr-x"))
+        }
+
+        // The M1 grep pattern only uses `\.` escapes, so it reads the same as a Java regex.
+        val m1Pattern = Regex(m1[2])
+        assertEquals(
+            1,
+            verifier.readLines().count { m1Pattern.containsMatchIn(it) },
+            "Fixture verifier must match the real M1 pattern '${m1[2]}' exactly once"
+        )
+
+        val gitInit = runProcess(root, bash.path, "-c", "git init -q")
+        assertEquals(0, gitInit.exitCode, "git init failed in fixture:\n${gitInit.output}")
+        return root
+    }
+
+    /** Replaces the entire child-launch line inside the --selftest-compile-fault branch. */
+    private fun replaceSelfTestChildLaunch(scriptText: String, replacement: String): String {
+        val lines = scriptText.split("\n").toMutableList()
+        val start = lines.indexOfFirst {
+            it.trimStart().startsWith("if") && it.contains("\"--selftest-compile-fault\"")
+        }
+        assertTrue(start >= 0, "--selftest-compile-fault branch not found in script")
+        val end = (start + 1 until lines.size).first { lines[it].trimEnd() == "fi" }
+        val launchLines = (start + 1 until end).filter {
+            lines[it].contains("--inject-compile-fault") && !lines[it].trimStart().startsWith("#")
+        }
+        assertEquals(1, launchLines.size, "Expected exactly one child launch line in the self-test branch, found $launchLines")
+        val index = launchLines.single()
+        lines[index] = lines[index].takeWhile { it == ' ' || it == '\t' } + replacement
+        return lines.joinToString("\n")
+    }
+
+    private fun assertSelfTestRejectsReplacedChild(childReplacement: String) {
+        val scriptFile = realScriptFile()
+        assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
+        val bash = requireBash()
+
+        val mutated = replaceSelfTestChildLaunch(scriptFile.readText().replace("\r\n", "\n"), childReplacement)
+        val fixture = buildSelfTestFixture(bash, mutated)
+        try {
+            val result = runSelfTest(bash, fixture)
+            assertNotEquals(0, result.exitCode, "Self-test must exit non-zero when child is `$childReplacement`. Output:\n${result.output}")
+            assertTrue(result.output.contains("Self-test FAILED"), "Self-test must report Self-test FAILED. Output:\n${result.output}")
+            assertFalse(result.output.contains("Self-test PASSED"), "Self-test must never report Self-test PASSED. Output:\n${result.output}")
+        } finally {
+            fixture.deleteRecursively()
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Finding 2: mutation-check.sh self-test
+    // -------------------------------------------------------------
+
+    @Test
+    fun `Finding 2 - valid control - mutation check script exists and has valid bash syntax`() {
+        val scriptFile = realScriptFile()
+        assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
+        val bash = requireBash()
+
+        val normalized = scriptFile.readText().replace("\r\n", "\n")
+        val process = ProcessBuilder(bash.path, "-n", "-s")
+            .directory(scriptFile.parentFile.parentFile)
+            .redirectErrorStream(true)
+            .start()
+        process.outputStream.write(normalized.toByteArray())
+        process.outputStream.close()
+
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        assertEquals(0, exitCode, "scripts/mutation-check.sh must be valid bash syntax. Output:\n$output")
+    }
+
+    @Test
+    fun `Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2`() {
+        val scriptFile = realScriptFile()
+        assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
+        val bash = requireBash()
+
+        val fixture = buildSelfTestFixture(bash, scriptFile.readText().replace("\r\n", "\n"))
+        try {
+            val fixtureScript = File(fixture, "scripts/mutation-check.sh").toPath()
+            assumeTrue(
+                fixtureScript.fileSystem.supportedFileAttributeViews().contains("posix"),
+                "File system of $fixture has no POSIX file modes (e.g. NTFS); a mode-644 script cannot be " +
+                    "expressed here, so this test runs only on POSIX file systems"
+            )
+            Files.setPosixFilePermissions(fixtureScript, PosixFilePermissions.fromString("rw-r--r--"))
+            assertEquals(
+                "rw-r--r--",
+                PosixFilePermissions.toString(Files.getPosixFilePermissions(fixtureScript)),
+                "Fixture script must have mode 644"
+            )
+            assertFalse(Files.isExecutable(fixtureScript), "Fixture script must not be executable")
+
+            val result = runSelfTest(bash, fixture)
+            val output = result.output
+
+            assertFalse(output.contains("Permission denied"), "Self-test must not hit Permission denied. Output:\n$output")
+            assertFalse(output.contains("command not found"), "Self-test must not hit command not found. Output:\n$output")
+            assertFalse(
+                Regex("(status|code)\\D{0,4}12[67](?![0-9])", RegexOption.IGNORE_CASE).containsMatchIn(output),
+                "Self-test must not report a 126/127 launch-failure status. Output:\n$output"
+            )
+            assertTrue(output.contains("Baseline PASSED"), "Self-test must evidence a freshly executed baseline. Output:\n$output")
+            assertTrue(
+                output.contains("Injecting deliberate Kotlin compilation fault"),
+                "Self-test must evidence that the deliberate compilation fault was injected. Output:\n$output"
+            )
+            assertTrue(output.contains("failed to compile"), "Self-test must evidence the compile failure. Output:\n$output")
+            assertTrue(
+                Regex("Self-test PASSED.*(status|code)\\D{0,4}2(?![0-9])", RegexOption.IGNORE_CASE).containsMatchIn(output),
+                "Self-test must confirm child status exactly 2. Output:\n$output"
+            )
+            assertEquals(0, result.exitCode, "Self-test must exit 0 after full verification. Output:\n$output")
+        } finally {
+            fixture.deleteRecursively()
+        }
+    }
+
+    @ParameterizedTest(name = "child status {0}")
+    @ValueSource(ints = [126, 127, 1])
+    fun `Finding 2 - negative control - self-test fails when child launch exits with status`(status: Int) {
+        assertSelfTestRejectsReplacedChild("sh -c 'exit $status'")
+    }
+
+    @Test
+    fun `Finding 2 - negative control - self-test fails when child exits 0`() {
+        assertSelfTestRejectsReplacedChild("sh -c 'exit 0'")
+    }
+
+    @Test
+    fun `Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected`() {
+        assertSelfTestRejectsReplacedChild("sh -c 'exit 2'")
+    }
+}
