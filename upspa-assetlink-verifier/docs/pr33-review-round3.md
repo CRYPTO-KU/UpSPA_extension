@@ -1,8 +1,8 @@
 # PR #33 Review Round 3 Verification Report
 
 ## Overview
-This report documents the resolution of the two review round 3 findings for PR #33
-(`furkan/identity-catalog-and-suite`), following the same TDD protocol as round 2:
+This report documents the resolution of the two review round 3 findings for PR #33,
+following the same TDD protocol as round 2:
 1. Regression tests and valid controls were committed first, as a tests-only commit, and shown to fail on unfixed code.
 2. Each production fix is a separate commit on top of the tests-only commit.
 3. Isolated-copy mutation proofs show that the new tests detect removal or weakening of each fix.
@@ -360,22 +360,30 @@ All evidence is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/`. Files 
 (`ScratchEscapeProbeTest.kt.txt`, which was never compiled into the module).
 
 Only local path prefixes were replaced; nothing else in the evidence files was edited.
-The transform, applied with GNU sed in Git Bash to every file in that directory:
+The transform was applied with GNU sed in Git Bash to every file in that directory, one substitution per prefix form, in the order below.
+In the applied command, `<win-user>` and `<wsl-user>` were the literal local account names; they are not reproduced here.
 ```bash
-sed -i -e 's#/mnt/c/Users/Furkan#<WIN_HOME>#g' \
-       -e 's#/c/Users/Furkan#<WIN_HOME>#g' \
-       -e 's#C:/Users/Furkan#<WIN_HOME>#g' \
-       -e 's#C--Users-Furkan#<WIN_HOME_SLUG>#g' \
-       -e 's#/home/furkan#<WSL_HOME>#g' \
+sed -i -e 's#/mnt/c/Users/<win-user>#<WIN_HOME>#g' \
+       -e 's#/c/Users/<win-user>#<WIN_HOME>#g' \
+       -e 's#C:/Users/<win-user>#<WIN_HOME>#g' \
+       -e 's#C--Users-<win-user>#<WIN_HOME_SLUG>#g' \
+       -e 's#/home/<wsl-user>#<WSL_HOME>#g' \
        upspa-assetlink-verifier/docs/pr33-round3-evidence/*
 ```
-- `<WIN_HOME>` is the Windows home directory, in all its forms: drive form, MSYS form, WSL mount form, and inside `file:///` URLs.
-- `<WIN_HOME_SLUG>` is the same prefix as it appears encoded in the session temp directory name.
-- `<WSL_HOME>` is the WSL home directory.
+
+| Prefix form (generic pattern) | Where it occurs | Replacement |
+| :--- | :--- | :--- |
+| `/mnt/[a-z]/Users/[^/]+` | WSL mount form of the Windows home (driver scripts) | `<WIN_HOME>` |
+| `/[a-z]/Users/[^/]+` | MSYS/Git Bash form of the Windows home | `<WIN_HOME>` |
+| `[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+` | Windows drive form, including inside `file:///` URLs | `<WIN_HOME>` |
+| `[A-Za-z]--Users-[^/-]+` | The Windows home prefix as encoded in the session temp directory name | `<WIN_HOME_SLUG>` |
+| `/home/[^/]+` | WSL home directory | `<WSL_HOME>` |
+
+The evidence files contained no backslash form of the Windows home prefix, so only the forward-slash variants were applied.
 
 Verification of the transform:
 - **Committed files:** for every evidence file already committed in `0e43dd2`, `git show 0e43dd2:<file> | sed <transform>` is byte-identical to the new file.
 - **New files:** for each new file, applying the transform to the original scratch output is byte-identical to the committed file.
 
-Branch names (`furkan/...`) and the commit author e-mail are not path prefixes and were not changed.
+Git branch names and the commit author e-mail are not path prefixes and were not changed.
 The driver scripts were sanitized too. They reference `<WIN_HOME>` / `<WSL_HOME>` and must be adjusted before reuse.
