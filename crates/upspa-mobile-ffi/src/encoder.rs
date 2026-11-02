@@ -1,0 +1,286 @@
+//! Minimal FFI facade over the canonical Rust password encoder in `upspa-core`.
+//!
+//! This module does not implement any encoding logic. It only:
+//! - accepts the secret as `SecretBytes` (never a `String`) and erases it on every exit path;
+//! - accepts only fully normalized policies, because the Rust/TypeScript parity contract covers
+//!   normalized policies only and the two implementations normalize raw policies differently;
+//! - accepts only printable-ASCII account IDs, for the same reason: outside ASCII the two
+//!   implementations trim and normalize account IDs differently;
+//! - returns the password as `SecretBytes`, so the host receives a `ByteArray` it can overwrite
+//!   rather than an immutable, internable JVM `String`.
+//!
+//! Known limit, outside this facade: `upspa_core::password_encoder` builds intermediate seed
+//! `String`s internally that it does not zeroize.
+
+use upspa_core::password_encoder::{
+    encode_secret_as_password, is_normalized_policy, PasswordEncoderError, PasswordPolicy,
+};
+
+use crate::contract::{MobileError, SecretBytes};
+use crate::engine::SecretGuard;
+
+/// Password policy as it crosses the boundary. Must already be in normalized form.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct NormalizedPasswordPolicy {
+    pub min_len: u32,
+    pub max_len: u32,
+    pub require_upper: bool,
+    pub require_lower: bool,
+    pub require_digit: bool,
+    pub require_symbol: bool,
+    pub allowed_symbols: String,
+    pub forbid_whitespace: bool,
+    pub forbidden_substrings: Vec<String>,
+}
+
+impl From<NormalizedPasswordPolicy> for PasswordPolicy {
+    fn from(p: NormalizedPasswordPolicy) -> Self {
+        PasswordPolicy {
+            min_len: p.min_len,
+            max_len: p.max_len,
+            require_upper: p.require_upper,
+            require_lower: p.require_lower,
+            require_digit: p.require_digit,
+            require_symbol: p.require_symbol,
+            allowed_symbols: p.allowed_symbols,
+            forbid_whitespace: p.forbid_whitespace,
+            forbidden_substrings: p.forbidden_substrings,
+        }
+    }
+}
+
+/// True when the browser encoder (`packages/extension/src/shared/passwordPolicy.ts`) would also
+/// leave this Rust-normalized policy unchanged, so both derive the same password. Rejects rather than
+/// rewrites, so a credential's encoding never changes silently. Where the two normalizers differ:
+/// - TS replaces an empty `allowedSymbols` with the default set even when no symbol is required;
+/// - Unicode whitespace, `trim`, case mapping and JS UTF-16 indexing only agree on ASCII.
+fn browser_normalizes_identically(policy: &PasswordPolicy) -> bool {
+    !policy.allowed_symbols.is_empty()
+        && policy.allowed_symbols.is_ascii()
+        && policy.forbidden_substrings.iter().all(|s| s.is_ascii())
+}
+
+/// True when the account ID is printable ASCII (U+0020..=U+007E). Outside that range the browser
+/// and Rust encoders can trim and normalize differently (their whitespace definitions differ, e.g.
+/// JavaScript treats U+FEFF as whitespace but not U+0085, and Rust does the reverse), so identical
+/// inputs could derive different passwords. Rejects rather than rewrites, so a credential's
+/// encoding never changes silently.
+fn account_id_is_portable(account_id: &str) -> bool {
+    account_id.bytes().all(|b| (0x20..=0x7e).contains(&b))
+}
+
+fn encoding_error(reason_code: &str) -> MobileError {
+    MobileError::PasswordEncoding {
+        reason_code: reason_code.to_owned(),
+    }
+}
+
+/// Encode `secret` into a site password with the canonical `upspa-password-encoding-v2` encoder.
+///
+/// Errors are typed `MobileError::PasswordEncoding` with fixed reason codes; no input value is
+/// ever echoed into an error.
+#[uniffi::export]
+pub fn encode_password(
+    secret: SecretBytes,
+    policy: NormalizedPasswordPolicy,
+    account_id: String,
+    counter: u32,
+) -> Result<SecretBytes, MobileError> {
+    // Guard first: erased on success and on every early return below.
+    let secret = SecretGuard::new(secret);
+
+    let policy = PasswordPolicy::from(policy);
+    if !is_normalized_policy(&policy) {
+        return Err(encoding_error("policy-not-normalized"));
+    }
+    if !browser_normalizes_identically(&policy) {
+        return Err(encoding_error("policy-not-portable"));
+    }
+    if !account_id_is_portable(&account_id) {
+        return Err(encoding_error("account-not-portable"));
+    }
+
+    // Borrowed view, no copy of the secret bytes.
+    let secret_text = std::str::from_utf8(&secret.expose().bytes)
+        .map_err(|_| encoding_error("secret-not-utf8"))?;
+
+    match encode_secret_as_password(secret_text, &policy, &account_id, counter) {
+        // `into_bytes` moves the buffer; the password is never copied into a second allocation.
+        Ok(password) => Ok(SecretBytes::new(password.into_bytes())),
+        Err(PasswordEncoderError::ImpossiblePolicy) => Err(encoding_error("impossible-policy")),
+        Err(PasswordEncoderError::EmptyPool) => Err(encoding_error("empty-pool")),
+        Err(PasswordEncoderError::ExhaustedAttempts) => Err(encoding_error("exhausted-attempts")),
+        Err(PasswordEncoderError::InvalidPolicyJson(_)) => Err(encoding_error("invalid-policy")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::erasure_probe;
+
+    fn default_policy() -> NormalizedPasswordPolicy {
+        NormalizedPasswordPolicy {
+            min_len: 20,
+            max_len: 32,
+            require_upper: true,
+            require_lower: true,
+            require_digit: true,
+            require_symbol: true,
+            allowed_symbols: "!@#$%^&*".to_owned(),
+            forbid_whitespace: true,
+            forbidden_substrings: vec![],
+        }
+    }
+
+    #[test]
+    fn matches_canonical_encoder_and_erases_secret() {
+        erasure_probe::take();
+        let out = encode_password(
+            SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+            default_policy(),
+            "alice@example.com".to_owned(),
+            0,
+        )
+        .expect("encodes");
+        // Corpus vector v001, produced by the canonical encoder.
+        assert_eq!(out.bytes, b"HlVIsTPtj9Tb4scuQGHqxxz^22yQHAfy");
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    #[test]
+    fn rejects_non_normalized_policy_and_erases_secret() {
+        erasure_probe::take();
+        let mut policy = default_policy();
+        policy.min_len = 4; // normalizes to 8
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(b"secret".to_vec()),
+                policy,
+                "a".to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "policy-not-normalized".to_owned()
+            })
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    /// REVIEW 2 / P1: Rust leaves `allowed_symbols = ""` alone when no symbol is required, but the
+    /// browser encoder replaces it with the default set, so the two would derive different passwords.
+    #[test]
+    fn rejects_policy_the_browser_normalizes_differently() {
+        erasure_probe::take();
+        let mut policy = default_policy();
+        policy.require_symbol = false;
+        policy.allowed_symbols = String::new();
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                policy,
+                "alice@example.com".to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "policy-not-portable".to_owned()
+            })
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+
+        // Control: the browser-normalized form of the same policy is accepted and matches v006.
+        let mut policy = default_policy();
+        policy.require_symbol = false;
+        let out = encode_password(
+            SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+            policy,
+            "alice@example.com".to_owned(),
+            0,
+        )
+        .expect("encodes");
+        assert_eq!(out.bytes, b"gaVBYE1RRI6vozum0xTZhxGbtI47rLyW");
+    }
+
+    #[test]
+    fn rejects_non_utf8_secret_and_erases_it() {
+        erasure_probe::take();
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(vec![0xff, 0xfe]),
+                default_policy(),
+                "a".to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "secret-not-utf8".to_owned()
+            })
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    fn assert_account_rejected(account_id: &str) {
+        erasure_probe::take();
+        assert_eq!(
+            encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                default_policy(),
+                account_id.to_owned(),
+                0
+            ),
+            Err(MobileError::PasswordEncoding {
+                reason_code: "account-not-portable".to_owned()
+            }),
+            "account ID {account_id:?} was accepted"
+        );
+        assert_eq!(erasure_probe::take(), vec![true]);
+    }
+
+    /// REVIEW 3 / P1: with a leading U+FEFF the browser and Rust encoders derive different
+    /// passwords from identical synthetic inputs, so the facade must reject the account ID.
+    #[test]
+    fn rejects_account_id_with_leading_bom_and_erases_secret() {
+        assert_account_rejected("\u{FEFF}alice@example.com");
+    }
+
+    /// REVIEW 3 / P1: the same for a leading U+0085.
+    #[test]
+    fn rejects_account_id_with_leading_nel_and_erases_secret() {
+        assert_account_rejected("\u{0085}alice@example.com");
+    }
+
+    /// REVIEW 3 / P1, whole class: every character outside printable ASCII is rejected, not only
+    /// the two reported code points. Full sweep of all scalar values in the leading position (the
+    /// reported failure mode), plus inner and trailing positions for characters whose whitespace or
+    /// normalization status differs between the two encoders.
+    #[test]
+    fn rejects_every_account_character_outside_printable_ascii() {
+        let reject = |account_id: String| {
+            let result = encode_password(
+                SecretBytes::new(b"raw-upspa-secret-for-tests".to_vec()),
+                default_policy(),
+                account_id.clone(),
+                0,
+            );
+            assert_eq!(
+                result,
+                Err(MobileError::PasswordEncoding {
+                    reason_code: "account-not-portable".to_owned()
+                }),
+                "account ID {account_id:?} was accepted"
+            );
+        };
+        for c in (0u32..=0x10_FFFF).filter_map(char::from_u32) {
+            if !(' '..='~').contains(&c) {
+                reject(format!("{c}alice@example.com"));
+            }
+        }
+        for c in [
+            '\u{0}', '\t', '\n', '\r', '\u{7F}', '\u{85}', '\u{A0}', '\u{180E}', '\u{200B}',
+            '\u{2028}', '\u{202F}', '\u{3000}', '\u{FEFF}', '\u{E9}',
+        ] {
+            reject(format!("alice{c}@example.com"));
+            reject(format!("alice@example.com{c}"));
+        }
+        erasure_probe::take();
+    }
+}

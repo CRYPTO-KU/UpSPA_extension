@@ -1,13 +1,24 @@
 [package]
 name = "upspa-mobile-ffi"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Native UniFFI boundary for the UpSPA mobile clients"
+description = "Versioned UniFFI contract and native host ports for the UpSPA mobile clients"
 
 [lib]
+name = "upspa_mobile_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
+[[bin]]
+# Reproducible binding generation entry point (see scripts/generate_mobile_bindings.sh).
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+
 [dependencies]
-uniffi = "0.28"
+uniffi = { version = "0.28", features = ["cli"] }
 upspa-core = { path = "../upspa-core" }
+thiserror = "1"
+zeroize = { version = "1", features = ["zeroize_derive"] }
+
+[dev-dependencies]
+uniffi = { version = "0.28", features = ["bindgen-tests"] }
