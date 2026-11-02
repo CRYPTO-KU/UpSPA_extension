@@ -441,7 +441,7 @@ class ReviewRound3RegressionTest {
         return lines.joinToString("\n")
     }
 
-    private fun assertSelfTestRejectsReplacedChild(childReplacement: String) {
+    private fun runSelfTestWithReplacedChild(childReplacement: String): ProcessResult {
         val scriptFile = realScriptFile()
         assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
         val bash = requireBash()
@@ -449,14 +449,29 @@ class ReviewRound3RegressionTest {
         val mutated = replaceSelfTestChildLaunch(scriptFile.readText().replace("\r\n", "\n"), childReplacement)
         val fixture = buildSelfTestFixture(bash, mutated)
         try {
-            val result = runSelfTest(bash, fixture)
-            assertNotEquals(0, result.exitCode, "Self-test must exit non-zero when child is `$childReplacement`. Output:\n${result.output}")
-            assertTrue(result.output.contains("Self-test FAILED"), "Self-test must report Self-test FAILED. Output:\n${result.output}")
-            assertFalse(result.output.contains("Self-test PASSED"), "Self-test must never report Self-test PASSED. Output:\n${result.output}")
+            return runSelfTest(bash, fixture)
         } finally {
             fixture.deleteRecursively()
         }
     }
+
+    private fun assertSelfTestRejectsReplacedChild(childReplacement: String) {
+        val result = runSelfTestWithReplacedChild(childReplacement)
+        assertNotEquals(0, result.exitCode, "Self-test must exit non-zero when child is `$childReplacement`. Output:\n${result.output}")
+        assertTrue(result.output.contains("Self-test FAILED"), "Self-test must report Self-test FAILED. Output:\n${result.output}")
+        assertFalse(result.output.contains("Self-test PASSED"), "Self-test must never report Self-test PASSED. Output:\n${result.output}")
+    }
+
+    /**
+     * A child launch statement that prints the full baseline and compile-fault evidence, then exits with [status].
+     * Its output is captured into SELFTEST_OUTPUT like the real launch line.
+     */
+    private fun evidenceChildLaunch(status: Int): String =
+        "SELFTEST_OUTPUT=\"${'$'}(sh -c '" +
+            "echo \"Baseline PASSED: 3 tests completed\"; " +
+            "echo \"Injecting deliberate Kotlin compilation fault into $FIXTURE_VERIFIER_PATH for M1...\"; " +
+            "echo \"FATAL: Mutation M1 failed to compile! Compilation errors are NOT killed mutations.\"; " +
+            "exit $status' 2>&1)\""
 
     // -------------------------------------------------------------
     // Finding 2: mutation-check.sh self-test
@@ -542,5 +557,19 @@ class ReviewRound3RegressionTest {
     @Test
     fun `Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected`() {
         assertSelfTestRejectsReplacedChild("sh -c 'exit 2'")
+    }
+
+    @ParameterizedTest(name = "child status {0} with full evidence")
+    @ValueSource(ints = [126, 127, 1, 3, 0])
+    fun `Finding 2 - negative control - self-test fails when child prints full evidence but exits with status`(status: Int) {
+        assertSelfTestRejectsReplacedChild(evidenceChildLaunch(status))
+    }
+
+    @Test
+    fun `Finding 2 - valid control - child status 2 with full evidence passes independent of file modes`() {
+        val result = runSelfTestWithReplacedChild(evidenceChildLaunch(2))
+        assertEquals(0, result.exitCode, "Self-test must exit 0 for status 2 with full evidence. Output:\n${result.output}")
+        assertTrue(result.output.contains("Self-test PASSED"), "Self-test must report Self-test PASSED. Output:\n${result.output}")
+        assertFalse(result.output.contains("Self-test FAILED"), "Self-test must not report Self-test FAILED. Output:\n${result.output}")
     }
 }
