@@ -506,12 +506,31 @@ open class StrictCatalogValidator : CatalogValidator {
     private fun validateStrictJsonStringSyntax(utf8Bytes: ByteArray): CatalogRejection? {
         var inString = false
         var escaped = false
-        for (b in utf8Bytes) {
-            val unsigned = b.toInt() and 0xFF
+        // Last byte outside strings that is not JSON whitespace; -1 at the start of the document
+        var lastToken = -1
+        var i = 0
+        while (i < utf8Bytes.size) {
+            val unsigned = utf8Bytes[i].toInt() and 0xFF
             if (!inString) {
                 if (unsigned == '"'.code) {
                     inString = true
                     escaped = false
+                } else if (isAsciiLetter(unsigned)) {
+                    var end = i + 1
+                    while (end < utf8Bytes.size && isAsciiLetter(utf8Bytes[end].toInt() and 0xFF)) {
+                        end++
+                    }
+                    // RFC 8259 Section 3: the literal names are lowercase only. Moshi matches them in any
+                    // letter case, so reject a non-lowercase keyword where Moshi would read it as a value.
+                    if (lastToken in KEYWORD_VALUE_PREDECESSORS && isNonLowercaseKeyword(utf8Bytes, i, end)) {
+                        return CatalogRejection.MalformedJson
+                    }
+                    lastToken = utf8Bytes[end - 1].toInt() and 0xFF
+                    i = end
+                    continue
+                }
+                if (unsigned !in JSON_WHITESPACE_BYTES) {
+                    lastToken = unsigned
                 }
             } else {
                 if (escaped) {
@@ -519,18 +538,34 @@ open class StrictCatalogValidator : CatalogValidator {
                     if (unsigned < 0x20) {
                         return CatalogRejection.MalformedJson
                     }
+                    // RFC 8259 Section 7: only \" \\ \/ \b \f \n \r \t and \uXXXX are escapes. Moshi also
+                    // accepts \' in non-lenient mode. The \uXXXX hex digits are checked by Moshi.
+                    if (unsigned !in VALID_ESCAPE_BYTES) {
+                        return CatalogRejection.MalformedJson
+                    }
                     escaped = false
                 } else if (unsigned == '\\'.code) {
                     escaped = true
                 } else if (unsigned == '"'.code) {
                     inString = false
+                    lastToken = unsigned
                 } else if (unsigned < 0x20) {
                     // RFC 8259 Section 7: unescaped control characters (< 0x20) are forbidden inside JSON strings
                     return CatalogRejection.MalformedJson
                 }
             }
+            i++
         }
         return null
+    }
+
+    private fun isAsciiLetter(unsigned: Int): Boolean =
+        unsigned in 'a'.code..'z'.code || unsigned in 'A'.code..'Z'.code
+
+    /** True when bytes [start, end) spell `true`, `false` or `null` in a letter case other than all lowercase. */
+    private fun isNonLowercaseKeyword(utf8Bytes: ByteArray, start: Int, end: Int): Boolean {
+        val word = String(utf8Bytes, start, end - start, Charsets.US_ASCII)
+        return JSON_KEYWORDS.any { it.equals(word, ignoreCase = true) } && word !in JSON_KEYWORDS
     }
 
     private fun parseJsonAst(utf8Bytes: ByteArray): AstResult {
@@ -653,6 +688,13 @@ open class StrictCatalogValidator : CatalogValidator {
         private const val MAX_INPUT_BYTES = 65536
         private const val MAX_NESTING_DEPTH = 8
         private val INTEGER_LEXEME_REGEX = Regex("^(0|[1-9][0-9]*)$")
+
+        private val JSON_KEYWORDS = setOf("true", "false", "null")
+        private val JSON_WHITESPACE_BYTES = setOf(' '.code, '\t'.code, '\n'.code, '\r'.code)
+        private val VALID_ESCAPE_BYTES = "\"\\/bfnrtu".map { it.code }.toSet()
+        // A value starts at the document start (-1), after ':' in an object, or after '[' or ',' in an array.
+        // After '}' or ']' a keyword is trailing data, which Moshi reports itself.
+        private val KEYWORD_VALUE_PREDECESSORS = setOf(-1, ':'.code, '['.code, ','.code)
 
         private val ROOT_ALLOWED_FIELDS = setOf("schemaVersion", "entries")
         private val ENTRY_ALLOWED_FIELDS = setOf(
