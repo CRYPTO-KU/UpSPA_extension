@@ -515,6 +515,10 @@ open class StrictCatalogValidator : CatalogValidator {
                 }
             } else {
                 if (escaped) {
+                    // RFC 8259 Section 7: a control character (< 0x20) is never a valid escape character
+                    if (unsigned < 0x20) {
+                        return CatalogRejection.MalformedJson
+                    }
                     escaped = false
                 } else if (unsigned == '\\'.code) {
                     escaped = true
