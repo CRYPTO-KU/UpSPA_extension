@@ -1,0 +1,68 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :compileKotlin UP-TO-DATE
+> Task :compileJava NO-SOURCE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin UP-TO-DATE
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+
+> Task :test
+
+ReviewRound2RegressionTest > Finding 3 - literal tab inside JSON string is rejected as MalformedJson() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - caller mutating forbiddenSubstrings after NormalizedPasswordPolicy construction does not affect policy() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - caller mutating entries list after CatalogDocument construction does not affect document or bypass uniqueness() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - valid control - requireSymbol false with non-empty allowedSymbols is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 5 - valid control - mutation check script exists and has valid bash syntax() FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound2RegressionTest.kt:395
+
+ReviewRound2RegressionTest > Finding 3 - literal newline inside JSON string is rejected as MalformedJson() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - raw JSON containing literal lone surrogate is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - valid control - valid surrogate pair emoji in account reference is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 3 - valid control - escaped newline and tab inside JSON string remain valid() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - valid control - requireSymbol true with allowedSymbols is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - JSON containing escaped lone surrogate in account reference is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 3 - valid control - whitespace between JSON tokens remains allowed() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - policy2 shape with empty allowedSymbols and requireSymbol false is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - AccountReference constructor rejects unpaired surrogate() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - valid control - duplicate entry at construction time is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - policy3 shape with empty allowedSymbols and requireSymbol false without digits is rejected() PASSED
+
+16 tests completed, 1 failed
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///C:/Users/Furkan/AppData/Local/Temp/tmp.0S7khdAbAr/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 12s
+5 actionable tasks: 2 executed, 3 up-to-date

@@ -1,0 +1,61 @@
+$ "C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh --inject-compile-fault
+# HEAD 388ac95d533bd3c70380e40b008764f3294e3020; started 2026-11-02T17:54:56Z
+=== Running mutation checker with deliberate compile fault injection ===
+=== Identity Adversarial Suite: Mutation Testing ===
+Created temporary isolation directory: /tmp/tmp.L7WCMmssnr
+Copying repository files to temporary directory...
+Running baseline test suite in temporary copy...
+FATAL: Baseline build/test failed in temporary copy!
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 24 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 25 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 26 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 27 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 28 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 29 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 30 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 31 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode unit separator backslash-u001f is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped carriage return backslash-r is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped tab backslash-t is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped backslash double backslash is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - mutation check script exists and has valid bash syntax() PASSED
+
+355 tests completed, 1 failed, 1 skipped
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///C:/Users/Furkan/AppData/Local/Temp/tmp.L7WCMmssnr/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 29s
+5 actionable tasks: 5 executed
+Cleaning up temporary isolation directory...
+# exit code: 1
+# finished 2026-11-02T17:55:28Z

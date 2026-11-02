@@ -1,0 +1,163 @@
+=== Mutation proof (c): WSL2 Linux 6.18.54.1-microsoft-standard-WSL2, clone /home/furkan/upspa-r3-wsl, base commit 388ac95d533bd3c70380e40b008764f3294e3020 ===
+Launch line before: 21:    SELFTEST_OUTPUT="$("${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault 2>&1)"
+Launch line after : 21:    SELFTEST_OUTPUT="$("$BASH_SOURCE" --inject-compile-fault 2>&1)"
+Script mode after mutation: 644 -rw-r--r--
+--- git diff (mutation) ---
+diff --git a/upspa-assetlink-verifier/scripts/mutation-check.sh b/upspa-assetlink-verifier/scripts/mutation-check.sh
+index dd2166a..5c7d546 100644
+--- a/upspa-assetlink-verifier/scripts/mutation-check.sh
++++ b/upspa-assetlink-verifier/scripts/mutation-check.sh
+@@ -18,7 +18,7 @@ if [ "${1:-}" = "--selftest-compile-fault" ]; then
+     SELFTEST_OUTPUT=""
+     set +e
+     # Launched through bash so the script's file mode (committed as 100644) does not matter.
+-    SELFTEST_OUTPUT="$("${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault 2>&1)"
++    SELFTEST_OUTPUT="$("$BASH_SOURCE" --inject-compile-fault 2>&1)"
+     SELFTEST_STATUS=$?
+     set -e
+     if [ -n "$SELFTEST_OUTPUT" ]; then
+$ ./gradlew test --rerun --tests '*ReviewRound3RegressionTest*' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :compileKotlin UP-TO-DATE
+> Task :compileJava NO-SOURCE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin UP-TO-DATE
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+
+> Task :test FAILED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character inside object key is rejected as MalformedJson() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode null backslash-u0000 is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - JSON-escaped newline backslash-n is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child exits 0() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - ordinary literal LF inside string without backslash is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2() FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:509
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 126 PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 127 PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 1 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 0 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 1 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 2 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 3 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 4 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 5 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 6 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 7 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 8 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 9 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 10 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 11 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 12 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 13 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 14 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 15 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 16 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 17 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 18 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 19 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 20 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 21 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 22 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 23 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 24 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 25 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 26 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 27 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 28 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 29 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 30 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 31 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode unit separator backslash-u001f is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped carriage return backslash-r is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped tab backslash-t is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped backslash double backslash is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - mutation check script exists and has valid bash syntax() PASSED
+
+48 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///home/furkan/upspa-r3-wsl/upspa-assetlink-verifier/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 9s
+5 actionable tasks: 2 executed, 3 up-to-date
+# gradle exit code: 1
+# XML totals: tests="48" skipped="0" failures="1" errors="0"
+# failing test cases:
+  Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2()
+# mode-644 positive test entry from XML:
+  <testcase name="Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2()" classname="org.upspa.catalog.ReviewRound3RegressionTest" time="0.031">
+    <failure message="org.opentest4j.AssertionFailedError: Self-test must not hit Permission denied. Output:&#10;=== Mutation Checker Self-Test Mode ===&#10;Invoking mutation checker with an injected compile fault...&#10;scripts/mutation-check.sh: line 21: scripts/mutation-check.sh: Permission denied&#10;Self-test FAILED: launch failure: child exit code (126), permission denied or not executable&#10; ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Self-test must not hit Permission denied. Output:
+=== Mutation Checker Self-Test Mode ===
+Invoking mutation checker with an injected compile fault...
+scripts/mutation-check.sh: line 21: scripts/mutation-check.sh: Permission denied
+Self-test FAILED: launch failure: child exit code (126), permission denied or not executable
+ ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;
+--
+# restored clone: git status --short -> ''
