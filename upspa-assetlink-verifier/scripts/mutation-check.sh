@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# With CDPATH set, `cd` can print the new directory to stdout and corrupt the paths captured below.
+unset CDPATH
+
 # Resolve this script's absolute path before any cd, so the self-test can relaunch it from anywhere.
 ABS_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 REAL_ROOT="$(cd "$(dirname "$ABS_SCRIPT")/.." && pwd)"
@@ -70,13 +73,26 @@ echo "Created temporary isolation directory: $TMP_DIR"
 
 cleanup() {
     local exit_code=$?
+    # Cleanup must never change the exit code: a directory that cannot be removed (for example a
+    # Windows file lock) is reported and left behind instead of failing under `set -e`.
+    set +e
     echo "Cleaning up temporary isolation directory..."
     if [ -d "$TMP_DIR" ]; then
         rm -rf "$TMP_DIR"
+        if [ -e "$TMP_DIR" ]; then
+            echo "WARNING: could not remove temporary isolation directory: $TMP_DIR (left behind; remove it manually)"
+        fi
     fi
     exit "$exit_code"
 }
-trap cleanup EXIT INT TERM
+# A signal must never look like success: exit 128 + signal number, then run cleanup through the EXIT trap.
+on_signal() {
+    echo "FATAL: Mutation check interrupted by SIG$1."
+    exit "$2"
+}
+trap cleanup EXIT
+trap 'on_signal INT 130' INT
+trap 'on_signal TERM 143' TERM
 
 # 3. Copy module assets (excluding build/ and .gradle/)
 echo "Copying repository files to temporary directory..."
@@ -94,7 +110,8 @@ chmod +x "$TMP_DIR/gradlew"
 echo "Running baseline test suite in temporary copy..."
 cd "$TMP_DIR"
 set +e
-BASELINE_OUTPUT=$(./gradlew test 2>&1)
+# Force a fresh run: neither up-to-date state nor the Gradle build cache may satisfy the baseline.
+BASELINE_OUTPUT=$(./gradlew test --rerun-tasks --no-build-cache 2>&1)
 BASELINE_STATUS=$?
 set -e
 
@@ -182,8 +199,9 @@ for item in "${MUTATIONS[@]}"; do
     fi
 
     TESTS_EXECUTED=$(grep '<testsuite ' "$XML_FILE" | sed -E 's/.*tests="([0-9]+)".*/\1/' || echo "0")
-    if [ -z "$TESTS_EXECUTED" ] || [ "$TESTS_EXECUTED" -le 0 ]; then
-        echo "FATAL: Mutation $MID test run reported 0 executed tests in $XML_FILE"
+    # Fail closed unless tests= is a positive integer; a non-numeric value must not pass the -le test.
+    if ! [[ "$TESTS_EXECUTED" =~ ^[0-9]+$ ]] || [ "$TESTS_EXECUTED" -le 0 ]; then
+        echo "FATAL: Mutation $MID test run did not report a positive executed test count (tests='$TESTS_EXECUTED') in $XML_FILE"
         exit 4
     fi
 
