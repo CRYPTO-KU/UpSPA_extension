@@ -298,12 +298,13 @@ class ReviewRound3RegressionTest {
             }
         """.trimIndent() + "\n"
 
-        // Stub Gradle wrapper: starts no real Gradle.
+        // Stub Gradle wrapper: starts no real Gradle. The baseline is accepted with or without the
+        // fresh-run flags added after the independent review.
         private val STUB_GRADLEW = """
             #!/usr/bin/env bash
             # Synthetic Gradle wrapper stub for the mutation-check self-test fixture.
             case "${'$'}*" in
-                "test")
+                "test"|"test --rerun-tasks --no-build-cache")
                     echo "3 tests completed"
                     exit 0
                     ;;
