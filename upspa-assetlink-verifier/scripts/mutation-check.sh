@@ -5,25 +5,52 @@
 
 set -euo pipefail
 
-REAL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve this script's absolute path before any cd, so the self-test can relaunch it from anywhere.
+ABS_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+REAL_ROOT="$(cd "$(dirname "$ABS_SCRIPT")/.." && pwd)"
 cd "$REAL_ROOT"
 
-# Self-test mode: injects a compile fault into a sub-execution and verifies it exits non-zero
+# Self-test mode: runs the checker with an injected compile fault in a child and verifies that the child
+# ran a fresh baseline, reached the compile fault and exited with exactly 2.
 if [ "${1:-}" = "--selftest-compile-fault" ]; then
     echo "=== Mutation Checker Self-Test Mode ==="
     echo "Invoking mutation checker with an injected compile fault..."
+    SELFTEST_OUTPUT=""
     set +e
-    "$BASH_SOURCE" --inject-compile-fault
+    # Launched through bash so the script's file mode (committed as 100644) does not matter.
+    SELFTEST_OUTPUT="$("${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault 2>&1)"
     SELFTEST_STATUS=$?
     set -e
+    if [ -n "$SELFTEST_OUTPUT" ]; then
+        echo "$SELFTEST_OUTPUT"
+    fi
 
-    if [ $SELFTEST_STATUS -ne 0 ]; then
-        echo "Self-test PASSED: mutation checker rejected compile fault with non-zero exit code ($SELFTEST_STATUS)."
-        exit 0
-    else
-        echo "Self-test FAILED: mutation checker exited with code 0 despite injected compile fault!"
+    SELFTEST_REASON=""
+    case "$SELFTEST_STATUS" in
+        2) ;;
+        0) SELFTEST_REASON="child exited with code (0) despite the injected compile fault" ;;
+        126) SELFTEST_REASON="launch failure: child exit code (126), permission denied or not executable" ;;
+        127) SELFTEST_REASON="launch failure: child exit code (127), command not found" ;;
+        *) SELFTEST_REASON="child exit code ($SELFTEST_STATUS), expected exactly (2) for a rejected compile fault" ;;
+    esac
+
+    if [ -z "$SELFTEST_REASON" ]; then
+        SELFTEST_MISSING=()
+        grep -q "Baseline PASSED" <<< "$SELFTEST_OUTPUT" || SELFTEST_MISSING+=("'Baseline PASSED'")
+        grep -q "Injecting deliberate Kotlin compilation fault" <<< "$SELFTEST_OUTPUT" \
+            || SELFTEST_MISSING+=("'Injecting deliberate Kotlin compilation fault'")
+        grep -q "failed to compile" <<< "$SELFTEST_OUTPUT" || SELFTEST_MISSING+=("'failed to compile'")
+        if [ ${#SELFTEST_MISSING[@]} -gt 0 ]; then
+            SELFTEST_REASON="child exit code (2) without evidence; missing ${SELFTEST_MISSING[*]}"
+        fi
+    fi
+
+    if [ -n "$SELFTEST_REASON" ]; then
+        echo "Self-test FAILED: $SELFTEST_REASON"
         exit 1
     fi
+    echo "Self-test PASSED: fresh baseline ran, compile fault was reached and rejected with exit code (2)."
+    exit 0
 fi
 
 INJECT_COMPILE_FAULT=false

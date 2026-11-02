@@ -25,7 +25,21 @@ To run the self-test mode manually (verifying that compile faults are rejected a
 ```bash
 bash scripts/mutation-check.sh --selftest-compile-fault
 ```
-The self-test verifies that deliberate compilation errors produce exit code 2 and are never treated as killed mutations.
+The self-test relaunches the script as `bash <absolute script path> --inject-compile-fault`, so it works when
+the script is committed with mode `100644` and when it is invoked from another directory. It displays the
+child's output and passes (exit 0) only if all of the following hold:
+- the child exit code is exactly `2` (the compilation gate rejected the fault);
+- the child output contains `Baseline PASSED` (a fresh baseline run executed);
+- the child output contains `Injecting deliberate Kotlin compilation fault` and `failed to compile`
+  (the deliberate fault was actually reached).
+
+Otherwise it prints `Self-test FAILED: <reason>` and exits 1. The reasons distinguish a launch failure
+(`126` permission denied, `127` command not found), exit code `0`, any other exit code, and exit code `2`
+without the evidence above. Deliberate compilation errors are therefore never treated as killed mutations,
+and a launch failure is never mistaken for a rejected compile fault.
+
+Running `bash scripts/mutation-check.sh --inject-compile-fault` directly is unchanged: it exits with code 2
+when the injected fault fails to compile.
 
 ---
 
