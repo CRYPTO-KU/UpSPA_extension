@@ -43,7 +43,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':test'.
-> There were failing tests. See the report at: file:///C:/Users/Furkan/AppData/Local/Temp/tmp.L7WCMmssnr/build/reports/tests/test/index.html
+> There were failing tests. See the report at: file:///<WIN_HOME>/AppData/Local/Temp/tmp.L7WCMmssnr/build/reports/tests/test/index.html
 
 * Try:
 > Run with --scan to get full insights.

@@ -18,6 +18,9 @@ This report documents the resolution of the two review round 3 findings for PR #
 | Tests-only commit (round 3 regression tests) | `158b393` (`158b393e725d587d5d19cee9f02720c62c222fb6`) |
 | Fix commit A, Finding 1 | `7a78cec` (`7a78cec9c15ab5e5ef1f034e43b9b126593882ae`) |
 | Fix commit B, Finding 2 | `388ac95` (`388ac95d533bd3c70380e40b008764f3294e3020`) |
+| Report and evidence (first version) | `0e43dd2` |
+| Commit C, evidence-printing child controls (tests only) | `475f865` (`475f8656afac5ee71a985b9276f2d82b23f0c96a`) |
+| Commit D, this report update and evidence sanitization | the commit that contains this version of the report |
 
 The tests-only commit `158b393` replaced an earlier unpushed version, `28a8b62`, with `git commit --amend` after review.
 Its diff is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/test-commit-158b393.diff`.
@@ -56,7 +59,20 @@ ReviewRound3RegressionTest > Finding 1 - exact repro - backslash followed by lit
 355 tests completed, 7 failed, 2 skipped
 ```
 Three Finding 1 tests fail: the exact reproduction, `code point 10` (LF), and the object-key case.
-The other 31 code points (0..9, 11..31) already returned `MalformedJson` on unfixed code. The cause was not investigated.
+The other 31 code points (0..9, 11..31) already returned `MalformedJson` on unfixed code. The reason was verified with a scratch probe that was never committed.
+The probe source is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/ScratchEscapeProbeTest.kt.txt`. It was run in a temporary worktree at `158b393` and again at `475f865`; the outputs are in `escape-probe-158b393.txt` and `escape-probe-475f865.txt` in the same directory.
+- **Pre-check:** On unfixed code, `validateStrictJsonStringSyntax` skips every byte after a backslash, so the parse reaches Moshi's `JsonReader`.
+- **Moshi:** In strict (non-lenient) mode, `JsonReader` throws `JsonEncodingException: Invalid escape sequence` for a backslash followed by any control character **except LF (10)**. It accepts LF as an escaped newline and decodes it to code point 10.
+- **Validator:** `parseJsonAst` maps the Moshi exception to `MalformedJson`. That is why only `code point 10` failed.
+
+On unfixed code the probe gives `StrictCatalogValidator` results of `Rejected(MalformedJson)` for backslash + 9 and backslash + 11, and `Accepted` with code points `[33, 10, 64]` for backslash + 10.
+On fixed code, backslash + 10 is `Rejected(MalformedJson)` as well.
+
+> [!NOTE]
+> **Observation for reviewer (not changed in this round):** The same probe shows that Moshi strict mode also accepts
+> backslash + apostrophe (`\'`, code point 39), which RFC 8259 Section 7 does not list as an escape. With both fixes applied,
+> `StrictCatalogValidator` still **accepts** `allowedSymbols` containing `!\'@` and decodes it to `[33, 39, 64]`.
+> Whether the validator should also reject `\'` is a catalog-strictness decision and is left to the maintainer.
 All 7 Finding 1 valid controls passed. These are escaped `\n`, `\\`, `\t`, `\r`, `\u0000` and `\u001f`, each accepted with its decoded value checked, plus a literal LF without a backslash, which is rejected.
 
 ### 1.4 Fix Applied (commit `7a78cec`)
@@ -104,7 +120,13 @@ The fixture contains:
 | Launch-failure controls (126, 127, 1) | The whole child-launch line is replaced by `sh -c 'exit N'`. Requires non-zero exit and `Self-test FAILED`, never `Self-test PASSED`. |
 | Status 0 control | Same, with `sh -c 'exit 0'`. |
 | Status 2 without evidence control | Same, with `sh -c 'exit 2'`, so there is no baseline or fault output. |
+| Evidence-printing controls, N = 126, 127, 1, 3, 0 (added in `475f865`) | The whole launch statement is replaced by `SELFTEST_OUTPUT="$(sh -c '<print full evidence>; exit N' 2>&1)"`. The output is captured exactly like the real launch line. The child prints `Baseline PASSED: 3 tests completed`, `Injecting deliberate Kotlin compilation fault into ... for M1...` and `FATAL: Mutation M1 failed to compile! ...`. Requires non-zero exit and `Self-test FAILED`, never `Self-test PASSED`. |
+| Evidence-printing positive control, N = 2 (added in `475f865`) | Same replacement with exit 2. Requires exit 0 and `Self-test PASSED`. It does not depend on file modes, so it also runs on Windows. |
 | `bash -n` valid control | The script has valid bash syntax. |
+
+The launch-line replacement helper replaces the single non-comment line containing `--inject-compile-fault` inside the
+`--selftest-compile-fault` branch. It therefore works for both the pre-fix form (`"$BASH_SOURCE" --inject-compile-fault`)
+and the post-fix form (`SELFTEST_OUTPUT="$("${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault 2>&1)"`).
 
 ### 2.2 Reproduction Commands (Before Fix)
 Windows Git Bash: the same full-suite command as 1.2.
@@ -139,6 +161,14 @@ The plain-bash harness in WSL (`upspa-assetlink-verifier/docs/pr33-round3-eviden
 
 The header of that output names the harness by its old untracked path. It is the same file, renamed into the evidence directory.
 
+**Evidence-printing controls on unfixed code.** This run used a temporary worktree at `158b393` with the test file from `475f865` copied in, on Windows Git Bash
+(`upspa-assetlink-verifier/docs/pr33-round3-evidence/unfixed-158b393-with-475f865-tests.txt`, `--rerun`):
+- 54 tests, 11 failures, 1 skipped.
+- The non-zero-status cases `child status 126 with full evidence`, `127`, `1` and `3` **fail**: the unfixed script prints `Self-test PASSED` and exits 0.
+- `child status 0 with full evidence` passes, because the unfixed script already rejects status 0.
+- The N = 2 positive control passes.
+- The other 7 failures are the 3 Finding 1 tests and the 4 earlier Finding 2 controls.
+
 ### 2.4 Fix Applied (commit `388ac95`)
 - The script resolves its absolute path (`ABS_SCRIPT`) **before** `cd "$REAL_ROOT"`. It launches the child as
   `"${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault`, so the file mode and the caller's directory do not matter.
@@ -163,14 +193,17 @@ $env:PATH = "C:\Program Files\Git\bin;" + $env:PATH
 "C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh --inject-compile-fault
 "C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh
 ```
-WSL: `wsl-run-r3.sh` at `388ac95`.
+WSL: `wsl-run-r3.sh` at `388ac95`, and again at `475f865`.
 
 ### 2.6 Real Output After Fix (excerpt (trimmed))
-**Windows Git Bash, full suite** (`fixed-full-suite-388ac95.txt`, `fixed-xml-totals-388ac95.txt`): Gradle exit 0. All Finding 2 controls pass.
-The mode-644 positive test is skipped on NTFS.
+**Windows Git Bash, full suite at `475f865`** (`fixed-full-suite-475f865.txt`, `fixed-xml-totals-475f865.txt`): Gradle exit 0.
+All Finding 2 controls pass, including the 6 evidence-printing controls. The mode-644 positive test is skipped on NTFS.
+The WSL VM was not running when the suite started (recorded in the totals file).
+The earlier run at `388ac95` (`fixed-full-suite-388ac95.txt`, `fixed-xml-totals-388ac95.txt`) is kept as history.
 
-**WSL at `388ac95`** (`upspa-assetlink-verifier/docs/pr33-round3-evidence/wsl-r3-tests-388ac95.txt`): `BUILD SUCCESSFUL`, 48 tests, 0 failures, **0 skipped**.
-The mode-644 positive test **passes** with the script at mode `644 -rw-r--r--`.
+**WSL at `475f865`** (`upspa-assetlink-verifier/docs/pr33-round3-evidence/wsl-r3-tests-475f865.txt`): `BUILD SUCCESSFUL`, 54 tests, 0 failures, **0 skipped**.
+The mode-644 positive test and all evidence-printing controls **pass** with the script at mode `644 -rw-r--r--`.
+The earlier WSL run at `388ac95` (`wsl-r3-tests-388ac95.txt`: 48 tests, 0 failures, 0 skipped) is kept as history.
 
 **Real script, self-test** (`upspa-assetlink-verifier/docs/pr33-round3-evidence/script-selftest-388ac95.txt`), real Gradle, exit code 0:
 ```text
@@ -203,6 +236,27 @@ SUCCESS: All mutations were killed by the Identity Adversarial Suite!
 ---
 
 ## Mutation Proofs (isolated copies only)
+
+### Current proofs, tests at `475f865`
+F2(a1), F2(a2) and F2(b) were rerun in a temporary detached `git worktree` at `475f865`, on Windows Git Bash with `--rerun`.
+The driver was `upspa-assetlink-verifier/docs/pr33-round3-evidence/win-mutations-r2.sh`.
+The same driver produced the unfixed-code run and the escape probes described earlier.
+The worktree was removed afterwards, and `git worktree list` shows only the main checkout
+(`upspa-assetlink-verifier/docs/pr33-round3-evidence/worktree-list-after-475f865-proofs.txt`).
+
+| ID | Mutation | Environment | Result | Failing tests |
+| :--- | :--- | :--- | :--- | :--- |
+| F2(a1) | Classification weakened: `2) ;;` → `[1-9]*) ;;` (any non-zero status accepted); evidence check kept | Windows Git Bash | **Detected** (4 failures) | `child status 126 with full evidence`, `child status 127 with full evidence`, `child status 1 with full evidence`, `child status 3 with full evidence` |
+| F2(a2) | Any non-zero status accepted **and** evidence check dropped | Windows Git Bash | **Detected** (8 failures) | the 4 evidence-printing cases above, `child status 126`, `child status 127`, `child status 1`, status 2 without evidence |
+| F2(b) | Evidence requirement dropped (`if [ -z "$SELFTEST_REASON" ]` → `if false`) | Windows Git Bash | **Detected** (1 failure) | status 2 without evidence |
+
+Evidence: `upspa-assetlink-verifier/docs/pr33-round3-evidence/mutation-F2a1-475f865.txt`, `mutation-F2a2-475f865.txt` and `mutation-F2b-475f865.txt` in the same directory.
+F1 and F2(c) were not rerun. The tests they rely on did not change in `475f865`.
+
+A first attempt at this set of proofs used a worktree under a deeply nested temp directory. It failed with Windows `Filename too long` errors before any test ran.
+It was rerun with a short worktree path. The leftover directories from that attempt, and from the first proof round, were outside the repository and have been deleted.
+
+### History: first proofs, tests at `388ac95`
 F1 and F2(a)/(b) ran in a temporary detached `git worktree` at `388ac95`, driven by
 `upspa-assetlink-verifier/docs/pr33-round3-evidence/win-mutations.sh` (Windows Git Bash).
 F2(c) ran in the WSL clone, driven by `upspa-assetlink-verifier/docs/pr33-round3-evidence/wsl-mutation-c.sh`.
@@ -213,7 +267,7 @@ The temporary worktree was removed. `git worktree list` afterwards shows only th
 | ID | Mutation | Environment | Result | Failing tests |
 | :--- | :--- | :--- | :--- | :--- |
 | F1 | `CatalogValidator.kt` reverted to its pre-fix version (exact inverse of `7a78cec`) | Windows Git Bash | **Detected** (3 failures) | exact repro, `code point 10`, object-key case |
-| F2(a1) | Classification weakened: `2) ;;` → `[1-9]*) ;;` (any non-zero status accepted); evidence check kept | Windows Git Bash | **Not detected** (0 failures) | none: the evidence requirement still rejects 126/127/1 because they produce no baseline or fault output |
+| F2(a1) | Classification weakened: `2) ;;` → `[1-9]*) ;;` (any non-zero status accepted); evidence check kept | Windows Git Bash | **Not detected at that time** (0 failures); detected since `475f865` | none: the evidence requirement still rejects 126/127/1 because they produce no baseline or fault output |
 | F2(a2) | Any non-zero status accepted **and** evidence check dropped (pre-fix semantics) | Windows Git Bash | **Detected** (4 failures) | `child status 126`, `child status 127`, `child status 1`, status 2 without evidence |
 | F2(b) | Evidence requirement dropped (`if [ -z "$SELFTEST_REASON" ]` → `if false`) | Windows Git Bash | **Detected** (1 failure) | status 2 without evidence |
 | F2(c) | Launch reverted to `SELFTEST_OUTPUT="$("$BASH_SOURCE" --inject-compile-fault 2>&1)"` | WSL | **Detected** (1 failure) | mode-644 positive test: `Permission denied`, `Self-test FAILED: launch failure: child exit code (126) ...` |
@@ -222,8 +276,8 @@ Evidence: `upspa-assetlink-verifier/docs/pr33-round3-evidence/mutation-F1.txt`, 
 `mutation-F2b.txt` and `mutation-F2c-wsl.txt` in the same directory.
 
 Notes:
-- **F2(a1):** The 126/127/1 controls cannot detect a weakened status classification on its own, because both checks must fail before the self-test passes.
-  The controls detect it together with (b), as F2(a2) shows. Each check is still required, as shown by F2(b) and F2(c).
+- **F2(a1), history:** The 126/127/1 controls in `388ac95` printed no evidence, so a weakened status classification alone was not detected.
+  This gap was closed in `475f865` by the evidence-printing controls (see the current proofs above).
 - **F1 diff:** `mutation-F1.txt` shows an empty diff section. The mutation was applied with
   `git checkout <commit>~2 -- CatalogValidator.kt`, which stages the change, and the script printed only the unstaged diff.
   The mutation is exactly the inverse of commit `7a78cec`.
@@ -239,7 +293,8 @@ Notes:
 - `+48` tests in `ReviewRound3RegressionTest`:
   - Finding 1: 3 rejection tests, one of which is parameterized over 32 code points, plus 7 valid controls. Total 41.
   - Finding 2: `bash -n` control, mode-644 positive test, 3 parameterized launch-failure controls, status-0 control, and status-2-without-evidence control. Total 7.
-- **Total: 355 tests.**
+- `+6` tests in `475f865`: 5 parameterized evidence-printing controls (N = 126, 127, 1, 3, 0) and the N = 2 positive control.
+- **Total: 361 tests**, of which 54 are in `ReviewRound3RegressionTest`.
 
 ### Unfixed Run (`158b393`, Windows Git Bash, `.\gradlew clean test --no-daemon`)
 From the XML reports:
@@ -251,13 +306,18 @@ From the XML reports:
 
 Every other class passed with 0 skipped, except `ReviewRound2RegressionTest`: 16 tests, 1 skipped.
 
-### Fixed Run (`388ac95`, Windows Git Bash, `.\gradlew clean test --no-daemon`)
-From the XML reports (`fixed-xml-totals-388ac95.txt`). Gradle exit code 0.
+The unfixed run with the `475f865` test file (`ReviewRound3RegressionTest` only, temporary worktree, Windows Git Bash) gave 54 tests: 42 passed, 11 failed, 1 skipped.
+
+### Fixed Run (`475f865`, Windows Git Bash, `.\gradlew clean test --no-daemon`, WSL VM stopped at start)
+From the XML reports (`fixed-xml-totals-475f865.txt`). Gradle exit code 0.
 
 | Scope | Total | Passed | Failed | Skipped |
 | :--- | ---: | ---: | ---: | ---: |
-| All 14 classes | 355 | 353 | 0 | 2 |
-| `ReviewRound3RegressionTest` | 48 | 47 | 0 | 1 |
+| All 14 classes | 361 | 359 | 0 | 2 |
+| `ReviewRound3RegressionTest` | 54 | 53 | 0 | 1 |
+
+History: the fixed run at `388ac95` (`fixed-xml-totals-388ac95.txt`) gave 355 total, 353 passed, 0 failed and 2 skipped.
+`ReviewRound3RegressionTest` was 48 total, 47 passed, 1 skipped.
 
 ### WSL Runs (`ReviewRound3RegressionTest` only)
 
@@ -265,6 +325,7 @@ From the XML reports (`fixed-xml-totals-388ac95.txt`). Gradle exit code 0.
 | :--- | ---: | ---: | ---: | ---: |
 | `158b393` | 48 | 40 | 8 | 0 |
 | `388ac95` | 48 | 48 | 0 | 0 |
+| `475f865` | 54 | 54 | 0 | 0 |
 
 ### Skipped Tests and Reasons (Windows)
 1. `ReviewRound3RegressionTest` — the Finding 2 mode-644 positive test. The NTFS working tree has no POSIX file modes, so a mode-644 script cannot be expressed. This test was run in WSL instead.
@@ -291,4 +352,30 @@ From the XML reports (`fixed-xml-totals-388ac95.txt`). Gradle exit code 0.
 ## Not Run / Limitations
 - The mode-644 positive test cannot run on NTFS. Its POSIX results come only from WSL.
 - No CI or device runs were made. All results are local.
-- The evidence files are raw outputs and driver scripts, kept unedited, so they contain absolute local paths (temp directories, Gradle report URLs, and the WSL clone source path).
+- The real `mutation-check.sh` runs (self-test, `--inject-compile-fault`, normal) were made at `388ac95` and were **not repeated** at `475f865`.
+  Commit `475f865` changes only the test file, which the script's baseline runs as part of the suite; the `475f865` full suite passes.
+
+## Evidence Files and Sanitization
+All evidence is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/`. Files are raw outputs, driver scripts, and the scratch probe source
+(`ScratchEscapeProbeTest.kt.txt`, which was never compiled into the module).
+
+Only local path prefixes were replaced; nothing else in the evidence files was edited.
+The transform, applied with GNU sed in Git Bash to every file in that directory:
+```bash
+sed -i -e 's#/mnt/c/Users/Furkan#<WIN_HOME>#g' \
+       -e 's#/c/Users/Furkan#<WIN_HOME>#g' \
+       -e 's#C:/Users/Furkan#<WIN_HOME>#g' \
+       -e 's#C--Users-Furkan#<WIN_HOME_SLUG>#g' \
+       -e 's#/home/furkan#<WSL_HOME>#g' \
+       upspa-assetlink-verifier/docs/pr33-round3-evidence/*
+```
+- `<WIN_HOME>` is the Windows home directory, in all its forms: drive form, MSYS form, WSL mount form, and inside `file:///` URLs.
+- `<WIN_HOME_SLUG>` is the same prefix as it appears encoded in the session temp directory name.
+- `<WSL_HOME>` is the WSL home directory.
+
+Verification of the transform:
+- **Committed files:** for every evidence file already committed in `0e43dd2`, `git show 0e43dd2:<file> | sed <transform>` is byte-identical to the new file.
+- **New files:** for each new file, applying the transform to the original scratch output is byte-identical to the committed file.
+
+Branch names (`furkan/...`) and the commit author e-mail are not path prefixes and were not changed.
+The driver scripts were sanitized too. They reference `<WIN_HOME>` / `<WSL_HOME>` and must be adjusted before reuse.

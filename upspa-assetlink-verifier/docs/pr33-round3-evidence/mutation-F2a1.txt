@@ -23,7 +23,7 @@ Daemon will be stopped at the end of the build
 > Task :processTestResources
 
 > Task :compileKotlin
-w: file:///C:/Users/Furkan/AppData/Local/Temp/claude/C--Users-Furkan-UpSPA-extension-r3/30e780bc-a965-4c1c-a9d0-1f1e3a6c08c2/scratchpad/wt-r3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/30e780bc-a965-4c1c-a9d0-1f1e3a6c08c2/scratchpad/wt-r3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
 
 > Task :compileJava NO-SOURCE
 > Task :classes UP-TO-DATE

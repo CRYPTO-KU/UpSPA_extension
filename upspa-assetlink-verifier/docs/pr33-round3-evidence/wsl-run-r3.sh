@@ -4,7 +4,7 @@
 set -u
 COMMIT="$1"
 OUT="$2"
-SRC_REPO=/mnt/c/Users/Furkan/UpSPA_extension_r3
+SRC_REPO=<WIN_HOME>/UpSPA_extension_r3
 CLONE="$HOME/upspa-r3-wsl"
 export JAVA_HOME="$(ls -d "$HOME"/jdk17/jdk-17*)"
 export PATH="$JAVA_HOME/bin:$PATH"

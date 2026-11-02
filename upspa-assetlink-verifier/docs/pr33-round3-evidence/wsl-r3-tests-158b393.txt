@@ -1,4 +1,4 @@
-=== Environment: WSL2 Linux 6.18.54.1-microsoft-standard-WSL2; clone at /home/furkan/upspa-r3-wsl (filesystem: ext2/ext3) ===
+=== Environment: WSL2 Linux 6.18.54.1-microsoft-standard-WSL2; clone at <WSL_HOME>/upspa-r3-wsl (filesystem: ext2/ext3) ===
 Commit: 158b393e725d587d5d19cee9f02720c62c222fb6 (Add failing regression tests for PR #33 review round 3)
 java: openjdk version "17.0.21" 2026-10-20
 bash: /usr/bin/bash (GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu))
@@ -23,7 +23,7 @@ Daemon will be stopped at the end of the build
 > Task :processTestResources
 
 > Task :compileKotlin
-w: file:///home/furkan/upspa-r3-wsl/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+w: file://<WSL_HOME>/upspa-r3-wsl/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
 
 > Task :compileJava NO-SOURCE
 > Task :classes UP-TO-DATE
@@ -145,7 +145,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':test'.
-> There were failing tests. See the report at: file:///home/furkan/upspa-r3-wsl/upspa-assetlink-verifier/build/reports/tests/test/index.html
+> There were failing tests. See the report at: file://<WSL_HOME>/upspa-r3-wsl/upspa-assetlink-verifier/build/reports/tests/test/index.html
 
 * Try:
 > Run with --scan to get full insights.

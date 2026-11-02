@@ -16,7 +16,7 @@ FATAL: Mutation M1 failed to compile! Compilation errors are NOT killed mutation
 > Task :processResources NO-SOURCE
 
 > Task :compileKotlin FAILED
-e: file:///C:/Users/Furkan/AppData/Local/Temp/tmp.ErU6Cq4Qvt/src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt:314:34 Type mismatch: inferred type is String but Int was expected
+e: file:///<WIN_HOME>/AppData/Local/Temp/tmp.ErU6Cq4Qvt/src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt:314:34 Type mismatch: inferred type is String but Int was expected
 
 FAILURE: Build failed with an exception.
 

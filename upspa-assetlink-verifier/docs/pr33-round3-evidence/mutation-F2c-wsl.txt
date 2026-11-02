@@ -1,4 +1,4 @@
-=== Mutation proof (c): WSL2 Linux 6.18.54.1-microsoft-standard-WSL2, clone /home/furkan/upspa-r3-wsl, base commit 388ac95d533bd3c70380e40b008764f3294e3020 ===
+=== Mutation proof (c): WSL2 Linux 6.18.54.1-microsoft-standard-WSL2, clone <WSL_HOME>/upspa-r3-wsl, base commit 388ac95d533bd3c70380e40b008764f3294e3020 ===
 Launch line before: 21:    SELFTEST_OUTPUT="$("${BASH:-bash}" "$ABS_SCRIPT" --inject-compile-fault 2>&1)"
 Launch line after : 21:    SELFTEST_OUTPUT="$("$BASH_SOURCE" --inject-compile-fault 2>&1)"
 Script mode after mutation: 644 -rw-r--r--
@@ -134,7 +134,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':test'.
-> There were failing tests. See the report at: file:///home/furkan/upspa-r3-wsl/upspa-assetlink-verifier/build/reports/tests/test/index.html
+> There were failing tests. See the report at: file://<WSL_HOME>/upspa-r3-wsl/upspa-assetlink-verifier/build/reports/tests/test/index.html
 
 * Try:
 > Run with --scan to get full insights.

@@ -1,4 +1,4 @@
-=== Environment: WSL2 Linux 6.18.54.1-microsoft-standard-WSL2; clone at /home/furkan/upspa-r3-wsl (filesystem: ext2/ext3) ===
+=== Environment: WSL2 Linux 6.18.54.1-microsoft-standard-WSL2; clone at <WSL_HOME>/upspa-r3-wsl (filesystem: ext2/ext3) ===
 Commit: 388ac95d533bd3c70380e40b008764f3294e3020 (Make mutation-check self-test require real compile-fault evidence)
 java: openjdk version "17.0.21" 2026-10-20
 bash: /usr/bin/bash (GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu))

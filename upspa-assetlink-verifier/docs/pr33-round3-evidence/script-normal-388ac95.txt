@@ -30,7 +30,7 @@ PASS: Mutation M7 KILLED! (52 tests executed, failing cases: REQUESTED_ENROLLED_
 --- Testing Mutation M8: Non-HTTPS origin rejection disabled ---
 PASS: Mutation M8 KILLED! (52 tests executed, failing cases: ORIGIN_BOUNDARY_NON_HTTPS_REJECTION)
 
-Mutation check report generated at: /c/Users/Furkan/UpSPA_extension_r3/upspa-assetlink-verifier/build/reports/mutation-check.md
+Mutation check report generated at: <WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/build/reports/mutation-check.md
 # Mutation Check Report
 
 Generated on: 2026-11-02T18:12:32Z

@@ -6,7 +6,7 @@ Daemon will be stopped at the end of the build
 > Task :processTestResources
 
 > Task :compileKotlin
-w: file:///C:/Users/Furkan/UpSPA_extension_r3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+w: file:///<WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
 
 > Task :compileJava NO-SOURCE
 > Task :classes UP-TO-DATE
@@ -741,7 +741,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':test'.
-> There were failing tests. See the report at: file:///C:/Users/Furkan/UpSPA_extension_r3/upspa-assetlink-verifier/build/reports/tests/test/index.html
+> There were failing tests. See the report at: file:///<WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/build/reports/tests/test/index.html
 
 * Try:
 > Run with --scan to get full insights.

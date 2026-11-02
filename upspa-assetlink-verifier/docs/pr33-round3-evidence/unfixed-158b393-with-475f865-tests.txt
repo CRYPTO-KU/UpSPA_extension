@@ -1,0 +1,246 @@
+=== U: unfixed code (158b393) with the test file from 475f8656afac5ee71a985b9276f2d82b23f0c96a copied in ===
+Environment: Windows, GNU bash, version 5.3.15(2)-release (x86_64-pc-cygwin), temporary worktree based on 158b393e725d587d5d19cee9f02720c62c222fb6
+Mutation command: git checkout -q 475f8656afac5ee71a985b9276f2d82b23f0c96a -- upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt
+--- git status --short (worktree) ---
+M  upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt
+--- git diff HEAD (mutation, CR-at-EOL ignored) ---
+diff --git a/upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt b/upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt
+index 4060b2d..d5fc3c2 100644
+--- a/upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt
++++ b/upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ReviewRound3RegressionTest.kt
+@@ -441,7 +441,7 @@ class ReviewRound3RegressionTest {
+         return lines.joinToString("\n")
+     }
+ 
+-    private fun assertSelfTestRejectsReplacedChild(childReplacement: String) {
++    private fun runSelfTestWithReplacedChild(childReplacement: String): ProcessResult {
+         val scriptFile = realScriptFile()
+         assertTrue(scriptFile.exists(), "scripts/mutation-check.sh must exist")
+         val bash = requireBash()
+@@ -449,15 +449,30 @@ class ReviewRound3RegressionTest {
+         val mutated = replaceSelfTestChildLaunch(scriptFile.readText().replace("\r\n", "\n"), childReplacement)
+         val fixture = buildSelfTestFixture(bash, mutated)
+         try {
+-            val result = runSelfTest(bash, fixture)
+-            assertNotEquals(0, result.exitCode, "Self-test must exit non-zero when child is `$childReplacement`. Output:\n${result.output}")
+-            assertTrue(result.output.contains("Self-test FAILED"), "Self-test must report Self-test FAILED. Output:\n${result.output}")
+-            assertFalse(result.output.contains("Self-test PASSED"), "Self-test must never report Self-test PASSED. Output:\n${result.output}")
++            return runSelfTest(bash, fixture)
+         } finally {
+             fixture.deleteRecursively()
+         }
+     }
+ 
++    private fun assertSelfTestRejectsReplacedChild(childReplacement: String) {
++        val result = runSelfTestWithReplacedChild(childReplacement)
++        assertNotEquals(0, result.exitCode, "Self-test must exit non-zero when child is `$childReplacement`. Output:\n${result.output}")
++        assertTrue(result.output.contains("Self-test FAILED"), "Self-test must report Self-test FAILED. Output:\n${result.output}")
++        assertFalse(result.output.contains("Self-test PASSED"), "Self-test must never report Self-test PASSED. Output:\n${result.output}")
++    }
++
++    /**
++     * A child launch statement that prints the full baseline and compile-fault evidence, then exits with [status].
++     * Its output is captured into SELFTEST_OUTPUT like the real launch line.
++     */
++    private fun evidenceChildLaunch(status: Int): String =
++        "SELFTEST_OUTPUT=\"${'$'}(sh -c '" +
++            "echo \"Baseline PASSED: 3 tests completed\"; " +
++            "echo \"Injecting deliberate Kotlin compilation fault into $FIXTURE_VERIFIER_PATH for M1...\"; " +
++            "echo \"FATAL: Mutation M1 failed to compile! Compilation errors are NOT killed mutations.\"; " +
++            "exit $status' 2>&1)\""
++
+     // -------------------------------------------------------------
+     // Finding 2: mutation-check.sh self-test
+     // -------------------------------------------------------------
+@@ -543,4 +558,18 @@ class ReviewRound3RegressionTest {
+     fun `Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected`() {
+         assertSelfTestRejectsReplacedChild("sh -c 'exit 2'")
+     }
++
++    @ParameterizedTest(name = "child status {0} with full evidence")
++    @ValueSource(ints = [126, 127, 1, 3, 0])
++    fun `Finding 2 - negative control - self-test fails when child prints full evidence but exits with status`(status: Int) {
++        assertSelfTestRejectsReplacedChild(evidenceChildLaunch(status))
++    }
++
++    @Test
++    fun `Finding 2 - valid control - child status 2 with full evidence passes independent of file modes`() {
++        val result = runSelfTestWithReplacedChild(evidenceChildLaunch(2))
++        assertEquals(0, result.exitCode, "Self-test must exit 0 for status 2 with full evidence. Output:\n${result.output}")
++        assertTrue(result.output.contains("Self-test PASSED"), "Self-test must report Self-test PASSED. Output:\n${result.output}")
++        assertFalse(result.output.contains("Self-test FAILED"), "Self-test must not report Self-test FAILED. Output:\n${result.output}")
++    }
+ }
+$ ./gradlew test --rerun --tests 'org.upspa.catalog.ReviewRound3RegressionTest' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/AppData/Local/Temp/wtr3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test
+
+ReviewRound3RegressionTest > Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected() FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character inside object key is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:157
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode null backslash-u0000 is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - JSON-escaped newline backslash-n is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child exits 0() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - child status 2 with full evidence passes independent of file modes() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - ordinary literal LF inside string without backslash is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2() SKIPPED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 126 with full evidence FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 127 with full evidence FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 1 with full evidence FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 3 with full evidence FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 0 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 126 FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 127 FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 1 FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:460
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 0 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 1 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 2 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 3 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 4 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 5 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 6 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 7 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 8 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 9 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 10 FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:129
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 11 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 12 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 13 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 14 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 15 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 16 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 17 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 18 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 19 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 20 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 21 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 22 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 23 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 24 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 25 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 26 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 27 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 28 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 29 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 30 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 31 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode unit separator backslash-u001f is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped carriage return backslash-r is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at ReviewRound3RegressionTest.kt:101
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped tab backslash-t is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped backslash double backslash is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - mutation check script exists and has valid bash syntax() PASSED
+
+54 tests completed, 11 failed, 1 skipped
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///<WIN_HOME>/AppData/Local/Temp/wtr3/upspa-assetlink-verifier/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 21s
+5 actionable tasks: 5 executed
+# gradle exit code: 1
+# XML TEST-org.upspa.catalog.ReviewRound3RegressionTest.xml: tests="54" skipped="1" failures="11" errors="0"
+# failing test cases:
+  Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected()
+  Finding 1 - backslash followed by literal control character inside object key is rejected as MalformedJson()
+  child status 126 with full evidence
+  child status 127 with full evidence
+  child status 1 with full evidence
+  child status 3 with full evidence
+  child status 126
+  child status 127
+  child status 1
+  code point 10
+  Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson()
+# worktree restored: git status --short -> ''
