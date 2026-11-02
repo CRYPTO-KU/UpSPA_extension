@@ -1,0 +1,913 @@
+﻿# HEAD 80555aab2ab36e484f79b323eb2f3249c053df62; WSL VM not running (no vmmemWSL process) before full suite
+# bash resolves to: C:\Program Files\Git\bin\bash.exe
+$ .\gradlew clean test --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :clean
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > EXACT_MATCH_SINGLE_SIGNER PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > EXACT_MATCH_UPPERCASE_HOST_NORMALIZES PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > EXACT_MATCH_NON_DEFAULT_PORT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > EXACT_MATCH_DEFAULT_PORT_EQUIVALENCE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_DIFFERENT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_CASE_DIFFERENCE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_PREFIX_LOOKALIKE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_SUFFIX_LOOKALIKE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_NON_ANDROID_NAMESPACE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > PACKAGE_MISMATCH_MALFORMED_NAME PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CERTIFICATE_MISMATCH_DIFFERENT_DIGEST PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CERTIFICATE_MISMATCH_ONE_BYTE_DIFFERENCE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CERTIFICATE_MISMATCH_PREFIX_DIGEST PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CERTIFICATE_MISMATCH_AUTHORIZED_FOR_ANOTHER_PACKAGE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_SUBDOMAIN PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_PARENT_DOMAIN PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_SIBLING_SUBDOMAIN PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_LOOKALIKE_EVIL_EXAMPLE PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_LOOKALIKE_EXAMPLE_EVIL PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_DIFFERENT_PORT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_NON_HTTPS_REJECTION PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_HOST_TRAILING_DOT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_HOST_PATH_CHARS PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ORIGIN_BOUNDARY_HOST_NON_ASCII PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_RAW_CORRUPT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_TRAILING_BYTES PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_CLAIMED_FINGERPRINT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_STATEMENT_TARGET_FINGERPRINT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_MIXED_VALID_AND_MALFORMED PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MALFORMED_CERT_EMPTY_FINGERPRINT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CONFLICTING_EVIDENCE_TYPED_CURRENT_PLUS_RAW_CURRENT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CONFLICTING_EVIDENCE_TYPED_HISTORY_PLUS_RAW_CURRENT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CONFLICTING_EVIDENCE_RAW_STRING_PLUS_RAW_BYTES PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CONFLICTING_EVIDENCE_NO_FAMILY_SUPPLIED PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > CONFLICTING_EVIDENCE_CURRENT_NOT_IN_ROTATION_HISTORY PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MULTIPLE_SIGNERS_ONE_AUTHORIZED PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MULTIPLE_SIGNERS_BOTH_AUTHORIZED PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > MULTIPLE_SIGNERS_COMBINED_WITH_ROTATION PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ROTATION_VALID_LINEAGE_MATCHES_NEW PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ROTATION_LINEAGE_MATCHES_OLD PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ROTATION_LINEAGE_MATCHES_NEITHER PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ROTATION_CURRENT_NOT_LAST_IN_HISTORY PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > ROTATION_HISTORY_LONGER_THAN_TWO PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_MATCHES PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_REPLAY_EVIL PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_REPLAY_SUBDOMAIN PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_REPLAY_PARENT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_SCHEME PASSED
+
+IdentityAdversarialSuite > testIdentityCase(String, IdentityCase) > REQUESTED_ENROLLED_BINDING_MISSING_RELATION PASSED
+
+IdentityAdversarialSuite > meta-test case IDs unique and categories have at least 3 cases() PASSED
+
+IdentityAdversarialSuite > meta-test reachable rejection coverage and allow-list assert against reality() PASSED
+
+CertificateUtilsTest > test isValidX509Certificate and computeSha256Fingerprint reject trailing garbage bytes() PASSED
+
+CertificateUtilsTest > test invalid fingerprint normalization throws IllegalArgumentException() PASSED
+
+CertificateUtilsTest > test normalizeFingerprint handles various input formats() PASSED
+
+CertificateUtilsTest > test computeSha256Fingerprint returns uppercase colon separated hex() PASSED
+
+OriginTest > test custom port well known url formatting() PASSED
+
+OriginTest > test direct constructor normalizes scheme and host casing() PASSED
+
+OriginTest > test direct constructor rejects invalid host components() PASSED
+
+OriginTest > test exact origin equality and string representation() PASSED
+
+OriginTest > test unsupported schemes throw IllegalArgumentException() PASSED
+
+TypedValuesTest > test RequestedIdentity wraps origin, package name, and required relation() PASSED
+
+TypedValuesTest > test CanonicalWebOrigin enforces exact origin semantics() PASSED
+
+TypedValuesTest > test AppSigningInfo typed extensions and rotation history() PASSED
+
+TypedValuesTest > test CertificateDigest validates and normalizes SHA-256 hex strings() PASSED
+
+TypedValuesTest > test AndroidPackageName validates valid and invalid package names() PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_array_containing_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_valid_followed_by_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_null_followed_by_valid PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_relation_contains_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_fingerprints_contains_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_target_is_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_pure_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_pure_verifier_statement_is_string PASSED
+
+ReviewRound5RegressionTest > ISSUE4_fromCertificateBytes_rejects_raw_invalid_bytes PASSED
+
+ReviewRound5RegressionTest > ISSUE1_control_consistent_history_constructs_and_verifies PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[::1] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[2001:db8::1] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[2001:DB8::1] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[abcd] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[:::] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[12345::] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[::1 PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[g::1] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_[::ffff:1.2.3.4] PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_example.com PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_127.0.0.1 PASSED
+
+ReviewRound5RegressionTest > ISSUE5_host_validation_parity_between_constructor_and_parse > ISSUE5_host_parity_a-b.example.com PASSED
+
+ReviewRound5RegressionTest > ISSUE1_fromTypedValues_rejects_inconsistent_history PASSED
+
+ReviewRound5RegressionTest > ISSUE4_fromCertificateBytes_rejects_appended_trailing_bytes PASSED
+
+ReviewRound5RegressionTest > ISSUE4_fromCertificateBytes_rejects_empty_bytes PASSED
+
+ReviewRound5RegressionTest > ISSUE4_fromCertificateBytes_rejects_truncated_bytes PASSED
+
+ReviewRound5RegressionTest > ISSUE5_direct_constructor_rejects_invalid_ipv6_literal PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_array_containing_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_valid_followed_by_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_null_followed_by_valid PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_relation_contains_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_fingerprints_contains_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_target_is_null PASSED
+
+ReviewRound5RegressionTest > ISSUE3_upspa_verifier_returns_InvalidJsonFormat_for_malformed_json > ISSUE3_upspa_verifier_statement_is_string PASSED
+
+ReviewRound5RegressionTest > ISSUE2_requested_package_mismatch_must_reject_and_never_fetch PASSED
+
+ReviewRound5RegressionTest > ISSUE1_end_to_end_statement_authorizing_A_never_verifies_inconsistent_history_app PASSED
+
+ReviewRound5RegressionTest > ISSUE4_control_valid_sample_certificate_accepted PASSED
+
+ReviewRound5RegressionTest > ISSUE2_control_matching_package_verifies_and_fetches PASSED
+
+ReviewRound5RegressionTest > ISSUE1_control_no_history_verifies_against_current_signer PASSED
+
+ReviewRound5TypedOutcomeTest > meta-check RequestedPackageMismatch is never produced when package names match PASSED
+
+ReviewRound5TypedOutcomeTest > test exact typed outcome RequestedPackageMismatch with package details PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_array_containing_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_valid_followed_by_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_null_followed_by_valid PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_relation_contains_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_fingerprints_contains_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_target_is_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on upspa verifier > test_exact_InvalidJsonFormat_upspa_statement_is_string PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_array_containing_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_valid_followed_by_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_null_followed_by_valid PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_relation_contains_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_fingerprints_contains_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_target_is_null PASSED
+
+ReviewRound5TypedOutcomeTest > test exact InvalidJsonFormat outcome on pure verifier > test_exact_InvalidJsonFormat_pure_statement_is_string PASSED
+
+ReviewRound6RegressionTest > ISSUE2_numeric_package_name_rejected PASSED
+
+ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_pure_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE1_scenario2_raw_history_mutation_pure_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE1_control_unmutated_history_verifies_historical_key PASSED
+
+ReviewRound6RegressionTest > ISSUE2_control_valid_all_string_relation_array_verifies PASSED
+
+ReviewRound6RegressionTest > ISSUE1_scenario1_history_mutation_upspa_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE1_scenario1_history_mutation_pure_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE1_certificate_byte_array_mutation_fails_to_corrupt_app PASSED
+
+ReviewRound6RegressionTest > ISSUE2_numeric_fingerprint_element_rejected PASSED
+
+ReviewRound6RegressionTest > ISSUE1_scenario1_app_owns_immutable_history_snapshot PASSED
+
+ReviewRound6RegressionTest > ISSUE1_exposed_getters_return_defensive_copies_and_readonly_collections PASSED
+
+ReviewRound6RegressionTest > ISSUE1_scenario2_raw_history_mutation_upspa_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE2_numeric_namespace_rejected PASSED
+
+ReviewRound6RegressionTest > ISSUE1_certificate_history_byte_array_mutation_fails_to_corrupt_app PASSED
+
+ReviewRound6RegressionTest > ISSUE2_numeric_relation_element_rejected_on_upspa_verifier PASSED
+
+ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_verifier > [1] "delegate_permission/common.handle_all_urls", true PASSED
+
+ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_verifier > [2] "delegate_permission/common.handle_all_urls", false PASSED
+
+ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_verifier > [3] "delegate_permission/common.handle_all_urls", {"key": "value"} PASSED
+
+ReviewRound6RegressionTest > ISSUE2_non_string_relation_tokens_rejected_on_pure_verifier > [4] "delegate_permission/common.handle_all_urls", ["nested"] PASSED
+
+ReviewRound7RegressionTest > malformed_mismatching_signer_with_literal_control_char_rejected_as_invalid_json PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\n PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\t PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\r PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\u0000 PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\u001f PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\" PASSED
+
+ReviewRound7RegressionTest > control3_escaped_forms_in_second_relation_verify > control3_escaped_form_\\ PASSED
+
+ReviewRound7RegressionTest > malformed_literal_newline_in_object_key_rejected PASSED
+
+ReviewRound7RegressionTest > control5_string_ending_with_escaped_backslash_verifies PASSED
+
+ReviewRound7RegressionTest > control6_literal_del_and_non_ascii_characters_verify PASSED
+
+ReviewRound7RegressionTest > malformed_literal_newline_in_namespace_rejected PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+0000 PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+0001 PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+0008 PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+0009_tab PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+000A_LF PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+000C PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+000D_CR PASSED
+
+ReviewRound7RegressionTest > malformed_literal_control_char_in_second_relation_rejected > malformed_literal_control_char_U+001F PASSED
+
+ReviewRound7RegressionTest > malformed_literal_newline_in_sha256_fingerprint_rejected PASSED
+
+ReviewRound7RegressionTest > control2_valid_mismatching_signer_statement_returns_certificate_mismatch PASSED
+
+ReviewRound7RegressionTest > control4_whitespace_between_tokens_verifies PASSED
+
+ReviewRound7RegressionTest > malformed_literal_newline_in_package_name_rejected PASSED
+
+ReviewRound7RegressionTest > control1_valid_matching_statement_verifies PASSED
+
+AdversarialNegativeControlTest > testConflictingRepresentationFamiliesRejectedAtConstructionAndCannotVerify() PASSED
+
+AdversarialNegativeControlTest > testMalformedStatementCertificateFingerprintFailsClosed() PASSED
+
+AdversarialNegativeControlTest > testCompletelyEmptySigningEvidenceRejectedAtConstruction() PASSED
+
+AdversarialNegativeControlTest > testCrossOriginEvidenceReplayRejected() PASSED
+
+AdversarialNegativeControlTest > negative control 1 - Package name mismatch fails closed with PackageNotFound() PASSED
+
+AdversarialNegativeControlTest > positive control - Successful verification matching historical rotated key() PASSED
+
+AdversarialNegativeControlTest > testSameOriginEvidenceVerified() PASSED
+
+AdversarialNegativeControlTest > negative control 5 - Suffix and substring confusion fails closed (no fuzzy match)() PASSED
+
+AdversarialNegativeControlTest > testInvalidPackageNameFailsClosedWithInvalidPackageName() PASSED
+
+AdversarialNegativeControlTest > testRawCertificateCorruptionFailsClosed() PASSED
+
+AdversarialNegativeControlTest > testInsecureHttpRejectedByDefaultInPublicVerifier() PASSED
+
+AdversarialNegativeControlTest > testMalformedRawEvidenceAlongsideValidTypedRotationHistoryRejectedAtConstruction() PASSED
+
+AdversarialNegativeControlTest > testCanonicalValueTypesEqualityAndCaseInsensitivity() PASSED
+
+AdversarialNegativeControlTest > negative control 2 - Certificate mismatch fails closed with CertificateMismatch() PASSED
+
+AdversarialNegativeControlTest > negative control 4 - Non-HTTPS origin fails closed with NonHttpsOrigin() PASSED
+
+AdversarialNegativeControlTest > negative control 9 - Signing-key rotation history mismatch fails closed() PASSED
+
+AdversarialNegativeControlTest > testConsistentCheckOrderingBetweenPureAndUpSpaVerifiers() PASSED
+
+AdversarialNegativeControlTest > negative control 6 - Redirect attempt strictly fails closed with RedirectAttempted() PASSED
+
+AdversarialNegativeControlTest > positive control - Successful verification with single signer() PASSED
+
+AdversarialNegativeControlTest > testRawCertificateWithTrailingGarbageFailsClosed() PASSED
+
+AdversarialNegativeControlTest > testEvidenceWithOneValidAndOneMalformedFingerprintFailsClosed() PASSED
+
+AdversarialNegativeControlTest > testEmptyRelationFailsClosedWithMissingRequiredRelation() PASSED
+
+AdversarialNegativeControlTest > testNetworkFailureDuringFetchReturnsNetworkErrorPreservingCause() PASSED
+
+AdversarialNegativeControlTest > testAmbiguousSigningEvidenceRejectedAtConstruction() PASSED
+
+AdversarialNegativeControlTest > negative control 8 - Multiple current signers fails closed with MultipleSignersUnsupported() PASSED
+
+AdversarialNegativeControlTest > negative control 3 - Malformed origin fails closed with InvalidOrigin() PASSED
+
+AdversarialNegativeControlTest > negative control 7 - Missing required relation fails closed with MissingRequiredRelation() PASSED
+
+UpSpaAssetLinkVerifierTest > regression test - two current signers structurally cannot verify even if assetlinks authorizes one() PASSED
+
+UpSpaAssetLinkVerifierTest > test 8 - Multi-signer safety fixes Google reference crash (�7_2, �10_3)() PASSED
+
+UpSpaAssetLinkVerifierTest > test 2 - Certificate mismatch rejection() PASSED
+
+UpSpaAssetLinkVerifierTest > test 6 - Malformed JSON returns InvalidJsonFormat() PASSED
+
+UpSpaAssetLinkVerifierTest > test 7 - Package name not found in statements() PASSED
+
+UpSpaAssetLinkVerifierTest > test 3 - HTTP 301 and 302 redirects are strictly rejected (Anti-spoofing �1_2)() PASSED
+
+UpSpaAssetLinkVerifierTest > test 4 - HTTP 404 Not Found returns FetchFailed() PASSED
+
+UpSpaAssetLinkVerifierTest > test 9 - Key rotation lineage support (�2_3)() PASSED
+
+UpSpaAssetLinkVerifierTest > test 1 - Successful verification (Happy Path)() PASSED
+
+UpSpaAssetLinkVerifierTest > test 5 - Non-JSON Content-Type returns InvalidContentType() PASSED
+
+CatalogFixtureTest > manifest strictly matches files on disk bi-directionally() PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/01_single_verified.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/02_subdomains_distinct.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/03_ports_distinct.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/04_http_manual.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/05_case_sensitive_accounts.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/06_unverified_and_pending.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/07_compatibility_policies.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=synthetic, values mirrored from compatibility-profile v1 policies) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=valid/08_empty_entries.json, expected=ACCEPTED, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_control_char.json, expected=InvalidAccountReference, code=CONTROL_CHARACTER, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_empty.json, expected=InvalidAccountReference, code=EMPTY, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_leading_space.json, expected=InvalidAccountReference, code=WHITESPACE_AT_EDGE, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_separator.json, expected=InvalidAccountReference, code=SEPARATOR_PRESENT, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_too_long.json, expected=InvalidAccountReference, code=TOO_LONG, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/account_ref_trailing_space.json, expected=InvalidAccountReference, code=WHITESPACE_AT_EDGE, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_invalid_cert.json, expected=MalformedAliasEvidence, code=INVALID_CERTIFICATE_DIGEST, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_invalid_package.json, expected=MalformedAliasEvidence, code=INVALID_PACKAGE_NAME, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_invalid_source_origin.json, expected=MalformedAliasEvidence, code=INVALID_SOURCE_ORIGIN, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_manual_with_ref.json, expected=MalformedAliasEvidence, code=REFERENCE_FORBIDDEN, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_mismatch_parent.json, expected=AliasOriginMismatch, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_mismatch_port.json, expected=AliasOriginMismatch, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_mismatch_scheme.json, expected=AliasOriginMismatch, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_mismatch_subdomain.json, expected=AliasOriginMismatch, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_pending_with_reason.json, expected=MalformedAliasEvidence, code=REASON_FORBIDDEN, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_unknown_status.json, expected=MalformedAliasEvidence, code=UNKNOWN_STATUS, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_unverified_no_reason.json, expected=MalformedAliasEvidence, code=REASON_REQUIRED, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_verified_http.json, expected=AliasRequiresHttps, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_verified_no_ref.json, expected=MalformedAliasEvidence, code=REFERENCE_REQUIRED, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/alias_verified_with_reason.json, expected=MalformedAliasEvidence, code=REASON_FORBIDDEN, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/compat_version_2.json, expected=UnsupportedCompatibilityProfileVersion, code=null, entryIndex=0, path=null, parentPath=null, found=2, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/compat_version_missing.json, expected=MissingField, code=null, entryIndex=null, path=/entries/0/compatibilityProfileVersion, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/compat_version_string.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0/compatibilityProfileVersion, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_exponent.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0/encoderCounter, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_float.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0/encoderCounter, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_missing.json, expected=MissingField, code=null, entryIndex=null, path=/entries/0/encoderCounter, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_negative.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0/encoderCounter, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_overflow.json, expected=InvalidEncoderCounter, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/counter_string.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0/encoderCounter, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/duplicate_entry.json, expected=DuplicateEntry, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=0, secondIndex=1, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/entries_missing.json, expected=MissingField, code=null, entryIndex=null, path=/entries, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/entries_wrong_type.json, expected=WrongType, code=null, entryIndex=null, path=/entries, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/entry_duplicate_key.json, expected=DuplicateJsonKey, code=null, entryIndex=null, path=/entries/0, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/entry_unknown_field.json, expected=UnknownField, code=null, entryIndex=null, path=null, parentPath=/entries/0, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/entry_wrong_type.json, expected=WrongType, code=null, entryIndex=null, path=/entries/0, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/malformed_json.json, expected=MalformedJson, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/nesting_depth_9.json, expected=NestingTooDeep, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_explicit_default_port.json, expected=NonCanonicalEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_invalid_syntax.json, expected=InvalidEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_missing.json, expected=MissingEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_null.json, expected=MissingEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_path.json, expected=NonCanonicalEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_trailing_slash.json, expected=NonCanonicalEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_uppercase.json, expected=NonCanonicalEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/origin_userinfo.json, expected=NonCanonicalEnrolledOrigin, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_duplicate_symbols.json, expected=MalformedPolicy, code=DUPLICATE_SYMBOLS, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_empty_symbols_not_required.json, expected=MalformedPolicy, code=EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_empty_symbols_required.json, expected=MalformedPolicy, code=EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_empty_symbols_unrequired_no_digit.json, expected=MalformedPolicy, code=EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_forbidden_substring_empty.json, expected=MalformedPolicy, code=FORBIDDEN_SUBSTRING_NOT_NORMALIZED, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_forbidden_substring_untrimmed.json, expected=MalformedPolicy, code=FORBIDDEN_SUBSTRING_NOT_NORMALIZED, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_forbidden_substring_uppercase.json, expected=MalformedPolicy, code=FORBIDDEN_SUBSTRING_NOT_NORMALIZED, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_max_above_cap.json, expected=MalformedPolicy, code=MAX_LEN_ABOVE_CAP, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_max_len_overflow.json, expected=MalformedPolicy, code=LENGTH_OUT_OF_RANGE, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_min_gt_max.json, expected=MalformedPolicy, code=MIN_GREATER_THAN_MAX, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_min_len_overflow.json, expected=MalformedPolicy, code=LENGTH_OUT_OF_RANGE, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_min_too_small.json, expected=MalformedPolicy, code=MIN_LEN_TOO_SMALL, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_missing_field.json, expected=PartialPolicy, code=null, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_unknown_field.json, expected=UnknownField, code=null, entryIndex=null, path=null, parentPath=/entries/0/policy, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/policy_whitespace_in_symbols.json, expected=MalformedPolicy, code=WHITESPACE_IN_SYMBOLS, entryIndex=0, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/root_duplicate_key.json, expected=DuplicateJsonKey, code=null, entryIndex=null, path=, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/root_unknown_field.json, expected=UnknownField, code=null, entryIndex=null, path=null, parentPath=, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/schema_version_0.json, expected=UnsupportedSchemaVersion, code=null, entryIndex=null, path=null, parentPath=null, found=0, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/schema_version_2.json, expected=UnsupportedSchemaVersion, code=null, entryIndex=null, path=null, parentPath=null, found=2, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/schema_version_missing.json, expected=MissingField, code=null, entryIndex=null, path=/schemaVersion, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/schema_version_string.json, expected=WrongType, code=null, entryIndex=null, path=/schemaVersion, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogFixtureTest > validate fixture expectations(ManifestEntry) > ManifestEntry(file=invalid/trailing_data.json, expected=TrailingData, code=null, entryIndex=null, path=null, parentPath=null, found=null, firstIndex=null, secondIndex=null, comment=null) PASSED
+
+CatalogUnitTest > CatalogEntry enforces exact origin binding and HTTPS for VERIFIED() PASSED
+
+CatalogUnitTest > EncoderCounter enforces u32 bounds() PASSED
+
+CatalogUnitTest > derivationIdentity injectivity guarantee() PASSED
+
+CatalogUnitTest > derivationIdentity distinctness across origins and accounts() PASSED
+
+CatalogUnitTest > StrictCatalogValidator catches unexpected exceptions in doValidate fail-closed() PASSED
+
+CatalogUnitTest > CatalogVersions value classes reject unsupported versions() PASSED
+
+CatalogUnitTest > AliasEvidence enforces cross-field status rules() PASSED
+
+CatalogUnitTest > AccountReference enforces invariants and preserves case() PASSED
+
+CatalogUnitTest > NormalizedPasswordPolicy enforces 7 normalization invariants() PASSED
+
+CatalogUnitTest > domain model toString does not leak account reference or origin() PASSED
+
+CatalogUnitTest > StrictCatalogValidator rejects oversized input above 64 KiB() PASSED
+
+CatalogUnitTest > StrictCatalogValidator rejections do not leak sensitive origin or account reference in toString() PASSED
+
+CatalogUnitTest > AccountReference redaction hides raw value in toString() PASSED
+
+IndependentReviewScriptRegressionTest > C2 - failing rm of the isolation directory keeps inject-compile-fault exit code 2 and reports the leftover() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:313
+
+IndependentReviewScriptRegressionTest > C4 - suite XML without a numeric tests attribute fails closed with exit code 4() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:361
+
+IndependentReviewScriptRegressionTest > C4 - valid control - suite XML with tests 0 still fails with exit code 4() PASSED
+
+IndependentReviewScriptRegressionTest > C1 - signal during the stub baseline exits non-zero and never reports SUCCESS(String, int) > SIGTERM -> exit 143 FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:276
+
+IndependentReviewScriptRegressionTest > C1 - signal during the stub baseline exits non-zero and never reports SUCCESS(String, int) > SIGINT -> exit 130 FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:276
+
+IndependentReviewScriptRegressionTest > C3 - CDPATH set in the environment does not break path resolution() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:346
+
+IndependentReviewScriptRegressionTest > C4 - valid control - the same XML with a numeric tests attribute passes the guard and kills M1() PASSED
+
+IndependentReviewScriptRegressionTest > C2 - valid control - without the rm stub the isolation directory is removed and exit code is 2() PASSED
+
+IndependentReviewScriptRegressionTest > C5 - baseline gradlew invocation forces a fresh run() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:404
+
+IndependentReviewScriptRegressionTest > C5 - valid control - self-test evidence and exit-code contract are unchanged with the stub() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \" decodes to U+0022 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \\ decodes to U+005C PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \/ decodes to U+002F PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \b decodes to U+0008 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \f decodes to U+000C PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \n decodes to U+000A PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \r decodes to U+000D PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \t decodes to U+0009 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u0041 decodes to U+0041 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u00e9 decodes to U+00E9 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u00E9 decodes to U+00E9 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \uD83D\uDE00 decodes to U+1F600 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - escape backslash-apostrophe in an object key is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:66
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - uppercase keyword after the root value still yields TrailingData() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - short unicode escape at the end of a string stays rejected() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - uppercase keyword text inside a string is accepted() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \a PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \x41 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \v PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \U0041 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \e PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \u12 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \u00G1 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \uZZZZ PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase true and false are accepted with their values() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - escape backslash-apostrophe in a string value is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = TRUE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = True FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = tRuE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = truE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = FALSE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = False FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = fALSE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = falsE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase keyword as an array element is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:66
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1e0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1E0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 0e5 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1.0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1.5E+2 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: NULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: Null FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: nULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: NULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: Null FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: nulL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase null in an optional alias field is accepted as absent(String) > reference: null PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase null in an optional alias field is accepted as absent(String) > unverifiedReason: null PASSED
+
+ReviewRound2RegressionTest > Finding 3 - literal tab inside JSON string is rejected as MalformedJson() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - caller mutating forbiddenSubstrings after NormalizedPasswordPolicy construction does not affect policy() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - caller mutating entries list after CatalogDocument construction does not affect document or bypass uniqueness() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - valid control - requireSymbol false with non-empty allowedSymbols is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 5 - valid control - mutation check script exists and has valid bash syntax() SKIPPED
+
+ReviewRound2RegressionTest > Finding 3 - literal newline inside JSON string is rejected as MalformedJson() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - raw JSON containing literal lone surrogate is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - valid control - valid surrogate pair emoji in account reference is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 3 - valid control - escaped newline and tab inside JSON string remain valid() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - valid control - requireSymbol true with allowedSymbols is accepted() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - JSON containing escaped lone surrogate in account reference is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 3 - valid control - whitespace between JSON tokens remains allowed() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - policy2 shape with empty allowedSymbols and requireSymbol false is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 2 - AccountReference constructor rejects unpaired surrogate() PASSED
+
+ReviewRound2RegressionTest > Finding 4 - valid control - duplicate entry at construction time is rejected() PASSED
+
+ReviewRound2RegressionTest > Finding 1 - policy3 shape with empty allowedSymbols and requireSymbol false without digits is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - child status 2 without baseline or compile-fault evidence is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character inside object key is rejected as MalformedJson() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode null backslash-u0000 is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - JSON-escaped newline backslash-n is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child exits 0() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - child status 2 with full evidence passes independent of file modes() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - ordinary literal LF inside string without backslash is rejected() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - self-test of mode 644 script runs baseline, reaches compile fault and requires child status 2() SKIPPED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 126 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 127 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 1 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 3 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child prints full evidence but exits with status(int) > child status 0 with full evidence PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 126 PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 127 PASSED
+
+ReviewRound3RegressionTest > Finding 2 - negative control - self-test fails when child launch exits with status(int) > child status 1 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 0 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 1 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 2 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 3 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 4 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 5 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 6 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 7 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 8 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 9 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 10 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 11 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 12 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 13 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 14 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 15 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 16 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 17 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 18 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 19 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 20 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 21 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 22 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 23 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 24 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 25 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 26 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 27 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 28 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 29 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 30 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - backslash followed by literal control character U+0000 to U+001F is rejected as MalformedJson(int) > code point 31 PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped unicode unit separator backslash-u001f is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped carriage return backslash-r is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - exact repro - backslash followed by literal LF in allowedSymbols is rejected as MalformedJson() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped tab backslash-t is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 1 - valid control - escaped backslash double backslash is accepted and preserves decoded value() PASSED
+
+ReviewRound3RegressionTest > Finding 2 - valid control - mutation check script exists and has valid bash syntax() PASSED
+.\gradlew : 
+At line:5 char:1
++ .\gradlew clean test --no-daemon *>> "$ev\unfixed-full-suite-80555aa. ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+420 tests completed, 23 failed, 2 skipped
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///<WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/buil
+d/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BU�LD FAILED in 50s
+6 actionable tasks: 6 executed
+# gradle exit code: 1

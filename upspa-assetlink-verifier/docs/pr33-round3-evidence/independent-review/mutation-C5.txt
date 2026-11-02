@@ -1,0 +1,84 @@
+=== C5: fresh-baseline flags removed from the baseline invocation ===
+Environment: Windows, GNU bash, version 5.3.15(2)-release (x86_64-pc-cygwin), temporary worktree based on 6b6c6d10c23e5d5d645bca40cba7b113572a0530
+Mutation: replace exactly one occurrence in upspa-assetlink-verifier/scripts/mutation-check.sh
+--- git status --short (worktree) ---
+ M upspa-assetlink-verifier/scripts/mutation-check.sh
+--- git diff HEAD (mutation, CR-at-EOL ignored) ---
+diff --git a/upspa-assetlink-verifier/scripts/mutation-check.sh b/upspa-assetlink-verifier/scripts/mutation-check.sh
+index 3b79d02..0d91b3f 100644
+--- a/upspa-assetlink-verifier/scripts/mutation-check.sh
++++ b/upspa-assetlink-verifier/scripts/mutation-check.sh
+@@ -111,7 +111,7 @@ echo "Running baseline test suite in temporary copy..."
+ cd "$TMP_DIR"
+ set +e
+ # Force a fresh run: neither up-to-date state nor the Gradle build cache may satisfy the baseline.
+-BASELINE_OUTPUT=$(./gradlew test --rerun-tasks --no-build-cache 2>&1)
++BASELINE_OUTPUT=$(./gradlew test 2>&1)
+ BASELINE_STATUS=$?
+ set -e
+ 
+$ ./gradlew test --rerun --tests 'org.upspa.catalog.IndependentReviewScriptRegressionTest' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test
+
+IndependentReviewScriptRegressionTest > C2 - failing rm of the isolation directory keeps inject-compile-fault exit code 2 and reports the leftover() PASSED
+
+IndependentReviewScriptRegressionTest > C4 - suite XML without a numeric tests attribute fails closed with exit code 4() PASSED
+
+IndependentReviewScriptRegressionTest > C4 - valid control - suite XML with tests 0 still fails with exit code 4() PASSED
+
+IndependentReviewScriptRegressionTest > C1 - signal during the stub baseline exits non-zero and never reports SUCCESS(String, int) > SIGTERM -> exit 143 PASSED
+
+IndependentReviewScriptRegressionTest > C1 - signal during the stub baseline exits non-zero and never reports SUCCESS(String, int) > SIGINT -> exit 130 PASSED
+
+IndependentReviewScriptRegressionTest > C3 - CDPATH set in the environment does not break path resolution() PASSED
+
+IndependentReviewScriptRegressionTest > C4 - valid control - the same XML with a numeric tests attribute passes the guard and kills M1() PASSED
+
+IndependentReviewScriptRegressionTest > C2 - valid control - without the rm stub the isolation directory is removed and exit code is 2() PASSED
+
+IndependentReviewScriptRegressionTest > C5 - baseline gradlew invocation forces a fresh run() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewScriptRegressionTest.kt:404
+
+IndependentReviewScriptRegressionTest > C5 - valid control - self-test evidence and exit-code contract are unchanged with the stub() PASSED
+
+10 tests completed, 1 failed
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 37s
+5 actionable tasks: 5 executed
+# gradle exit code: 1
+# XML TEST-org.upspa.catalog.IndependentReviewScriptRegressionTest.xml: tests="10" skipped="0" failures="1" errors="0"
+# failing test cases:
+  C5 - baseline gradlew invocation forces a fresh run()
+# worktree restored: git status --short -> ''

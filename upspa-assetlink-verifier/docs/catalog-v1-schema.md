@@ -101,7 +101,7 @@ Validation executes strictly fail-closed and deterministic. The validator halts 
 ### Order of Checks:
 0. **Surrogate Well-Formedness:** Pre-scan raw string before UTF-8 conversion and inspect unescaped strings/keys to reject unpaired surrogates (`UnpairedSurrogate`). Adheres strictly to rejection hygiene: zero echoed content.
 1. **Input Size Limit:** Max 65,536 bytes (64 KiB) UTF-8 (`InputTooLarge`).
-2. **JSON Syntax & Nesting:** Strict JSON grammar, max depth 8 (`MalformedJson`, `NestingTooDeep`). Enforces strict RFC 8259 Section 7 string grammar: pre-scans UTF-8 bytes to reject any unescaped code points below `0x20` inside quoted strings (including literal newlines and tabs), while escaped controls (`\n`, `\t`) and inter-token whitespace remain valid.
+2. **JSON Syntax & Nesting:** Strict JSON grammar, max depth 8 (`MalformedJson`, `NestingTooDeep`). Enforces strict RFC 8259 Section 7 string grammar: pre-scans UTF-8 bytes to reject any unescaped code points below `0x20` inside quoted strings (including literal newlines and tabs), while escaped controls (`\n`, `\t`) and inter-token whitespace remain valid. The same pre-scan accepts only the RFC 8259 escapes `\" \\ \/ \b \f \n \r \t \uXXXX` after a backslash (so `\'` is `MalformedJson`), and accepts the literal names `true`, `false` and `null` in lowercase only (so `TRUE`, `True` or `NULL` as a value is `MalformedJson`). These two checks exist because Moshi's non-lenient reader accepts `\'` and matches the literal names in any letter case.
 3. **No Trailing Data:** Zero unconsumed non-whitespace tokens after top-level object (`TrailingData`).
 4. **Key Uniqueness & Strictness:** No duplicate keys (`DuplicateJsonKey`), no unknown keys (`UnknownField`).
 5. **Document Structure:** `schemaVersion` present, integer, supported (`MissingField`, `WrongType`, `UnsupportedSchemaVersion`).
@@ -134,6 +134,10 @@ Validation executes strictly fail-closed and deterministic. The validator halts 
 - **Format vs Deployment:** A validated catalog certifies format, schema, and internal consistency only.
 - **Claimed Evidence:** `aliasEvidence.status == VERIFIED` in a catalog records a historical claim; it is necessary but NOT sufficient for runtime credential release.
 - **Pure Verifier Isolation:** Pure verification with injected evidence verifies cryptographic consistency but does not guarantee live server deployment.
+
+### Known Gaps (independent review of PR #33)
+1. **Non-ASCII values the mobile FFI encoder rejects (open question for the maintainer).** The validator accepts non-ASCII `allowedSymbols` (for example `§` or U+FEFF, even with `forbidWhitespace = true`), non-ASCII `forbiddenSubstrings` (for example `"﻿admin"`) and non-ASCII `accountReference` values (for example an emoji, U+FEFF, or the C1 control U+0085). `crates/upspa-mobile-ffi/src/encoder.rs` rejects these: `browser_normalizes_identically` requires ASCII `allowed_symbols` and `forbidden_substrings`, and `account_id_is_portable` requires a printable ASCII account ID (U+0020..U+007E), because the browser and Rust whitespace, trim and case rules only agree on ASCII. A catalog accepted here can therefore fail closed at encoding time. Whether the catalog should apply the same ASCII rules is not decided; this validator is unchanged. `ReviewRound2RegressionTest` keeps an emoji `accountReference` as an accepted control.
+2. **Backslash followed by a control character.** Of the 32 code points U+0000..U+001F after a backslash, Moshi already rejects 31; only U+000A (LF) depends on the pre-scan check. The other 31 parameterized cases in `ReviewRound3RegressionTest` are defense-in-depth controls, not proof of that check.
 
 ---
 

@@ -6,10 +6,14 @@ To guarantee that the `IdentityAdversarialSuite` is genuinely capable of detecti
 ### Strict Temporary Isolation and Verification Guarantees
 All mutations are applied and evaluated exclusively inside a **throw-away temporary directory** created via `mktemp -d`.
 - **Zero Real Working Tree Modification:** The script captures `git status --porcelain -- .` before and after execution to assert that the real source repository was never modified or weakened.
-- **Trap Cleanup:** A shell trap automatically deletes the temporary directory upon exit, abort, or interruption (Ctrl+C). Note: `./gradlew --stop` was deliberately removed from cleanup to prevent terminating the system Gradle daemon and disrupting concurrent or caller builds.
+- **Trap Cleanup:** An `EXIT` trap deletes the temporary directory on every exit, including after an abort or interruption. Note: `./gradlew --stop` was deliberately removed from cleanup to prevent terminating the system Gradle daemon and disrupting concurrent or caller builds.
+  - Cleanup never changes the exit code. If the directory cannot be removed (for example a Windows file lock), the script prints `WARNING: could not remove temporary isolation directory: <dir>` and exits with its original code.
+  - `SIGINT` and `SIGTERM` have their own handler: the script prints `FATAL: Mutation check interrupted by SIG<name>.` and exits `130` (INT) or `143` (TERM), then runs cleanup. An interrupted run never exits `0` and never prints the `SUCCESS` line.
+- **Environment Independence:** `CDPATH` is unset before any `cd`, so `cd` cannot print a directory into the resolved script and module paths.
+- **Fresh Baseline:** The baseline runs `./gradlew test --rerun-tasks --no-build-cache`, so neither up-to-date task state nor the Gradle build cache can satisfy it.
 - **Hermetic Testing:** Each mutation restores the target file fresh from the repository, checks pattern occurrence count ($= 1$), applies a portable `sed` modification (`sed -i.bak ... && rm -f ...bak`), and confirms file divergence via `cmp -s`.
 - **Compilation Gate:** Before running tests, `./gradlew compileKotlin compileTestKotlin` is executed. A mutation MUST compile; any compilation or build setup failure terminates execution immediately with exit code 2 and is never counted as a killed mutation.
-- **Fresh XML Result Verification:** `build/test-results` is purged prior to every test execution. The suite then executes with `--rerun-tasks --tests '*IdentityAdversarialSuite*'`, and the resulting `TEST-org.upspa.assetlinks.adversarial.IdentityAdversarialSuite.xml` is inspected directly. The test count must be strictly greater than 0.
+- **Fresh XML Result Verification:** `build/test-results` is purged prior to every test execution. The suite then executes with `--rerun-tasks --tests '*IdentityAdversarialSuite*'`, and the resulting `TEST-org.upspa.assetlinks.adversarial.IdentityAdversarialSuite.xml` is inspected directly. The `tests=` count must be a positive integer; a zero, missing or non-numeric value fails with exit code 4.
 - **Expected Failure Matching:** Any failure reported in the XML must contain at least one expected case ID for that mutation (from Section 3) and must contain zero unexpected failure IDs outside that set.
 
 ---

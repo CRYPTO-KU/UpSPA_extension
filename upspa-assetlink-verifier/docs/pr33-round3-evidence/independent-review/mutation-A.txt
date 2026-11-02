@@ -1,0 +1,192 @@
+=== A: keyword check removed (non-lowercase true/false/null no longer rejected) ===
+Environment: Windows, GNU bash, version 5.3.15(2)-release (x86_64-pc-cygwin), temporary worktree based on 6b6c6d10c23e5d5d645bca40cba7b113572a0530
+Mutation: replace exactly one occurrence in upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt
+--- git status --short (worktree) ---
+ M upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt
+--- git diff HEAD (mutation, CR-at-EOL ignored) ---
+diff --git a/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt b/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt
+index 56eb439..3c0c7bb 100644
+--- a/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt
++++ b/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt
+@@ -522,7 +522,7 @@ open class StrictCatalogValidator : CatalogValidator {
+                     }
+                     // RFC 8259 Section 3: the literal names are lowercase only. Moshi matches them in any
+                     // letter case, so reject a non-lowercase keyword where Moshi would read it as a value.
+-                    if (lastToken in KEYWORD_VALUE_PREDECESSORS && isNonLowercaseKeyword(utf8Bytes, i, end)) {
++                    if (false) {
+                         return CatalogRejection.MalformedJson
+                     }
+                     lastToken = utf8Bytes[end - 1].toInt() and 0xFF
+$ ./gradlew test --rerun --tests 'org.upspa.catalog.IndependentReviewValidatorRegressionTest' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt:510:13 Variable 'lastToken' is assigned but never accessed
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt:528:21 The value 'utf8Bytes[end - 1].toInt() and 0xFF' assigned to 'var lastToken: Int defined in org.upspa.catalog.StrictCatalogValidator.validateStrictJsonStringSyntax' is never used
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt:533:21 The value 'unsigned' assigned to 'var lastToken: Int defined in org.upspa.catalog.StrictCatalogValidator.validateStrictJsonStringSyntax' is never used
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogValidator.kt:551:21 The value 'unsigned' assigned to 'var lastToken: Int defined in org.upspa.catalog.StrictCatalogValidator.validateStrictJsonStringSyntax' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test FAILED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \" decodes to U+0022 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \\ decodes to U+005C PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \/ decodes to U+002F PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \b decodes to U+0008 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \f decodes to U+000C PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \n decodes to U+000A PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \r decodes to U+000D PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \t decodes to U+0009 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u0041 decodes to U+0041 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u00e9 decodes to U+00E9 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \u00E9 decodes to U+00E9 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - RFC 8259 escape is accepted and decoded(String, String) > escape \uD83D\uDE00 decodes to U+1F600 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - escape backslash-apostrophe in an object key is rejected as MalformedJson() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - uppercase keyword after the root value still yields TrailingData() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - short unicode escape at the end of a string stays rejected() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - uppercase keyword text inside a string is accepted() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \a PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \x41 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \v PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \U0041 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \e PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \u12 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \u00G1 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - valid control - non-RFC escape stays rejected as MalformedJson(String) > escape \uZZZZ PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase true and false are accepted with their values() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding B - escape backslash-apostrophe in a string value is rejected as MalformedJson() PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = TRUE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = True FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = tRuE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = truE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = FALSE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = False FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = fALSE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase boolean keyword in a policy field is rejected as MalformedJson(String) > requireUpper = falsE FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase keyword as an array element is rejected as MalformedJson() FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:66
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1e0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1E0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 0e5 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1.0 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - exponent letters in numbers still yield WrongType, not MalformedJson(String) > encoderCounter = 1.5E+2 PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: NULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: Null FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > reference: nULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: NULL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: Null FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - non-lowercase null keyword in an optional alias field is rejected as MalformedJson(String, String) > unverifiedReason: nulL FAILED
+    org.opentest4j.AssertionFailedError at IndependentReviewValidatorRegressionTest.kt:65
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase null in an optional alias field is accepted as absent(String) > reference: null PASSED
+
+IndependentReviewValidatorRegressionTest > Finding A - valid control - lowercase null in an optional alias field is accepted as absent(String) > unverifiedReason: null PASSED
+
+49 tests completed, 15 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/61973a34-52e3-4342-85ce-efdf044b64d7/scratchpad/wt-ir/upspa-assetlink-verifier/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 22s
+5 actionable tasks: 5 executed
+# gradle exit code: 1
+# XML TEST-org.upspa.catalog.IndependentReviewValidatorRegressionTest.xml: tests="49" skipped="0" failures="15" errors="0"
+# failing test cases:
+  requireUpper = TRUE
+  requireUpper = True
+  requireUpper = tRuE
+  requireUpper = truE
+  requireUpper = FALSE
+  requireUpper = False
+  requireUpper = fALSE
+  requireUpper = falsE
+  Finding A - non-lowercase keyword as an array element is rejected as MalformedJson()
+  reference: NULL
+  reference: Null
+  reference: nULL
+  unverifiedReason: NULL
+  unverifiedReason: Null
+  unverifiedReason: nulL
+# worktree restored: git status --short -> ''

@@ -387,3 +387,190 @@ Verification of the transform:
 
 Git branch names and the commit author e-mail are not path prefixes and were not changed.
 The driver scripts were sanitized too. They reference `<WIN_HOME>` / `<WSL_HOME>` and must be adjusted before reuse.
+
+---
+
+## Independent review follow-up
+
+An independent, read-only review of this branch (compared with `origin/mobile-dev`) found two JSON strictness gaps in the catalog
+validator and five weaknesses in `scripts/mutation-check.sh`. Each was reproduced by running it. Two further observations are
+recorded without a code change (section F.4). The protocol was the same as in rounds 2 and 3: a tests-only commit first, then
+one fix commit per component, then this addendum. All commits are new; nothing was amended, rebased or pushed.
+
+### F.1 Commits
+
+| Role | Commit |
+| :--- | :--- |
+| Tests-only commit (independent review regression tests) | `80555aa` (`80555aab2ab36e484f79b323eb2f3249c053df62`) |
+| Fix commit, validator (Findings A and B) | `75ebd30` (`75ebd30c29fe7b496ad9cf641c40ddab11d255e8`) |
+| Fix commit, `mutation-check.sh` (Finding C) | `6b6c6d1` (`6b6c6d10c23e5d5d645bca40cba7b113572a0530`) |
+| This addendum, evidence and doc updates | the commit that contains this section |
+
+After `git fetch origin` at the end of this follow-up, `origin/mobile-dev` still resolved to `75a33a2`.
+The evidence for this section is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/independent-review/` (section F.9).
+
+### F.2 Findings and fixes
+
+| ID | Problem (before) | Fix |
+| :--- | :--- | :--- |
+| A | Moshi matches `true`, `false` and `null` case-insensitively, so `"requireUpper": TRUE` or `"reference": NULL` was **accepted**. RFC 8259 Section 3 defines the literal names in lowercase only. | `validateStrictJsonStringSyntax` rejects a run of ASCII letters outside strings that spells a keyword in a non-lowercase letter case where a value can start: at the document start, or after `:`, `[` or `,`. After `}` or `]`, Moshi still reports `TrailingData`. Exponent letters are not keywords, so `1e0` stays `WrongType`. |
+| B | The escape `\'` was **accepted** in values and keys (Moshi accepts it with `isLenient = false`). | After a backslash, only `\" \\ \/ \b \f \n \r \t` and `\u` are accepted. Moshi still checks the `\u` hex digits. |
+| C1 | `trap cleanup EXIT INT TERM`: cleanup exited with `$?` of the last command, so SIGTERM or SIGINT exited **0**. | Cleanup stays on `EXIT`. `INT` and `TERM` go to `on_signal`, which prints `FATAL: Mutation check interrupted by SIG<name>.` and exits 130 or 143. |
+| C2 | A failing `rm -rf` of the isolation directory in the trap (under `set -e`) turned exit code 2 into **1**. | Cleanup runs with `set +e`, prints `WARNING: could not remove temporary isolation directory: <dir> ...` and exits with the original code. |
+| C3 | With `CDPATH` set, `cd` printed the directory into `ABS_SCRIPT`/`REAL_ROOT` and the script exited 1. | `unset CDPATH` before any `cd`. |
+| C4 | The tests-executed guard only rejected an empty value or 0. A non-integer `tests=` value **passed** it (`[: integer expected` counts as false inside `if`). | The guard requires `^[0-9]+$` and a value above 0, else exit 4. |
+| C5 | The baseline ran `./gradlew test`, which up-to-date state or the build cache could satisfy. | The baseline runs `./gradlew test --rerun-tasks --no-build-cache`. |
+
+The self-test evidence strings and the exit-code contract (2, 3, 4, 5, 6) are unchanged. C2 fixes the round 3 "Pre-existing
+Issues" item **Cleanup trap can override the exit code on Windows**.
+
+### F.3 New tests
+- `IndependentReviewValidatorRegressionTest` (49 tests).
+  - Finding A: 8 boolean keyword variants in `requireUpper`, 6 null variants in `reference` / `unverifiedReason`, and one in an array.
+  - Finding B: `\'` in a value and in a key.
+  - Valid controls:
+    - lowercase `true`/`false`/`null` are accepted with their values;
+    - `1e0`, `1E0`, `0e5`, `1.0` and `1.5E+2` still give `WrongType`;
+    - a trailing ` TRUE` still gives `TrailingData`;
+    - keyword text inside a string is accepted;
+    - 12 RFC escapes are accepted with the decoded code point checked (`\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\u0041`, `\u00e9`, `\u00E9`, `\uD83D\uDE00`);
+    - 9 non-RFC escapes (`\a`, `\0`, `\x41`, `\v`, `\U0041`, `\e`, `\u12`, `\u00G1`, `\uZZZZ`) and a short `\u` at the end of a string stay `MalformedJson`.
+- `IndependentReviewScriptRegressionTest` (10 tests). It uses the same fixture style as `ReviewRound3RegressionTest`: a temporary git repository, a copy of the real script, and a stub `gradlew` that records its arguments and the isolation directory. No real Gradle runs.
+  - C1: SIGTERM and SIGINT during a stub baseline that sleeps 3 s. Expects exit 143 / 130, no `SUCCESS` and no `Baseline PASSED`. The wrapper uses `set -m`, because a non-interactive shell starts background jobs with SIGINT ignored.
+  - C2: a stub `rm` first on `PATH` refuses to remove exactly the recorded isolation directory. Expects exit 2 for `--inject-compile-fault` and the leftover directory reported. `PATH` is set inside a bash wrapper, because Git for Windows' `bin\bash.exe` launcher prepends its own `/usr/bin` to `PATH`. Control: without the stub, the directory is removed and the exit code is 2.
+  - C3: `CDPATH=.`. Expects exit 2 for `--inject-compile-fault` and no `No such file or directory`.
+  - C4: a stub suite XML with `tests="many"`. Expects exit 4 and M1 not counted as killed. Controls: `tests="0"` gives exit 4; `tests="52"` kills M1 and then stops at M2's pattern check (exit 1, because the fixture holds only the M1 target).
+  - C5: the first recorded `gradlew` call must be `test` with `--rerun-tasks` and `--no-build-cache` and without `--tests`. Control: the self-test passes with the stub.
+- `ReviewRound3RegressionTest`: its stub `gradlew` now also accepts `test --rerun-tasks --no-build-cache`. This was changed in `80555aa`, so the class passes both before and after the script fix.
+
+No test in the new classes was skipped in any run (section F.7).
+
+### F.4 Recorded without a code change
+1. **Non-ASCII values that the mobile FFI encoder rejects (open question for the maintainer).** The catalog accepts non-ASCII
+   `allowedSymbols`, `forbiddenSubstrings` and `accountReference` values (for example `§`, U+FEFF, an emoji or U+0085).
+   `crates/upspa-mobile-ffi/src/encoder.rs` rejects them: `browser_normalizes_identically` requires ASCII symbols and substrings,
+   and `account_id_is_portable` requires a printable ASCII account ID. A catalog accepted here can therefore fail closed at
+   encoding time. This is recorded in `docs/catalog-v1-schema.md` section 8, "Known Gaps". The reviewer read the Rust side but did not run it.
+2. **Backslash followed by a control character.** Of the 32 code points U+0000..U+001F after a backslash, Moshi already rejects 31.
+   Only U+000A depends on the round 3 Finding 1 check. The reviewer showed this by removing the check in a scratch copy: 31 of the
+   32 parameterized cases still passed. The other 31 cases are defense-in-depth controls. Also recorded in "Known Gaps".
+
+### F.5 Commands
+```powershell
+$env:PATH = "C:\Program Files\Git\bin;" + $env:PATH
+.\gradlew clean test --no-daemon
+```
+```bash
+bash run-real-script.sh <module> <out> --selftest-compile-fault
+bash run-real-script.sh <module> <out> --inject-compile-fault
+bash run-real-script.sh <module> <out>
+bash wsl-run-ir.sh <repo> <commit> <out>        # inside WSL
+bash win-mutations-ir.sh <repo> <worktree> 6b6c6d1 mutate.py <out>
+bash xml-totals.sh build/test-results/test
+```
+`run-real-script.sh` runs `wsl --shutdown`, then `"C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh [args]` with real
+Gradle, and records the HEAD, the WSL VM state and the exit code. All driver scripts are in the evidence directory.
+
+### F.6 Real output before the fixes (tests-only commit `80555aa`)
+Windows Git Bash, `.\gradlew clean test --no-daemon`, with the WSL VM not running at the start (`unfixed-full-suite-80555aa.txt`,
+`unfixed-xml-totals-80555aa.txt`): Gradle exit 1, `420 tests completed, 23 failed, 2 skipped`.
+
+| Scope | Total | Passed | Failed | Skipped |
+| :--- | ---: | ---: | ---: | ---: |
+| All 16 classes | 420 | 395 | 23 | 2 |
+| `IndependentReviewValidatorRegressionTest` | 49 | 32 | 17 | 0 |
+| `IndependentReviewScriptRegressionTest` | 10 | 4 | 6 | 0 |
+| `ReviewRound3RegressionTest` | 54 | 53 | 0 | 1 |
+
+Every other class passed, including `CatalogFixtureTest` (76/76), so all fixtures keep their expected results. All 23 failures
+are new rejection tests, and all new controls passed. Failure reasons [excerpt (trimmed)]:
+```text
+Expected Rejected for requireUpper = TRUE, but got Accepted(document=CatalogDocument(schemaVersion=1, entryCount=1))
+Expected Rejected for reference = NULL, but got Accepted(document=CatalogDocument(schemaVersion=1, entryCount=1))
+Expected Rejected for backslash-apostrophe in allowedSymbols, but got Accepted(document=CatalogDocument(...))
+SIGTERM during the run must make the script exit 143. ... WRAPPER: script exit status 0
+SIGINT during the run must make the script exit 130. ... WRAPPER: script exit status 0
+A failing cleanup rm must not change exit code 2. ... rm stub: refusing to remove isolation directory /tmp/tmp.<id> ... expected: <2> but was: <1>
+cd must not fail under CDPATH. ... cd: $'/tmp/mutation-review-fixture<n>/scripts\n/tmp/mutation-review-fixture<n>/scripts/..': No such file or directory
+M1 must not count as killed. ... PASS: Mutation M1 KILLED! ...
+Baseline must pass --rerun-tasks, got test
+```
+The first two lines are representative of the 15 Finding A failures. In WSL at `80555aa` (`wsl-ir-tests-80555aa.txt`), the same
+23 tests failed for the same reasons: 113 tests, 23 failed, 0 skipped, with `ReviewRound3RegressionTest` passing 54/54.
+
+### F.7 Real output after the fixes (`6b6c6d1`)
+**Windows Git Bash, full suite** (`fixed-full-suite-6b6c6d1.txt`, `fixed-xml-totals-6b6c6d1.txt`): Gradle exit 0. The WSL VM was
+not running at the start and was running at the end; as recorded in round 3, the round 2 bash probe starts it.
+
+| Scope | Total | Passed | Failed | Skipped |
+| :--- | ---: | ---: | ---: | ---: |
+| All 16 classes | 420 | 418 | 0 | 2 |
+| `IndependentReviewValidatorRegressionTest` | 49 | 49 | 0 | 0 |
+| `IndependentReviewScriptRegressionTest` | 10 | 10 | 0 | 0 |
+| `ReviewRound3RegressionTest` | 54 | 53 | 0 | 1 |
+
+Arithmetic: 361 tests before this follow-up + 49 + 10 = 420. The 2 skips are the same as in round 3 (see "Skipped Tests and
+Reasons (Windows)"): the mode-644 positive test on NTFS and the round 2 `ProcessBuilder("bash")` probe.
+
+**WSL** (`wsl-ir-tests-6b6c6d1.txt`; ext4 clone, with `scripts/mutation-check.sh` at mode `644 -rw-r--r--`): Gradle exit 0.
+
+| Class | Total | Passed | Failed | Skipped |
+| :--- | ---: | ---: | ---: | ---: |
+| `IndependentReviewValidatorRegressionTest` | 49 | 49 | 0 | 0 |
+| `IndependentReviewScriptRegressionTest` | 10 | 10 | 0 | 0 |
+| `ReviewRound3RegressionTest` | 54 | 54 | 0 | 0 |
+
+**Real script runs, repeated at `6b6c6d1`** (Windows Git Bash, real Gradle, with the WSL VM not running at each start):
+- `script-selftest-6b6c6d1.txt`: `Baseline PASSED: all passed`, `FATAL: Mutation M1 failed to compile!`,
+  `Self-test PASSED: fresh baseline ran, compile fault was reached and rejected with exit code (2).`, `# exit code: 0`.
+- `script-inject-compile-fault-6b6c6d1.txt`: `Baseline PASSED: all passed`, `FATAL: Mutation M1 failed to compile!`, `# exit code: 2`.
+  Its footer lists two modified doc files: the doc edits for this addendum were made while that run was in progress. They were
+  then moved out of the working tree until the normal run below had finished. This mode has no before/after working-tree check.
+- `script-normal-6b6c6d1.txt` [excerpt (trimmed)]:
+```text
+Baseline PASSED: all passed
+PASS: Mutation M1 KILLED! (52 tests executed, failing cases: PACKAGE_MISMATCH_CASE_DIFFERENCE)
+...
+PASS: Mutation M8 KILLED! (52 tests executed, failing cases: ORIGIN_BOUNDARY_NON_HTTPS_REJECTION)
+Working tree unchanged: **yes**
+- Mutations killed: **8**
+- Mutations survived: **0**
+SUCCESS: All mutations were killed by the Identity Adversarial Suite!
+# exit code: 0
+# WSL VM not running (no vmmemWSL process) after the run; git status --short: ''
+```
+
+### F.8 Mutation proofs (isolated worktree only)
+`win-mutations-ir.sh` created a temporary detached worktree at `6b6c6d1`. For each case it applied one exact-string mutation with
+`mutate.py`, ran the named class with `./gradlew test --rerun --tests <class> --no-daemon`, and restored the worktree. It removed
+the worktree at the end; `worktree-list-after-ir-proofs.txt` lists only the main checkout. Each `mutation-<id>.txt` contains the
+applied diff.
+
+| ID | Check removed | Class run | Result | Failing tests |
+| :--- | :--- | :--- | :--- | :--- |
+| A | keyword check (`if (false)`) | Validator | **Detected** (15 failures) | all 8 `requireUpper` variants, the array case, all 6 `reference`/`unverifiedReason` variants |
+| B | escape allow-list (`if (false)`) | Validator | **Detected** (2 failures) | `\'` in a value, `\'` in a key |
+| C1 | TERM handler (`trap cleanup TERM`) | Script | **Detected** (1 failure) | `SIGTERM -> exit 143` |
+| C2 | `set +e` in `cleanup` | Script | **Detected** (1 failure) | C2 failing-rm test |
+| C3 | `unset CDPATH` | Script | **Detected** (1 failure) | C3 CDPATH test |
+| C4 | integer guard (back to `-z` / `-le 0`) | Script | **Detected** (1 failure) | C4 `tests="many"` test |
+| C5 | `--rerun-tasks --no-build-cache` on the baseline | Script | **Detected** (1 failure) | C5 baseline-invocation test |
+
+In B, the non-RFC escape controls still pass with the allow-list removed, because Moshi rejects those escapes itself; only `\'`
+depends on the new check. Each worktree case ended with `git status --short -> ''`.
+
+### F.9 Evidence and sanitization
+Evidence directory: `upspa-assetlink-verifier/docs/pr33-round3-evidence/independent-review/`. It holds the raw outputs, the XML
+totals, the mutation proof outputs and the driver scripts (`run-real-script.sh`, `wsl-run-ir.sh`, `win-mutations-ir.sh`,
+`mutate.py`, `xml-totals.sh`). Every file in that directory went through the same path-prefix transform as in "Evidence Files and
+Sanitization" above, with the same five substitutions in the same order. The files contained no backslash form of the Windows
+home prefix and no machine host name. For every file, applying the transform to the original scratch output is byte-identical to
+the committed file. The branch name in `worktree-list-after-ir-proofs.txt` was not changed.
+
+### F.10 Not run / limitations
+- No CI or device runs were made; all results are local (Windows Git Bash and WSL2).
+- The Rust FFI behavior in F.4 (1) was read in `encoder.rs`, not executed.
+- The C1 tests send the signal to the script's own process. They do not cover a signal sent to the whole process group (for
+  example a CI runner that also kills the Gradle child).
+- The C2 test simulates a failing `rm` with a stub. The Windows file lock seen in round 3 was not reproduced with a real Gradle or
+  Kotlin daemon.
