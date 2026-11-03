@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -75,4 +77,72 @@ tasks.withType<Test>().configureEach {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         showStandardStreams = true
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Android native packaging (x86_64, API 26). Opt-in: -PupspaAndroidNative=true
+// Requires cargo-ndk and NDK r27c via ANDROID_NDK_HOME or <sdk>/ndk/<version>.
+// ---------------------------------------------------------------------------------------------
+val upspaNdkVersion = "27.2.12479018"
+val androidAbi = "x86_64"
+val jniLibsDir: File = projectDir.resolve("src/main/jniLibs")
+val ndkHome: String = System.getenv("ANDROID_NDK_HOME")
+    ?: android.sdkDirectory.resolve("ndk/$upspaNdkVersion").absolutePath
+
+val cargoBuildAndroid = tasks.register<Exec>("cargoBuildAndroid") {
+    description = "Builds libupspa_mobile_ffi.so for Android $androidAbi (API 26) into src/main/jniLibs."
+    group = "build"
+    workingDir = repoRoot
+    environment("ANDROID_NDK_HOME", ndkHome)
+    commandLine("cargo", "ndk", "-t", androidAbi, "-P", "26", "-o", jniLibsDir.absolutePath,
+        "build", "--locked", "--release", "-p", "upspa-mobile-ffi")
+    inputs.dir(repoRoot.resolve("crates/upspa-mobile-ffi/src"))
+    inputs.dir(repoRoot.resolve("crates/upspa-core/src"))
+    inputs.file(repoRoot.resolve("Cargo.lock"))
+    outputs.file(jniLibsDir.resolve("$androidAbi/libupspa_mobile_ffi.so"))
+    doFirst {
+        val props = File(ndkHome, "source.properties")
+        if (!props.isFile) throw GradleException("NDK not found at $ndkHome (set ANDROID_NDK_HOME)")
+        val rev = props.readLines().firstOrNull { it.startsWith("Pkg.Revision") }?.substringAfter("=")?.trim()
+        if (rev != upspaNdkVersion) throw GradleException("NDK $rev found, expected $upspaNdkVersion")
+    }
+}
+
+if (providers.gradleProperty("upspaAndroidNative").orNull == "true") {
+    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }
+        .configureEach { dependsOn(cargoBuildAndroid) }
+}
+
+tasks.register("verifyAndroidNative") {
+    description = "Fails unless the AAR/APK contains $androidAbi/libupspa_mobile_ffi.so. -PupspaArtifact=<path>"
+    group = "verification"
+    val artifactPath = providers.gradleProperty("upspaArtifact")
+        .orElse(layout.buildDirectory.file("outputs/aar/ffi-debug.aar").map { it.asFile.absolutePath })
+    doLast {
+        val given = File(artifactPath.get())
+        val artifact = if (given.isAbsolute) given else rootDir.resolve(given.path)
+        if (!artifact.isFile) throw GradleException("artifact not found: $artifact")
+        val libs = ZipFile(artifact).use { z: ZipFile ->
+            z.entries().asSequence().map { it.name }.filter { it.endsWith(".so") }.toList()
+        }
+        logger.lifecycle("native entries in ${artifact.name}: $libs")
+        val expected = setOf("jni/$androidAbi/libupspa_mobile_ffi.so", "lib/$androidAbi/libupspa_mobile_ffi.so")
+        if (libs.none { it in expected }) throw GradleException("MISSING $androidAbi/libupspa_mobile_ffi.so in ${artifact.name}")
+        logger.lifecycle("OK: $androidAbi/libupspa_mobile_ffi.so present in ${artifact.name}")
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Emulator smoke test: runs the existing MobileContractTest on a device through the packaged
+// jniLibs .so and generated bindings. Run with -PupspaAndroidNative=true and a class filter.
+// ---------------------------------------------------------------------------------------------
+android {
+    defaultConfig { testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    sourceSets { getByName("androidTest").java.srcDirs("src/test/java") }
+}
+dependencies {
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.org.json)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
