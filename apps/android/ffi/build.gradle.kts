@@ -138,7 +138,7 @@ tasks.register("verifyAndroidNative") {
 // ---------------------------------------------------------------------------------------------
 android {
     defaultConfig { testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
-    sourceSets { getByName("androidTest").java.srcDirs("src/test/java") }
+    sourceSets { getByName("androidTest").java.srcDirs(layout.buildDirectory.dir("generated/deviceSmoke").get().asFile) }
 }
 dependencies {
     androidTestImplementation(libs.junit)
@@ -146,3 +146,19 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
+
+// DEX before version 040 (API < 30) rejects spaces in method names, so the host test cannot be
+// dexed as written for minSdk 26. Copy it for device runs with backtick names made camelCase.
+val generateDeviceSmoke = tasks.register<Copy>("generateDeviceSmoke") {
+    description = "Copies MobileContractTest for on-device runs with DEX-safe test names."
+    from("src/test/java") { include("com/upspa/mobile/ffi/MobileContractTest.kt") }
+    into(layout.buildDirectory.dir("generated/deviceSmoke"))
+    filter { line: String ->
+        Regex("fun `([^`]+)`").replace(line) { m ->
+            "fun " + m.groupValues[1].split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }
+                .mapIndexed { i, w -> if (i == 0) w.lowercase() else w.replaceFirstChar { c -> c.uppercase() } }
+                .joinToString("")
+        }
+    }
+}
+tasks.matching { it.name == "compileDebugAndroidTestKotlin" }.configureEach { dependsOn(generateDeviceSmoke) }
