@@ -11,7 +11,8 @@ import org.upspa.assetlinks.model.EnrolledOrigin
  *   equal [enrolledOrigin] (scheme, host, port).
  * - If [aliasEvidence.status] is [AliasEvidenceStatus.VERIFIED], [enrolledOrigin] must be HTTPS.
  * - [derivationIdentity] produces the canonical derivation string `enrolledOrigin + "|" + accountReference.value`.
- * - [toString] is redacted and strictly excludes the sensitive account reference.
+ * - [toString] is redacted: it strictly excludes the sensitive account reference and the enrolled origin,
+ *   and renders the policy only as its safe summary, because policy strings can repeat those identifiers.
  */
 data class CatalogEntry(
     val enrolledOrigin: EnrolledOrigin,
@@ -45,6 +46,6 @@ data class CatalogEntry(
     override fun toString(): String {
         return "CatalogEntry(enrolledOrigin=<redacted>, accountReference=<redacted>, " +
                 "compatibilityProfileVersion=${compatibilityProfileVersion.value}, " +
-                "encoderCounter=${encoderCounter.value}, policy=$policy, aliasEvidence=$aliasEvidence)"
+                "encoderCounter=${encoderCounter.value}, policy=${policy.diagnosticSummary()}, aliasEvidence=$aliasEvidence)"
     }
 }

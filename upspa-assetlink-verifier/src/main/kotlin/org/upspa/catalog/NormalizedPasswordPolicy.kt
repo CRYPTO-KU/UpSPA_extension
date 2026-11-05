@@ -15,6 +15,7 @@ import java.util.Locale
  * 6. `allowedSymbols` is not empty (for both `requireSymbol` true and false)
  * 7. every `forbiddenSubstrings` item is non-empty, equals its own `trim().lowercase(Locale.ROOT)`
  * - [forbiddenSubstrings] is an immutable snapshot; mutating caller collections after construction cannot mutate the policy.
+ * - [toString] is a redacted summary that strictly excludes [allowedSymbols] and [forbiddenSubstrings].
  */
 class NormalizedPasswordPolicy(
     val minLen: Int,
@@ -111,9 +112,18 @@ class NormalizedPasswordPolicy(
         return result
     }
 
-    override fun toString(): String {
+    /**
+     * Safe diagnostic form: lengths, flags and counts only. [allowedSymbols] and [forbiddenSubstrings]
+     * never appear, because a policy can legitimately forbid the account name or the site hostname.
+     * [allowedSymbols] is counted in code points.
+     */
+    internal fun diagnosticSummary(): String {
+        val allowedSymbolsCount = allowedSymbols.codePointCount(0, allowedSymbols.length)
         return "NormalizedPasswordPolicy(minLen=$minLen, maxLen=$maxLen, requireUpper=$requireUpper, " +
                 "requireLower=$requireLower, requireDigit=$requireDigit, requireSymbol=$requireSymbol, " +
-                "allowedSymbols='$allowedSymbols', forbidWhitespace=$forbidWhitespace, forbiddenSubstrings=$forbiddenSubstrings)"
+                "forbidWhitespace=$forbidWhitespace, allowedSymbolsCount=$allowedSymbolsCount, " +
+                "forbiddenSubstringsCount=${forbiddenSubstrings.size})"
     }
+
+    override fun toString(): String = diagnosticSummary()
 }
