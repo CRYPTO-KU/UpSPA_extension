@@ -1,0 +1,4 @@
+=== Probe: hostname-shaped package name, scratch test in the temporary worktree only ===
+    PROBE result: Accepted(document=CatalogDocument(schemaVersion=1, entryCount=1))
+    PROBE entry: CatalogEntry(enrolledOrigin=<redacted>, accountReference=<redacted>, compatibilityProfileVersion=1, encoderCounter=0, policy=NormalizedPasswordPolicy(minLen=16, maxLen=16, requireUpper=true, requireLower=true, requireDigit=true, requireSymbol=false, forbidWhitespace=true, allowedSymbolsCount=4, forbiddenSubstringsCount=0), aliasEvidence=AliasEvidence(status=VERIFIED, reference=AliasEvidenceReference(packageName=synthetic.example, signingCertificateDigest=14:6D:E9:A1:B2:C3:D4:E5:F6:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17, sourceOrigin=<redacted>), unverifiedReason=null))
+    PROBE entry contains host: true

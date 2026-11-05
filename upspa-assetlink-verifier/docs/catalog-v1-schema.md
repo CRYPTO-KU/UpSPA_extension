@@ -29,7 +29,7 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 - **S0 (Transient Secret):** Master password, secret seed/key, derived passwords, `secretB64`. **Never stored in the catalog.**
 - **S1 (User Identifier):** User account reference (`accountReference`). Must be encrypted at rest; never output in diagnostics/logs.
 - **S2 (Site-Linkage Metadata):** Exact enrolled web origin (`enrolledOrigin`, alias `sourceOrigin`). Must be encrypted at rest; never output in diagnostics/logs.
-- **S3 (Configuration Metadata):** Password policy (`policy`), encoder counter (`encoderCounter`). Persisted; may appear in diagnostics if sanitized.
+- **S3 (Configuration Metadata):** Password policy (`policy`), encoder counter (`encoderCounter`). Persisted; may appear in diagnostics only as a safe summary: policy lengths, flags and counts, plus the counter. Raw `allowedSymbols` and `forbiddenSubstrings` must not appear, because `forbiddenSubstrings` can repeat S1 or S2 identifiers.
 - **S4 (Public / Version Metadata):** Schema versions (`schemaVersion`, `compatibilityProfileVersion`), Android package name (`packageName`), certificate digest (`signingCertificateDigest`). Publicly auditable.
 
 ### Field Table
@@ -42,16 +42,16 @@ Only the **Exact Enrolled Origin** (`enrolledOrigin`) and the **Alias Evidence R
 | `entries[].accountReference` | `String` | Yes | Non-empty, no edge whitespace, no `\|`, no control chars, no unpaired surrogates, max 256 UTF-16 chars | S1 | Enrolled Account Lifetime | **No** (Redacted) |
 | `entries[].compatibilityProfileVersion` | `Int` | Yes | Must equal `1` | S4 | Enrolled Account Lifetime | Yes |
 | `entries[].encoderCounter` | `Long` | Yes | Range `0..4294967295` (Rust `u32`) | S3 | Monotonic / Dynamic | Yes |
-| `entries[].policy` | `Object` | Yes | Fully normalized 9-field policy; meets 7 cross-language invariants | S3 | Enrolled Account Lifetime | Yes (Structured form) |
+| `entries[].policy` | `Object` | Yes | Fully normalized 9-field policy; meets 7 cross-language invariants | S3 | Enrolled Account Lifetime | Yes (Safe summary only: lengths, flags, counts) |
 | `entries[].policy.minLen` | `Int` | Yes | `minLen >= 8` and `minLen <= maxLen`; must fit 32-bit signed integer (`LENGTH_OUT_OF_RANGE`) | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.maxLen` | `Int` | Yes | If `maxLen > 64` then `maxLen == minLen`; must fit 32-bit signed integer (`LENGTH_OUT_OF_RANGE`) | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireUpper` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireLower` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireDigit` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
 | `entries[].policy.requireSymbol` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
-| `entries[].policy.allowedSymbols` | `String` | Yes | No duplicate code points; non-empty (for both `requireSymbol=true` [`EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL`] and `requireSymbol=false` [`EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL`] for browser/Rust parity); no whitespace if `forbidWhitespace` | S3 | Enrolled Account Lifetime | Yes |
+| `entries[].policy.allowedSymbols` | `String` | Yes | No duplicate code points; non-empty (for both `requireSymbol=true` [`EMPTY_SYMBOLS_WITH_REQUIRE_SYMBOL`] and `requireSymbol=false` [`EMPTY_SYMBOLS_WITHOUT_REQUIRE_SYMBOL`] for browser/Rust parity); no whitespace if `forbidWhitespace` | S3 | Enrolled Account Lifetime | **No** (Count only) |
 | `entries[].policy.forbidWhitespace` | `Boolean` | Yes | Strict boolean | S3 | Enrolled Account Lifetime | Yes |
-| `entries[].policy.forbiddenSubstrings` | `List<String>` | Yes | Immutable snapshot; every item non-empty and equals `trim().lowercase()` | S3 | Enrolled Account Lifetime | Yes |
+| `entries[].policy.forbiddenSubstrings` | `List<String>` | Yes | Immutable snapshot; every item non-empty and equals `trim().lowercase()` | S3 | Enrolled Account Lifetime | **No** (Count only; items can repeat S1 or S2 identifiers) |
 | `entries[].aliasEvidence` | `Object` | Yes | Valid status and cross-field evidence reference/reason | S4 / S2 | Dynamic / Refreshable | No (Reference contains S2) |
 | `entries[].aliasEvidence.status` | `Enum` | Yes | One of `VERIFIED`, `UNVERIFIED`, `PENDING`, `MANUAL` | S4 | Dynamic / Refreshable | Yes (Status enum only) |
 | `entries[].aliasEvidence.reference` | `Object?` | Conditional | Required for `VERIFIED`; forbidden for `MANUAL`; optional for `UNVERIFIED`/`PENDING` | S4 / S2 | Dynamic / Refreshable | No |
@@ -149,4 +149,4 @@ In accordance with `CatalogConsumerContract.kt`:
    a. `entry.aliasEvidence.isEligibleForCredentialRelease == true` (`status == VERIFIED`), **AND**
    b. A fresh Digital Asset Links verification at request time returns `VerificationResult.Verified` whose `origin`, `packageName`, and `matchedFingerprint` exactly match `entry.aliasEvidence.reference`.
 4. **Non-Releasing Statuses:** `MANUAL`, `PENDING`, and `UNVERIFIED` entries must never release credentials to an external app.
-5. **Redaction Hygiene:** Consumers must never log `accountReference` or `enrolledOrigin`. Opaque local IDs must be used in diagnostics.
+5. **Redaction Hygiene:** Consumers must never log `accountReference` or `enrolledOrigin`. The same applies to raw `allowedSymbols` and `forbiddenSubstrings`, because a policy can forbid the account name or the site hostname. `CatalogEntry.toString()` and `NormalizedPasswordPolicy.toString()` render the policy only as lengths, flags and counts (`allowedSymbolsCount` in code points, `forbiddenSubstringsCount`). Opaque local IDs must be used in diagnostics.

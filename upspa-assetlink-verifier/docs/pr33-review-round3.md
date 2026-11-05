@@ -574,3 +574,135 @@ the committed file. The branch name in `worktree-list-after-ir-proofs.txt` was n
   example a CI runner that also kills the Gradle child).
 - The C2 test simulates a failing `rm` with a stub. The Windows file lock seen in round 3 was not reproduced with a real Gradle or
   Kotlin daemon.
+
+---
+
+## Fresh review follow-up (head 9c99b60)
+
+A fresh review of head `9c99b60` found one P2: `CatalogEntry.toString()` interpolated the whole policy, and
+`NormalizedPasswordPolicy.toString()` printed raw `forbiddenSubstrings` and `allowedSymbols`. A policy can legitimately forbid the
+account name or the site hostname, so logging a redacted entry exposed those identifiers. The protocol was the same as before: a
+tests-only commit, then the fix, then this addendum. All commits are new; nothing was amended, rebased or pushed.
+
+### G.1 Commits
+
+| Role | Commit |
+| :--- | :--- |
+| Tests-only commit | `32e58e0` (`32e58e08c2deb81e76bbbb6bc8544c7114020b7d`) |
+| Fix commit | `93e317f` (`93e317fc87095aeaf1dbe4df34cdec74328c6d64`) |
+| This addendum, evidence and schema doc update | the commit that contains this section |
+
+After `git fetch origin` during this follow-up, `origin/mobile-dev` still resolved to `75a33a2`. `git diff 9c99b60 93e317f` is empty
+for `scripts/` and `CatalogValidator.kt`. The evidence is in `upspa-assetlink-verifier/docs/pr33-round3-evidence/fresh-review/`.
+
+### G.2 Fix
+`NormalizedPasswordPolicy` has a new `internal fun diagnosticSummary()`, and its `toString()` returns it. `CatalogEntry.toString()`
+calls the same function directly, so the entry does not depend on what the policy's `toString()` prints. `equals`, `hashCode`,
+`copy`, the public properties and all validation are unchanged. Example:
+
+```text
+NormalizedPasswordPolicy(minLen=20, maxLen=32, requireUpper=true, requireLower=false, requireDigit=true, requireSymbol=false, forbidWhitespace=true, allowedSymbolsCount=7, forbiddenSubstringsCount=1)
+```
+
+`allowedSymbols` is summarized as a count, in code points, instead of being printed. It is not an identifier in the normal case,
+but it is free text that the catalog supplies, and a count is enough for diagnostics. It also keeps the rule simple: no raw policy
+string appears in a diagnostic.
+
+### G.3 `toString()` audit of `org.upspa.catalog`
+
+| Class | Rendering | Can render a listed value? | Action |
+| :--- | :--- | :--- | :--- |
+| `NormalizedPasswordPolicy` | custom | **Yes before the fix:** forbidden substrings, allowed symbols | Fixed |
+| `CatalogEntry` (data class) | custom | **Yes before the fix:** through the policy. Origin and account were already redacted | Fixed |
+| `AccountReference` (value class) | custom | No: `AccountReference(<redacted>)` | None |
+| `AliasEvidenceReference` (data class) | custom | No origin. Prints package name and digest on purpose (see G.8) | None |
+| `AliasEvidence` (data class) | generated | Only through the reference above. `unverifiedReason` is an enum; there is no free reason text | None |
+| `CatalogDocument` | custom | No: schema version and entry count only | None |
+| `CatalogValidationResult.Accepted` / `Rejected` (data classes) | generated | No: delegates to the document or the rejection | None |
+| `CatalogRejection` object variants | custom | No: fixed names | None |
+| `CatalogRejection` data variants | generated | No listed value reaches them. They hold indexes, enum codes, numbers and paths | None |
+| `CatalogSchemaVersion`, `CompatibilityProfileVersion`, `EncoderCounter` (value classes) | generated | No: numbers only | None |
+| `AliasEvidenceStatus`, `UnverifiedReason`, rejection code enums | enum name | No | None |
+| `CatalogConsumerContract` | interface | No rendering | None |
+| Private AST types in `CatalogValidator.kt` (`JsonField`, `AstNode.*`, `AstResult.*`) | generated | **Yes if printed**, but they are private and no code interpolates them (by inspection) | None; file out of scope |
+
+The paths need one note. `parseNode` builds child paths from raw key names, so `DuplicateJsonKey` could in principle carry a raw
+key. The validator reads `duplicateKeyPath` only on objects reached through known keys, so the path contains known names only. Two
+new controls pin this with an identifier used as a key under an unknown field and under a wrong-type field.
+
+### G.4 New tests
+`FreshReviewRedactionRegressionTest` has 27 tests: 15 redaction tests and 12 controls (named `control - ...`).
+
+| Area | Tests |
+| :--- | :--- |
+| Reviewer cases 1 and 2 through `StrictCatalogValidator.validate`, plus a VERIFIED entry | 3 |
+| The same through direct constructors, raw `allowedSymbols` in the entry, exact entry rendering | 4 |
+| Policy alone: every forbidden item, raw symbols, exact summary, code-point count, identical rendering | 5 |
+| `entries` list rendering | 1 |
+| Mixed case (`Synthetic_User` with `synthetic_user`), validated and direct | 2 |
+| Controls: empty list shows no identifier (validated and direct), safe fields still shown (entry and policy) | 4 |
+| Controls: document and accepted result, alias evidence (two), account reference, rejections (two) | 6 |
+| Controls: equality and hashing use raw strings, raw values stay readable to callers | 2 |
+
+`CatalogDocument.toString()` with such an entry is covered by a control, not a redaction test: it passed before the fix, because the
+document already printed only counts. The `entries` list rendering is the document-level test that failed.
+
+### G.5 Before and after
+
+| Run | Commit | tests | passed | failed | errors | skipped |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: |
+| Previous baseline, Windows | `6b6c6d1` | 420 | 418 | 0 | 0 | 2 |
+| Tests only, Windows, full suite | `32e58e0` | 447 | 430 | 15 | 0 | 2 |
+| Fix, Windows, full suite | `93e317f` | 447 | 445 | 0 | 0 | 2 |
+| Tests only, WSL2 Ubuntu, new class | `32e58e0` | 27 | 12 | 15 | 0 | 0 |
+| Fix, WSL2 Ubuntu, new class | `93e317f` | 27 | 27 | 0 | 0 | 0 |
+
+Counts come from the JUnit XML. Windows runs used `.\gradlew clean test --no-daemon` with Git Bash on `PATH`, after `wsl --shutdown`.
+The 2 skips are the known ones, in `ReviewRound2RegressionTest` and `ReviewRound3RegressionTest`.
+
+All 15 failures at `32e58e0` are `AssertionFailedError`s whose message shows the raw policy rendering; none is a setup failure, and all
+12 controls passed. Excerpt from `unfixed-new-class-32e58e0.txt` (trimmed):
+
+```text
+FAIL reviewer case 1 - validated entry does not render an account repeated in forbiddenSubstrings()
+    org.opentest4j.AssertionFailedError: CatalogEntry.toString must not contain 'synthetic_user': CatalogEntry(enrolledOrigin=<redacted>, accountReference=<redacted>, ...forbiddenSubstrings=[synthetic_user])...
+FAIL reviewer case 2 - validated entry does not render a hostname repeated in forbiddenSubstrings()
+    org.opentest4j.AssertionFailedError: CatalogEntry.toString must not contain 'synthetic-host.example.com': CatalogEntry(enrolledOrigin=<redacted>, accountReference=<redacted>, ...forbiddenSubstrings=[synthetic-host.example.com])...
+```
+
+### G.6 Mutation proofs (isolated worktree only)
+`win-mutations-fr.sh` created a temporary detached worktree at `93e317f`, applied exact-string mutations with `mutate.py`, ran the new
+class and restored the worktree after each case. Each `mutation-<id>.txt` contains the applied diff.
+
+| ID | Mutation | Result | Failing tests |
+| :--- | :--- | :--- | :--- |
+| P | Policy `toString()` back to the raw rendering; entry keeps the summary | **Detected** (5 failures) | the 5 policy tests, for example `policy toString omits every forbiddenSubstrings item` |
+| E | Entry renders the raw policy fields itself; policy keeps the summary | **Detected** (10 failures) | reviewer cases 1 and 2, `entry renders the safe policy summary and nothing raw`, the other entry tests |
+| L | Entry line back to `policy=$policy`; policy fix stays | **Not detected** (0 failures) | none |
+| B | Both line reverts, the behavior at `9c99b60` | **Detected** (15 failures) | the same 15 tests as at `32e58e0` |
+
+L is an equivalent mutant, not a gap in the tests: with the policy fix in place, `$policy` and `diagnosticSummary()` print the same
+string, so no test can tell them apart. E is therefore the entry-side proof, because it restores the leaking output in the entry
+alone. B shows that the line-by-line revert of both fixes is detected.
+
+### G.7 Evidence and sanitization
+The directory holds the raw outputs, XML totals, per-test reasons, mutation outputs, the probe output and the driver scripts
+(`run-full-suite.ps1`, `wsl-run-fr.sh`, `win-mutations-fr.sh`, `failure-reasons.py`, `mutate.py`, `xml-totals.sh`). Every file went
+through the path-prefix transform in "Evidence Files and Sanitization", with the same five substitutions in the same order. Applying
+the transform to each scratch original is byte-identical to the committed file. The branch name in
+`worktree-list-after-fr-proofs.txt` was not changed.
+
+### G.8 Not run / limitations
+- **Open question, package name.** `AliasEvidenceReference` prints the package name, which the schema allows in logs and
+  `CatalogUnitTest` requires. A package name can have the same text as a hostname. A scratch probe in the temporary worktree accepted
+  origin `https://synthetic.example` with package `synthetic.example`, and the rendered entry contained that text
+  (`probe-package-name.txt`). This was not changed; it needs a maintainer decision.
+- `EnrolledOrigin.toString()` returns the raw origin. It is outside this package, and the catalog classes do not call it in their
+  renderings, but printing `entry.enrolledOrigin` directly shows the origin.
+- Constructor `require` messages were not part of this change. `AndroidPackageName` echoes the rejected value in its message, and the
+  policy reports a duplicate symbol as a `U+` code point.
+- The counts show how many symbols and forbidden items a policy has, which is much less specific than the values.
+- The non-ASCII question stays open. The code-point test uses a direct constructor and pins only the unit of the count.
+- `git worktree remove` reported `Filename too long`. The worktree was deregistered, and its leftover directory was removed with a
+  long-path `rd`. `worktree-list-after-fr-proofs.txt` lists only the main checkout.
+- `scripts/mutation-check.sh` did not change, so it was not re-run. No CI or device runs were made; all results are local.

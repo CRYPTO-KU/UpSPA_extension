@@ -1,0 +1,133 @@
+=== E: entry toString renders the raw policy fields itself (policy toString keeps the summary) ===
+Environment: Windows, GNU bash, version 5.3.15(2)-release (x86_64-pc-cygwin), temporary worktree based on 93e317fc87095aeaf1dbe4df34cdec74328c6d64
+Mutation: replace exactly one occurrence in upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt
+--- git status --short (worktree) ---
+ M upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt
+--- git diff HEAD (mutation, CR-at-EOL ignored) ---
+diff --git a/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt b/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt
+index d248185..261e268 100644
+--- a/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt
++++ b/upspa-assetlink-verifier/src/main/kotlin/org/upspa/catalog/CatalogEntry.kt
+@@ -46,6 +46,6 @@ data class CatalogEntry(
+     override fun toString(): String {
+         return "CatalogEntry(enrolledOrigin=<redacted>, accountReference=<redacted>, " +
+                 "compatibilityProfileVersion=${compatibilityProfileVersion.value}, " +
+-                "encoderCounter=${encoderCounter.value}, policy=${policy.diagnosticSummary()}, aliasEvidence=$aliasEvidence)"
++                "encoderCounter=${encoderCounter.value}, policy=NormalizedPasswordPolicy(minLen=${policy.minLen}, maxLen=${policy.maxLen}, requireUpper=${policy.requireUpper}, requireLower=${policy.requireLower}, requireDigit=${policy.requireDigit}, requireSymbol=${policy.requireSymbol}, allowedSymbols='${policy.allowedSymbols}', forbidWhitespace=${policy.forbidWhitespace}, forbiddenSubstrings=${policy.forbiddenSubstrings}), aliasEvidence=$aliasEvidence)"
+     }
+ }
+$ ./gradlew test --rerun --tests 'org.upspa.catalog.FreshReviewRedactionRegressionTest' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/AppData/Local/Temp/claude/87fb5f1d2486ea12/42bdf846-8bfb-4818-b73b-f1617884880f/scratchpad/wt-fr/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test FAILED
+
+FreshReviewRedactionRegressionTest > direct entry does not render a hostname repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > direct entry does not render an account repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > policy toString is exactly the safe summary() PASSED
+
+FreshReviewRedactionRegressionTest > control - account reference stays redacted() PASSED
+
+FreshReviewRedactionRegressionTest > control - direct entry with empty forbiddenSubstrings renders no identifier() PASSED
+
+FreshReviewRedactionRegressionTest > control - alias evidence renders package and digest but no origin() PASSED
+
+FreshReviewRedactionRegressionTest > control - redaction leaves the raw policy values readable to callers() PASSED
+
+FreshReviewRedactionRegressionTest > entry renders the safe policy summary and nothing raw() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:174
+
+FreshReviewRedactionRegressionTest > control - equality and hashing still use the raw policy strings() PASSED
+
+FreshReviewRedactionRegressionTest > direct entry does not render the raw allowedSymbols value() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > policy toString omits the raw allowedSymbols value() PASSED
+
+FreshReviewRedactionRegressionTest > direct entry does not render the lowercase form of a mixed-case account() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > control - validated entry with empty forbiddenSubstrings renders no identifier() PASSED
+
+FreshReviewRedactionRegressionTest > control - alias evidence renders the unverified reason as an enum code() PASSED
+
+FreshReviewRedactionRegressionTest > entries list rendering omits identifiers repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > control - policy toString still shows lengths and flags() PASSED
+
+FreshReviewRedactionRegressionTest > validated VERIFIED entry does not render a hostname repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > validated entry does not render the lowercase form of a mixed-case account() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > control - document and accepted result stay count-only with a leaking policy() PASSED
+
+FreshReviewRedactionRegressionTest > policy summary counts allowedSymbols in code points() PASSED
+
+FreshReviewRedactionRegressionTest > control - rejection does not echo an identifier used as a key under a wrong-type field() PASSED
+
+FreshReviewRedactionRegressionTest > policy toString omits every forbiddenSubstrings item() PASSED
+
+FreshReviewRedactionRegressionTest > reviewer case 1 - validated entry does not render an account repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > reviewer case 2 - validated entry does not render a hostname repeated in forbiddenSubstrings() FAILED
+    org.opentest4j.AssertionFailedError at FreshReviewRedactionRegressionTest.kt:116
+
+FreshReviewRedactionRegressionTest > control - entry toString still shows the safe fields() PASSED
+
+FreshReviewRedactionRegressionTest > policies differing only in raw strings render identically() PASSED
+
+FreshReviewRedactionRegressionTest > control - rejection does not echo an identifier used as a key under an unknown field() PASSED
+
+27 tests completed, 10 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///<WIN_HOME>/AppData/Local/Temp/claude/87fb5f1d2486ea12/42bdf846-8bfb-4818-b73b-f1617884880f/scratchpad/wt-fr/upspa-assetlink-verifier/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD FAILED in 31s
+5 actionable tasks: 5 executed
+# gradle exit code: 1
+# XML TEST-org.upspa.catalog.FreshReviewRedactionRegressionTest.xml: tests="27" skipped="0" failures="10" errors="0"
+# failing test cases:
+  direct entry does not render a hostname repeated in forbiddenSubstrings()
+  direct entry does not render an account repeated in forbiddenSubstrings()
+  entry renders the safe policy summary and nothing raw()
+  direct entry does not render the raw allowedSymbols value()
+  direct entry does not render the lowercase form of a mixed-case account()
+  entries list rendering omits identifiers repeated in forbiddenSubstrings()
+  validated VERIFIED entry does not render a hostname repeated in forbiddenSubstrings()
+  validated entry does not render the lowercase form of a mixed-case account()
+  reviewer case 1 - validated entry does not render an account repeated in forbiddenSubstrings()
+  reviewer case 2 - validated entry does not render a hostname repeated in forbiddenSubstrings()
+# worktree restored: git status --short -> ''
