@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "enrolledOrigin": "https://example.com",
+      "accountReference": "alice\u001fbad",
+      "compatibilityProfileVersion": 1,
+      "encoderCounter": 0,
+      "policy": {
+        "minLen": 20,
+        "maxLen": 32,
+        "requireUpper": true,
+        "requireLower": true,
+        "requireDigit": true,
+        "requireSymbol": true,
+        "allowedSymbols": "!@#$%^&*",
+        "forbidWhitespace": true,
+        "forbiddenSubstrings": []
+      },
+      "aliasEvidence": {
+        "status": "VERIFIED",
+        "reference": {
+          "packageName": "com.example.app",
+          "signingCertificateDigest": "14:6D:E9:A1:B2:C3:D4:E5:F6:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17",
+          "sourceOrigin": "https://example.com"
+        }
+      }
+    }
+  ]
+}

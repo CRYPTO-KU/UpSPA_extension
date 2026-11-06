@@ -1,0 +1,87 @@
+# Mutation Testing Specification & Verification Report
+
+## 1. Procedure and Rationale
+To guarantee that the `IdentityAdversarialSuite` is genuinely capable of detecting security regressions and attacks (i.e. has "teeth"), we perform mutation testing on the core verification engine.
+
+### Strict Temporary Isolation and Verification Guarantees
+All mutations are applied and evaluated exclusively inside a **throw-away temporary directory** created via `mktemp -d`.
+- **Zero Real Working Tree Modification:** The script captures `git status --porcelain -- .` before and after execution to assert that the real source repository was never modified or weakened.
+- **Trap Cleanup:** An `EXIT` trap deletes the temporary directory on every exit, including after an abort or interruption. Note: `./gradlew --stop` was deliberately removed from cleanup to prevent terminating the system Gradle daemon and disrupting concurrent or caller builds.
+  - Cleanup never changes the exit code. If the directory cannot be removed (for example a Windows file lock), the script prints `WARNING: could not remove temporary isolation directory: <dir>` and exits with its original code.
+  - `SIGINT` and `SIGTERM` have their own handler: the script prints `FATAL: Mutation check interrupted by SIG<name>.` and exits `130` (INT) or `143` (TERM), then runs cleanup. An interrupted run never exits `0` and never prints the `SUCCESS` line.
+- **Environment Independence:** `CDPATH` is unset before any `cd`, so `cd` cannot print a directory into the resolved script and module paths.
+- **Fresh Baseline:** The baseline runs `./gradlew test --rerun-tasks --no-build-cache`, so neither up-to-date task state nor the Gradle build cache can satisfy it.
+- **Hermetic Testing:** Each mutation restores the target file fresh from the repository, checks pattern occurrence count ($= 1$), applies a portable `sed` modification (`sed -i.bak ... && rm -f ...bak`), and confirms file divergence via `cmp -s`.
+- **Compilation Gate:** Before running tests, `./gradlew compileKotlin compileTestKotlin` is executed. A mutation MUST compile; any compilation or build setup failure terminates execution immediately with exit code 2 and is never counted as a killed mutation.
+- **Fresh XML Result Verification:** `build/test-results` is purged prior to every test execution. The suite then executes with `--rerun-tasks --tests '*IdentityAdversarialSuite*'`, and the resulting `TEST-org.upspa.assetlinks.adversarial.IdentityAdversarialSuite.xml` is inspected directly. The `tests=` count must be a positive integer; a zero, missing or non-numeric value fails with exit code 4.
+- **Expected Failure Matching:** Any failure reported in the XML must contain at least one expected case ID for that mutation (from Section 3) and must contain zero unexpected failure IDs outside that set.
+
+---
+
+## 2. Execution Command
+To run the mutation check from the root of `upspa-assetlink-verifier`:
+```bash
+bash scripts/mutation-check.sh
+```
+*(On Windows, execute via Git Bash: `"C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh`).*
+
+To run the self-test mode manually (verifying that compile faults are rejected and not counted as killed):
+```bash
+bash scripts/mutation-check.sh --selftest-compile-fault
+```
+The self-test relaunches the script as `bash <absolute script path> --inject-compile-fault`, so it works when
+the script is committed with mode `100644` and when it is invoked from another directory. It displays the
+child's output and passes (exit 0) only if all of the following hold:
+- the child exit code is exactly `2` (the compilation gate rejected the fault);
+- the child output contains `Baseline PASSED` (a fresh baseline run executed);
+- the child output contains `Injecting deliberate Kotlin compilation fault` and `failed to compile`
+  (the deliberate fault was actually reached).
+
+Otherwise it prints `Self-test FAILED: <reason>` and exits 1. The reasons distinguish a launch failure
+(`126` permission denied, `127` command not found), exit code `0`, any other exit code, and exit code `2`
+without the evidence above. Deliberate compilation errors are therefore never treated as killed mutations,
+and a launch failure is never mistaken for a rejected compile fault.
+
+Running `bash scripts/mutation-check.sh --inject-compile-fault` directly is unchanged: it exits with code 2
+when the injected fault fails to compile.
+
+---
+
+## 3. Mutation Design & Target Matrix
+
+| Mutation ID | Target File | Weakening Description | Expected Killing Category |
+| :--- | :--- | :--- | :--- |
+| **M1** | `PureAssetLinkVerifier.kt` | Package-name comparison weakened to case-insensitive (`equals(..., ignoreCase = true)`) | `PACKAGE_MISMATCH` |
+| **M2** | `PureAssetLinkVerifier.kt` | Origin-binding check compares only `host` instead of the full origin | `ORIGIN_BOUNDARY` / `REQUESTED_ENROLLED_BINDING` |
+| **M3** | `Origin.kt` | `Origin.equals` ignores port comparison | `ORIGIN_BOUNDARY` / `REQUESTED_ENROLLED_BINDING` |
+| **M4** | `PureAssetLinkVerifier.kt` | Certificate digest matching weakened to prefix matching (first 12 chars) | `CERTIFICATE_MISMATCH` |
+| **M5** | `PureAssetLinkVerifier.kt` | Multi-signer rejection check is disabled (`false`) | `MULTIPLE_SIGNERS` |
+| **M6** | `CertificateUtils.kt` | Certificate trailing-bytes check in `isValidX509Certificate` is disabled | `MALFORMED_CERTIFICATE` |
+| **M7** | `PureAssetLinkVerifier.kt` | Relation check weakened to "relation list is not empty" | `REQUESTED_ENROLLED_BINDING` |
+| **M8** | `PureAssetLinkVerifier.kt` | Insecure HTTP scheme rejection is disabled | `ORIGIN_BOUNDARY` |
+
+---
+
+## 4. Observed Verification Results
+
+The table below was copied from `build/reports/mutation-check.md`, generated by `bash scripts/mutation-check.sh`
+on the author's machine (Windows, Git Bash) on 2026-10-01T20:59:02Z, on the branch that merges the PR #27 fixes
+with the catalog and suite code. It is not edited by hand.
+
+| Mutation ID | Target File | Description | Killed | Failing Test Case IDs |
+| :--- | :--- | :--- | :--- | :--- |
+| `M1` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Package-name comparison weakened to case-insensitive | **YES (KILLED)** | `PACKAGE_MISMATCH_CASE_DIFFERENCE` |
+| `M2` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Origin-binding check weakened to compare host only | **YES (KILLED)** | `ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_SCHEME` |
+| `M3` | `src/main/kotlin/org/upspa/assetlinks/model/Origin.kt` | Origin.equals weakened to ignore port | **YES (KILLED)** | `ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT` |
+| `M4` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Certificate matching weakened to prefix match (first 12 hex chars) | **YES (KILLED)** | `CERTIFICATE_MISMATCH_ONE_BYTE_DIFFERENCE, CERTIFICATE_MISMATCH_PREFIX_DIGEST` |
+| `M5` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Multi-signer rejection disabled | **YES (KILLED)** | `MULTIPLE_SIGNERS_ONE_AUTHORIZED, MULTIPLE_SIGNERS_BOTH_AUTHORIZED` |
+| `M6` | `src/main/kotlin/org/upspa/assetlinks/crypto/CertificateUtils.kt` | Certificate trailing-bytes check disabled in isValidX509Certificate | **YES (KILLED)** | `MALFORMED_CERT_TRAILING_BYTES` |
+| `M7` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Relation check weakened to non-empty relation list | **YES (KILLED)** | `REQUESTED_ENROLLED_BINDING_MISSING_RELATION` |
+| `M8` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Non-HTTPS origin rejection disabled | **YES (KILLED)** | `ORIGIN_BOUNDARY_NON_HTTPS_REJECTION` |
+
+### Summary
+- **Baseline Test Outcome:** PASSED (all passed)
+- **Total Mutations Tested:** 8
+- **Mutations Killed:** 8
+- **Mutations Survived:** 0
+- **Working Tree Unchanged:** yes (`git status --porcelain` identical before and after; the script only mutates a temporary copy)

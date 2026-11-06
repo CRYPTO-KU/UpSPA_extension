@@ -1,0 +1,75 @@
+=== P158: scratch escape probe (uncommitted) on the unfixed validator ===
+Environment: Windows, GNU bash, version 5.3.15(2)-release (x86_64-pc-cygwin), temporary worktree based on 158b393e725d587d5d19cee9f02720c62c222fb6
+Mutation command: cp '<WIN_HOME>/AppData/Local/Temp/claude/<WIN_HOME_SLUG>-UpSPA-extension-r3/30e780bc-a965-4c1c-a9d0-1f1e3a6c08c2/scratchpad/ScratchEscapeProbeTest.kt' upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ScratchEscapeProbeTest.kt
+--- git status --short (worktree) ---
+?? upspa-assetlink-verifier/src/test/kotlin/org/upspa/catalog/ScratchEscapeProbeTest.kt
+--- git diff HEAD (mutation, CR-at-EOL ignored) ---
+$ ./gradlew test --rerun --tests 'org.upspa.catalog.ScratchEscapeProbeTest' --no-daemon
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+> Task :processTestResources
+
+> Task :compileKotlin
+w: file:///<WIN_HOME>/AppData/Local/Temp/wtr3/upspa-assetlink-verifier/src/main/kotlin/org/upspa/assetlinks/Main.kt:15:10 Parameter 'args' is never used
+
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestKotlin
+> Task :compileTestJava NO-SOURCE
+> Task :testClasses
+
+> Task :test
+
+ScratchEscapeProbeTest > probe() PASSED
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUÝLD SUCCESSFUL in 16s
+5 actionable tasks: 5 executed
+# gradle exit code: 0
+# XML TEST-org.upspa.catalog.ScratchEscapeProbeTest.xml: tests="1" skipped="0" failures="0" errors="0"
+# failing test cases:
+PROBE moshi strict nextString, backslash + code point 0 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 1 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 2 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 3 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 4 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 5 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 6 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 7 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 8 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 9 -> rejected: JsonEncodingException: Invalid escape sequence: \	 at path $
+PROBE moshi strict nextString, backslash + code point 10 -> accepted, decoded code points [97, 10, 98]
+PROBE moshi strict nextString, backslash + code point 11 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 12 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 13 -> rejected: JsonEncodingException: Invalid escape sequence: \ at path $
+PROBE moshi strict nextString, backslash + code point 14 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 15 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 16 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 17 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 18 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 19 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 20 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 21 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 22 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 23 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 24 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 25 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 26 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 27 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 28 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 29 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 30 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 31 -> rejected: JsonEncodingException: Invalid escape sequence: \? at path $
+PROBE moshi strict nextString, backslash + code point 39 -> accepted, decoded code points [97, 39, 98]
+PROBE StrictCatalogValidator allowedSymbols '!' + backslash + code point 9 + '@' -> Rejected(MalformedJson)
+PROBE StrictCatalogValidator allowedSymbols '!' + backslash + code point 10 + '@' -> Accepted, allowedSymbols code points [33, 10, 64]
+PROBE StrictCatalogValidator allowedSymbols '!' + backslash + code point 11 + '@' -> Rejected(MalformedJson)
+PROBE StrictCatalogValidator allowedSymbols '!' + backslash + code point 39 + '@' -> Accepted, allowedSymbols code points [33, 39, 64]
+# worktree restored: git status --short -> ''

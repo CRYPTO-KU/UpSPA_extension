@@ -1,0 +1,60 @@
+package org.upspa.catalog
+
+import com.squareup.moshi.JsonReader
+import okio.Buffer
+import org.junit.jupiter.api.Test
+
+// Scratch probe, never committed: which component rejects a backslash followed by a literal control character?
+class ScratchEscapeProbeTest {
+
+    private fun catalogJson(allowedSymbols: String): String =
+        "{\n" +
+            "  \"schemaVersion\": 1,\n" +
+            "  \"entries\": [\n" +
+            "    {\n" +
+            "      \"enrolledOrigin\": \"https://example.com\",\n" +
+            "      \"accountReference\": \"synthetic_user\",\n" +
+            "      \"compatibilityProfileVersion\": 1,\n" +
+            "      \"encoderCounter\": 0,\n" +
+            "      \"policy\": {\n" +
+            "        \"minLen\": 16,\n" +
+            "        \"maxLen\": 16,\n" +
+            "        \"requireUpper\": true,\n" +
+            "        \"requireLower\": true,\n" +
+            "        \"requireDigit\": true,\n" +
+            "        \"requireSymbol\": false,\n" +
+            "        \"allowedSymbols\": \"$allowedSymbols\",\n" +
+            "        \"forbidWhitespace\": false,\n" +
+            "        \"forbiddenSubstrings\": []\n" +
+            "      },\n" +
+            "      \"aliasEvidence\": {\n" +
+            "        \"status\": \"MANUAL\"\n" +
+            "      }\n" +
+            "    }\n" +
+            "  ]\n" +
+            "}"
+
+    @Test
+    fun probe() {
+        for (cp in (0..31) + listOf(39)) {
+            val moshi = try {
+                val reader = JsonReader.of(Buffer().writeUtf8("\"a\\" + cp.toChar() + "b\""))
+                reader.isLenient = false
+                "accepted, decoded code points " + reader.nextString().map { it.code }
+            } catch (e: Exception) {
+                "rejected: ${e.javaClass.simpleName}: ${e.message}"
+            }
+            println("PROBE moshi strict nextString, backslash + code point $cp -> $moshi")
+        }
+        for (cp in listOf(9, 10, 11, 39)) {
+            val result = StrictCatalogValidator().validate(catalogJson("!\\" + cp.toChar() + "@"))
+            val summary = when (result) {
+                is CatalogValidationResult.Rejected -> "Rejected(${result.rejection})"
+                is CatalogValidationResult.Accepted ->
+                    "Accepted, allowedSymbols code points " + result.document.entries[0].policy.allowedSymbols.map { it.code }
+                else -> result.toString()
+            }
+            println("PROBE StrictCatalogValidator allowedSymbols '!' + backslash + code point $cp + '@' -> $summary")
+        }
+    }
+}

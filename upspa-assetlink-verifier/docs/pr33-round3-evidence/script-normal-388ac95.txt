@@ -1,0 +1,61 @@
+$ "C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh
+# HEAD 388ac95d533bd3c70380e40b008764f3294e3020; WSL VM not running (no vmmemWSL process); started 2026-11-02T18:10:25Z
+=== Identity Adversarial Suite: Mutation Testing ===
+Created temporary isolation directory: /tmp/tmp.cgjoEASU4h
+Copying repository files to temporary directory...
+Running baseline test suite in temporary copy...
+Baseline PASSED: all passed
+
+--- Testing Mutation M1: Package-name comparison weakened to case-insensitive ---
+PASS: Mutation M1 KILLED! (52 tests executed, failing cases: PACKAGE_MISMATCH_CASE_DIFFERENCE)
+
+--- Testing Mutation M2: Origin-binding check weakened to compare host only ---
+PASS: Mutation M2 KILLED! (52 tests executed, failing cases: ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_SCHEME)
+
+--- Testing Mutation M3: Origin.equals weakened to ignore port ---
+PASS: Mutation M3 KILLED! (52 tests executed, failing cases: ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT)
+
+--- Testing Mutation M4: Certificate matching weakened to prefix match (first 12 hex chars) ---
+PASS: Mutation M4 KILLED! (52 tests executed, failing cases: CERTIFICATE_MISMATCH_ONE_BYTE_DIFFERENCE, CERTIFICATE_MISMATCH_PREFIX_DIGEST)
+
+--- Testing Mutation M5: Multi-signer rejection disabled ---
+PASS: Mutation M5 KILLED! (52 tests executed, failing cases: MULTIPLE_SIGNERS_ONE_AUTHORIZED, MULTIPLE_SIGNERS_BOTH_AUTHORIZED)
+
+--- Testing Mutation M6: Certificate trailing-bytes check disabled in isValidX509Certificate ---
+PASS: Mutation M6 KILLED! (52 tests executed, failing cases: MALFORMED_CERT_TRAILING_BYTES)
+
+--- Testing Mutation M7: Relation check weakened to non-empty relation list ---
+PASS: Mutation M7 KILLED! (52 tests executed, failing cases: REQUESTED_ENROLLED_BINDING_MISSING_RELATION)
+
+--- Testing Mutation M8: Non-HTTPS origin rejection disabled ---
+PASS: Mutation M8 KILLED! (52 tests executed, failing cases: ORIGIN_BOUNDARY_NON_HTTPS_REJECTION)
+
+Mutation check report generated at: <WIN_HOME>/UpSPA_extension_r3/upspa-assetlink-verifier/build/reports/mutation-check.md
+# Mutation Check Report
+
+Generated on: 2026-11-02T18:12:32Z
+Baseline test outcome: **PASSED** (all passed)
+Working tree unchanged: **yes**
+
+## Mutation Results
+
+| Mutation ID | File | Description | Killed | Failing Case IDs |
+| :--- | :--- | :--- | :--- | :--- |
+| `M1` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Package-name comparison weakened to case-insensitive | **YES (KILLED)** | `PACKAGE_MISMATCH_CASE_DIFFERENCE` |
+| `M2` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Origin-binding check weakened to compare host only | **YES (KILLED)** | `ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_SCHEME` |
+| `M3` | `src/main/kotlin/org/upspa/assetlinks/model/Origin.kt` | Origin.equals weakened to ignore port | **YES (KILLED)** | `ORIGIN_BOUNDARY_DIFFERENT_PORT, REQUESTED_ENROLLED_BINDING_REPLAY_OTHER_PORT` |
+| `M4` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Certificate matching weakened to prefix match (first 12 hex chars) | **YES (KILLED)** | `CERTIFICATE_MISMATCH_ONE_BYTE_DIFFERENCE, CERTIFICATE_MISMATCH_PREFIX_DIGEST` |
+| `M5` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Multi-signer rejection disabled | **YES (KILLED)** | `MULTIPLE_SIGNERS_ONE_AUTHORIZED, MULTIPLE_SIGNERS_BOTH_AUTHORIZED` |
+| `M6` | `src/main/kotlin/org/upspa/assetlinks/crypto/CertificateUtils.kt` | Certificate trailing-bytes check disabled in isValidX509Certificate | **YES (KILLED)** | `MALFORMED_CERT_TRAILING_BYTES` |
+| `M7` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Relation check weakened to non-empty relation list | **YES (KILLED)** | `REQUESTED_ENROLLED_BINDING_MISSING_RELATION` |
+| `M8` | `src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt` | Non-HTTPS origin rejection disabled | **YES (KILLED)** | `ORIGIN_BOUNDARY_NON_HTTPS_REJECTION` |
+
+## Summary
+- Total mutations tested: **8**
+- Mutations killed: **8**
+- Mutations survived: **0**
+
+SUCCESS: All mutations were killed by the Identity Adversarial Suite!
+Cleaning up temporary isolation directory...
+# exit code: 0
+# WSL VM not running (no vmmemWSL process); finished 2026-11-02T18:12:33Z

@@ -1,0 +1,39 @@
+$ "C:\Program Files\Git\bin\bash.exe" scripts/mutation-check.sh --selftest-compile-fault
+# HEAD 388ac95d533bd3c70380e40b008764f3294e3020; WSL VM not running (no vmmemWSL process); started 2026-11-02T18:07:29Z
+=== Mutation Checker Self-Test Mode ===
+Invoking mutation checker with an injected compile fault...
+=== Running mutation checker with deliberate compile fault injection ===
+=== Identity Adversarial Suite: Mutation Testing ===
+Created temporary isolation directory: /tmp/tmp.ErU6Cq4Qvt
+Copying repository files to temporary directory...
+Running baseline test suite in temporary copy...
+Baseline PASSED: all passed
+
+--- Testing Mutation M1: Package-name comparison weakened to case-insensitive ---
+Injecting deliberate Kotlin compilation fault into src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt for M1...
+FATAL: Mutation M1 failed to compile! Compilation errors are NOT killed mutations.
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :processResources NO-SOURCE
+
+> Task :compileKotlin FAILED
+e: file:///<WIN_HOME>/AppData/Local/Temp/tmp.ErU6Cq4Qvt/src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt:314:34 Type mismatch: inferred type is String but Int was expected
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUÝLD FAILED in 2s
+2 actionable tasks: 2 executed
+Cleaning up temporary isolation directory...
+Self-test PASSED: fresh baseline ran, compile fault was reached and rejected with exit code (2).
+# exit code: 0
+# WSL VM running (vmmemWSL present); finished 2026-11-02T18:07:53Z

@@ -1,0 +1,20 @@
+﻿# HEAD 6b6c6d10c23e5d5d645bca40cba7b113572a0530; WSL VM not running (no vmmemWSL process) before full suite
+# gradle exit code: 0
+# WSL VM running (vmmemWSL present) after full suite
+org.upspa.assetlinks.adversarial.IdentityAdversarialSuite tests=52 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.crypto.CertificateUtilsTest tests=4 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.model.OriginTest tests=5 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.model.TypedValuesTest tests=5 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.review.ReviewRound5RegressionTest tests=39 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.review.ReviewRound5TypedOutcomeTest tests=16 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.review.ReviewRound6RegressionTest tests=19 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.review.ReviewRound7RegressionTest tests=25 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.verifier.AdversarialNegativeControlTest tests=27 skipped=0 failures=0 errors=0
+org.upspa.assetlinks.verifier.UpSpaAssetLinkVerifierTest tests=10 skipped=0 failures=0 errors=0
+org.upspa.catalog.CatalogFixtureTest tests=76 skipped=0 failures=0 errors=0
+org.upspa.catalog.CatalogUnitTest tests=13 skipped=0 failures=0 errors=0
+org.upspa.catalog.IndependentReviewScriptRegressionTest tests=10 skipped=0 failures=0 errors=0
+org.upspa.catalog.IndependentReviewValidatorRegressionTest tests=49 skipped=0 failures=0 errors=0
+org.upspa.catalog.ReviewRound2RegressionTest tests=16 skipped=1 failures=0 errors=0
+org.upspa.catalog.ReviewRound3RegressionTest tests=54 skipped=1 failures=0 errors=0
+TOTAL tests=420 passed=418 failed=0 errors=0 skipped=2

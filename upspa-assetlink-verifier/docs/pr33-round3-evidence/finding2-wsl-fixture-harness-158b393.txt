@@ -1,0 +1,64 @@
+=== Environment: WSL2 Ubuntu, plain bash (no Gradle, no JDK); fixture under WSL mktemp (ext4) ===
+Harness: docs/finding2-wsl-fixture-harness.sh (mirrors the Kotlin positive test fixture and assertions)
+Script under test: scripts/mutation-check.sh as of HEAD 28a8b62e25a49536d6b6ab2cdd0f4e6fc4a6b0de (unfixed; production code unchanged)
+
+######## Run with fixture script mode 644 ########
+Linux 6.18.54.1-microsoft-standard-WSL2
+GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+M1 pattern: target\.packageName == appSigningInfo\.packageName
+M1 matches in fixture verifier: 1
+Fixture script mode: 644 -rw-r--r--
+Fixture script executable: no
+Invoking: bash scripts/mutation-check.sh --selftest-compile-fault
+----- self-test output -----
+=== Mutation Checker Self-Test Mode ===
+Invoking mutation checker with an injected compile fault...
+scripts/mutation-check.sh: line 16: scripts/mutation-check.sh: Permission denied
+Self-test PASSED: mutation checker rejected compile fault with non-zero exit code (126).
+----- end output (exit code 0) -----
+ASSERT FAIL : no 'Permission denied'
+ASSERT OK   : no 'command not found'
+ASSERT FAIL : no 126/127 status
+ASSERT FAIL : 'Baseline PASSED' present
+ASSERT FAIL : compile fault injection reached
+ASSERT FAIL : compile failure message present
+ASSERT FAIL : child status exactly 2 confirmed
+ASSERT OK   : self-test exit code 0
+HARNESS RESULT: FAIL
+harness exit code (wsl.exe status, read on host): 1
+
+######## Run with fixture script mode 755 ########
+Linux 6.18.54.1-microsoft-standard-WSL2
+GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+M1 pattern: target\.packageName == appSigningInfo\.packageName
+M1 matches in fixture verifier: 1
+Fixture script mode: 755 -rwxr-xr-x
+Fixture script executable: yes
+Invoking: bash scripts/mutation-check.sh --selftest-compile-fault
+----- self-test output -----
+=== Mutation Checker Self-Test Mode ===
+Invoking mutation checker with an injected compile fault...
+=== Running mutation checker with deliberate compile fault injection ===
+=== Identity Adversarial Suite: Mutation Testing ===
+Created temporary isolation directory: /tmp/tmp.RzUueuzawR
+Copying repository files to temporary directory...
+Running baseline test suite in temporary copy...
+Baseline PASSED: 3 tests completed
+
+--- Testing Mutation M1: Package-name comparison weakened to case-insensitive ---
+Injecting deliberate Kotlin compilation fault into src/main/kotlin/org/upspa/assetlinks/verifier/PureAssetLinkVerifier.kt for M1...
+FATAL: Mutation M1 failed to compile! Compilation errors are NOT killed mutations.
+e: stub compile failure: SYNTAX_ERROR_INJECTED_FOR_COMPILE_FAULT found under src/
+Cleaning up temporary isolation directory...
+Self-test PASSED: mutation checker rejected compile fault with non-zero exit code (2).
+----- end output (exit code 0) -----
+ASSERT OK   : no 'Permission denied'
+ASSERT OK   : no 'command not found'
+ASSERT OK   : no 126/127 status
+ASSERT OK   : 'Baseline PASSED' present
+ASSERT OK   : compile fault injection reached
+ASSERT OK   : compile failure message present
+ASSERT OK   : child status exactly 2 confirmed
+ASSERT OK   : self-test exit code 0
+HARNESS RESULT: PASS
+harness exit code (wsl.exe status, read on host): 0
