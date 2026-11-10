@@ -1,4 +1,6 @@
+import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     alias(libs.plugins.android.library)
@@ -96,9 +98,9 @@ val cargoBuildAndroid = tasks.register<Exec>("cargoBuildAndroid") {
     environment("ANDROID_NDK_HOME", ndkHome)
     commandLine("cargo", "ndk", "-t", androidAbi, "-P", "26", "-o", jniLibsDir.absolutePath,
         "build", "--locked", "--release", "-p", "upspa-mobile-ffi")
-    inputs.dir(repoRoot.resolve("crates/upspa-mobile-ffi/src"))
-    inputs.dir(repoRoot.resolve("crates/upspa-core/src"))
-    inputs.file(repoRoot.resolve("Cargo.lock"))
+    // Cargo decides freshness: its fingerprints cover sources, every manifest and profile,
+    // Cargo.lock and the toolchain. A partial Gradle input list here once hid a profile change.
+    outputs.upToDateWhen { false }
     outputs.file(jniLibsDir.resolve("$androidAbi/libupspa_mobile_ffi.so"))
     doFirst {
         val props = File(ndkHome, "source.properties")
@@ -113,8 +115,23 @@ if (providers.gradleProperty("upspaAndroidNative").orNull == "true") {
         .configureEach { dependsOn(cargoBuildAndroid) }
 }
 
+// AARs carry native libraries under jni/<abi>/, APKs under lib/<abi>/. Returns null when the
+// library sits at the location required for the archive type, otherwise the reason.
+fun nativeLibProblem(artifact: File, abi: String): String? {
+    val dir = when (artifact.extension.lowercase()) {
+        "aar" -> "jni"
+        "apk" -> "lib"
+        else -> return "unsupported artifact type (expected .aar or .apk): ${artifact.name}"
+    }
+    val required = "$dir/$abi/libupspa_mobile_ffi.so"
+    val libs = ZipFile(artifact).use { z: ZipFile ->
+        z.entries().asSequence().map { it.name }.filter { it.endsWith(".so") }.toList()
+    }
+    return if (required in libs) null else "MISSING $required in ${artifact.name}; native entries: $libs"
+}
+
 tasks.register("verifyAndroidNative") {
-    description = "Fails unless the AAR/APK contains $androidAbi/libupspa_mobile_ffi.so. -PupspaArtifact=<path>"
+    description = "Fails unless an AAR has jni/$androidAbi/libupspa_mobile_ffi.so or an APK has lib/$androidAbi/libupspa_mobile_ffi.so. -PupspaArtifact=<path>"
     group = "verification"
     val artifactPath = providers.gradleProperty("upspaArtifact")
         .orElse(layout.buildDirectory.file("outputs/aar/ffi-debug.aar").map { it.asFile.absolutePath })
@@ -122,13 +139,47 @@ tasks.register("verifyAndroidNative") {
         val given = File(artifactPath.get())
         val artifact = if (given.isAbsolute) given else rootDir.resolve(given.path)
         if (!artifact.isFile) throw GradleException("artifact not found: $artifact")
-        val libs = ZipFile(artifact).use { z: ZipFile ->
-            z.entries().asSequence().map { it.name }.filter { it.endsWith(".so") }.toList()
+        val problem = nativeLibProblem(artifact, androidAbi)
+        if (problem != null) throw GradleException(problem)
+        logger.lifecycle("OK: ${artifact.name} carries libupspa_mobile_ffi.so for $androidAbi at the location required for its type")
+    }
+}
+
+tasks.register("verifyAndroidNativeSelfTest") {
+    description = "Controls for verifyAndroidNative: valid, missing-library and wrong-location fixtures for AAR and APK."
+    group = "verification"
+    val fixtureDir = layout.buildDirectory.dir("tmp/verifyAndroidNativeSelfTest")
+    doLast {
+        val dir = fixtureDir.get().asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        val so = "$androidAbi/libupspa_mobile_ffi.so"
+        // fixture name, native entries, expected to be accepted
+        val cases = listOf(
+            Triple("valid.aar", listOf("jni/$so"), true),
+            Triple("missing.aar", emptyList<String>(), false),
+            Triple("wrong-location.aar", listOf("lib/$so"), false),
+            Triple("valid.apk", listOf("lib/$so"), true),
+            Triple("missing.apk", emptyList<String>(), false),
+            Triple("wrong-location.apk", listOf("jni/$so"), false),
+        )
+        val failures = mutableListOf<String>()
+        for ((name, entries, shouldPass) in cases) {
+            val fixture = dir.resolve(name)
+            ZipOutputStream(fixture.outputStream()).use { z: ZipOutputStream ->
+                z.putNextEntry(ZipEntry("placeholder.txt"))
+                z.closeEntry()
+                for (entry in entries) {
+                    z.putNextEntry(ZipEntry(entry))
+                    z.write(byteArrayOf(0))
+                    z.closeEntry()
+                }
+            }
+            val accepted = nativeLibProblem(fixture, androidAbi) == null
+            logger.lifecycle("control $name: ${if (accepted) "accepted" else "rejected"}, expected ${if (shouldPass) "accepted" else "rejected"}")
+            if (accepted != shouldPass) failures += name
         }
-        logger.lifecycle("native entries in ${artifact.name}: $libs")
-        val expected = setOf("jni/$androidAbi/libupspa_mobile_ffi.so", "lib/$androidAbi/libupspa_mobile_ffi.so")
-        if (libs.none { it in expected }) throw GradleException("MISSING $androidAbi/libupspa_mobile_ffi.so in ${artifact.name}")
-        logger.lifecycle("OK: $androidAbi/libupspa_mobile_ffi.so present in ${artifact.name}")
+        if (failures.isNotEmpty()) throw GradleException("verifyAndroidNative controls failed: $failures")
     }
 }
 

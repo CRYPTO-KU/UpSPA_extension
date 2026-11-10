@@ -87,8 +87,14 @@ Pinned: NDK r27c (27.2.12479018), cargo-ndk 4.x, minSdk 26, JDK 17, Rust from `r
 Set `ANDROID_NDK_HOME` to the NDK root (or install it under `<sdk>/ndk/27.2.12479018`).
 
     ./gradlew -PupspaAndroidNative=true :ffi:assembleDebug :app:assembleDebug   # builds the .so into ffi/src/main/jniLibs/x86_64 (git-ignored)
-    ./gradlew :ffi:verifyAndroidNative                                          # fails if the AAR lacks x86_64/libupspa_mobile_ffi.so
-    ./gradlew :ffi:verifyAndroidNative "-PupspaArtifact=app/build/outputs/apk/debug/app-debug.apk"
+    ./gradlew :ffi:verifyAndroidNative                                          # AAR must carry jni/x86_64/libupspa_mobile_ffi.so
+    ./gradlew :ffi:verifyAndroidNative "-PupspaArtifact=app/build/outputs/apk/debug/app-debug.apk"   # APK must carry lib/x86_64/libupspa_mobile_ffi.so
+    ./gradlew :ffi:verifyAndroidNativeSelfTest                                  # controls: valid, missing and wrong-location fixtures for AAR and APK
+
+`cargoBuildAndroid` always invokes Cargo, which decides freshness itself. Regression (adds a
+release-profile setting, expects a rebuilt library, then restores `Cargo.toml`), from the repository root:
+
+    powershell -ExecutionPolicy Bypass -File scripts\check_android_native_freshness.ps1
 
 Emulator smoke (probe lifecycle, cancel/expiry rejection, accepted encoder control):
 
