@@ -80,3 +80,27 @@ or an address under `.invalid`) and must never be used as credentials.
 The canonical compatibility corpus and Rust encoder are now on `mobile-dev`. Replace
 `TemplateCredentialEngine` with the reviewed UniFFI command/effect boundary in later integration
 work. Do not import the different User Study encoder.
+
+## Android native packaging (x86_64, emulator)
+
+Pinned: NDK r27c (27.2.12479018), cargo-ndk 4.x, minSdk 26, JDK 17, Rust from `rust-toolchain.toml`.
+Set `ANDROID_NDK_HOME` to the NDK root (or install it under `<sdk>/ndk/27.2.12479018`).
+
+    ./gradlew -PupspaAndroidNative=true :ffi:assembleDebug :app:assembleDebug   # builds the .so into ffi/src/main/jniLibs/x86_64 (git-ignored)
+    ./gradlew :ffi:verifyAndroidNative                                          # AAR must carry jni/x86_64/libupspa_mobile_ffi.so
+    ./gradlew :ffi:verifyAndroidNative "-PupspaArtifact=app/build/outputs/apk/debug/app-debug.apk"   # APK must carry lib/x86_64/libupspa_mobile_ffi.so
+    ./gradlew :ffi:verifyAndroidNativeSelfTest                                  # controls: valid, missing and wrong-location fixtures for AAR and APK
+
+`cargoBuildAndroid` always invokes Cargo, which decides freshness itself. Regression (adds a
+release-profile setting, expects a rebuilt library, then restores `Cargo.toml`), from the repository root:
+
+    powershell -ExecutionPolicy Bypass -File scripts\check_android_native_freshness.ps1
+
+Emulator smoke (probe lifecycle, cancel/expiry rejection, accepted encoder control):
+
+    ./gradlew -PupspaAndroidNative=true :ffi:connectedDebugAndroidTest \
+      "-Pandroid.testInstrumentationRunnerArguments.class=com.upspa.mobile.ffi.MobileContractTest,com.upspa.mobile.ffi.AndroidEncoderSmokeTest"
+
+Without network access for the Gradle test platform, install `ffi/build/outputs/apk/androidTest/debug/ffi-debug-androidTest.apk`
+and run `adb shell am instrument -w -e class <same classes> com.upspa.mobile.ffi.test/androidx.test.runner.AndroidJUnitRunner`.
+Host JVM tests alone do not establish Android native loading.

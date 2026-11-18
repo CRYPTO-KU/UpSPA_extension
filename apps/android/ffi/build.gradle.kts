@@ -1,3 +1,7 @@
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -76,3 +80,136 @@ tasks.withType<Test>().configureEach {
         showStandardStreams = true
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Android native packaging (x86_64, API 26). Opt-in: -PupspaAndroidNative=true
+// Requires cargo-ndk and NDK r27c via ANDROID_NDK_HOME or <sdk>/ndk/<version>.
+// ---------------------------------------------------------------------------------------------
+val upspaNdkVersion = "27.2.12479018"
+val androidAbi = "x86_64"
+val jniLibsDir: File = projectDir.resolve("src/main/jniLibs")
+val ndkHome: String = System.getenv("ANDROID_NDK_HOME")
+    ?: android.sdkDirectory.resolve("ndk/$upspaNdkVersion").absolutePath
+
+val cargoBuildAndroid = tasks.register<Exec>("cargoBuildAndroid") {
+    description = "Builds libupspa_mobile_ffi.so for Android $androidAbi (API 26) into src/main/jniLibs."
+    group = "build"
+    workingDir = repoRoot
+    environment("ANDROID_NDK_HOME", ndkHome)
+    commandLine("cargo", "ndk", "-t", androidAbi, "-P", "26", "-o", jniLibsDir.absolutePath,
+        "build", "--locked", "--release", "-p", "upspa-mobile-ffi")
+    // Cargo decides freshness: its fingerprints cover sources, every manifest and profile,
+    // Cargo.lock and the toolchain. A partial Gradle input list here once hid a profile change.
+    outputs.upToDateWhen { false }
+    outputs.file(jniLibsDir.resolve("$androidAbi/libupspa_mobile_ffi.so"))
+    doFirst {
+        val props = File(ndkHome, "source.properties")
+        if (!props.isFile) throw GradleException("NDK not found at $ndkHome (set ANDROID_NDK_HOME)")
+        val rev = props.readLines().firstOrNull { it.startsWith("Pkg.Revision") }?.substringAfter("=")?.trim()
+        if (rev != upspaNdkVersion) throw GradleException("NDK $rev found, expected $upspaNdkVersion")
+    }
+}
+
+if (providers.gradleProperty("upspaAndroidNative").orNull == "true") {
+    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }
+        .configureEach { dependsOn(cargoBuildAndroid) }
+}
+
+// AARs carry native libraries under jni/<abi>/, APKs under lib/<abi>/. Returns null when the
+// library sits at the location required for the archive type, otherwise the reason.
+fun nativeLibProblem(artifact: File, abi: String): String? {
+    val dir = when (artifact.extension.lowercase()) {
+        "aar" -> "jni"
+        "apk" -> "lib"
+        else -> return "unsupported artifact type (expected .aar or .apk): ${artifact.name}"
+    }
+    val required = "$dir/$abi/libupspa_mobile_ffi.so"
+    val libs = ZipFile(artifact).use { z: ZipFile ->
+        z.entries().asSequence().map { it.name }.filter { it.endsWith(".so") }.toList()
+    }
+    return if (required in libs) null else "MISSING $required in ${artifact.name}; native entries: $libs"
+}
+
+tasks.register("verifyAndroidNative") {
+    description = "Fails unless an AAR has jni/$androidAbi/libupspa_mobile_ffi.so or an APK has lib/$androidAbi/libupspa_mobile_ffi.so. -PupspaArtifact=<path>"
+    group = "verification"
+    val artifactPath = providers.gradleProperty("upspaArtifact")
+        .orElse(layout.buildDirectory.file("outputs/aar/ffi-debug.aar").map { it.asFile.absolutePath })
+    doLast {
+        val given = File(artifactPath.get())
+        val artifact = if (given.isAbsolute) given else rootDir.resolve(given.path)
+        if (!artifact.isFile) throw GradleException("artifact not found: $artifact")
+        val problem = nativeLibProblem(artifact, androidAbi)
+        if (problem != null) throw GradleException(problem)
+        logger.lifecycle("OK: ${artifact.name} carries libupspa_mobile_ffi.so for $androidAbi at the location required for its type")
+    }
+}
+
+tasks.register("verifyAndroidNativeSelfTest") {
+    description = "Controls for verifyAndroidNative: valid, missing-library and wrong-location fixtures for AAR and APK."
+    group = "verification"
+    val fixtureDir = layout.buildDirectory.dir("tmp/verifyAndroidNativeSelfTest")
+    doLast {
+        val dir = fixtureDir.get().asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        val so = "$androidAbi/libupspa_mobile_ffi.so"
+        // fixture name, native entries, expected to be accepted
+        val cases = listOf(
+            Triple("valid.aar", listOf("jni/$so"), true),
+            Triple("missing.aar", emptyList<String>(), false),
+            Triple("wrong-location.aar", listOf("lib/$so"), false),
+            Triple("valid.apk", listOf("lib/$so"), true),
+            Triple("missing.apk", emptyList<String>(), false),
+            Triple("wrong-location.apk", listOf("jni/$so"), false),
+        )
+        val failures = mutableListOf<String>()
+        for ((name, entries, shouldPass) in cases) {
+            val fixture = dir.resolve(name)
+            ZipOutputStream(fixture.outputStream()).use { z: ZipOutputStream ->
+                z.putNextEntry(ZipEntry("placeholder.txt"))
+                z.closeEntry()
+                for (entry in entries) {
+                    z.putNextEntry(ZipEntry(entry))
+                    z.write(byteArrayOf(0))
+                    z.closeEntry()
+                }
+            }
+            val accepted = nativeLibProblem(fixture, androidAbi) == null
+            logger.lifecycle("control $name: ${if (accepted) "accepted" else "rejected"}, expected ${if (shouldPass) "accepted" else "rejected"}")
+            if (accepted != shouldPass) failures += name
+        }
+        if (failures.isNotEmpty()) throw GradleException("verifyAndroidNative controls failed: $failures")
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Emulator smoke test: runs the existing MobileContractTest on a device through the packaged
+// jniLibs .so and generated bindings. Run with -PupspaAndroidNative=true and a class filter.
+// ---------------------------------------------------------------------------------------------
+android {
+    defaultConfig { testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    sourceSets { getByName("androidTest").java.srcDirs(layout.buildDirectory.dir("generated/deviceSmoke").get().asFile) }
+}
+dependencies {
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.org.json)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+}
+
+// DEX before version 040 (API < 30) rejects spaces in method names, so the host test cannot be
+// dexed as written for minSdk 26. Copy it for device runs with backtick names made camelCase.
+val generateDeviceSmoke = tasks.register<Copy>("generateDeviceSmoke") {
+    description = "Copies MobileContractTest for on-device runs with DEX-safe test names."
+    from("src/test/java") { include("com/upspa/mobile/ffi/MobileContractTest.kt") }
+    into(layout.buildDirectory.dir("generated/deviceSmoke"))
+    filter { line: String ->
+        Regex("fun `([^`]+)`").replace(line) { m ->
+            "fun " + m.groupValues[1].split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }
+                .mapIndexed { i, w -> if (i == 0) w.lowercase() else w.replaceFirstChar { c -> c.uppercase() } }
+                .joinToString("")
+        }
+    }
+}
+tasks.matching { it.name == "compileDebugAndroidTestKotlin" }.configureEach { dependsOn(generateDeviceSmoke) }
