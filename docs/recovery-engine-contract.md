@@ -562,6 +562,10 @@ To run the full recovery-engine regression suite:
 cargo test --locked -p upspa-core --test recovery_engine_tests
 ```
 
+The existing replay harness is also extended by a bounded scheduling matrix with restart
+checks at every event boundary. See [recovery scheduling qualification](recovery-scheduling-qualification.md)
+for the matrix, isolated fault controls, executed evidence and the current mobile FFI gap map.
+
 ## 12. Security properties and negative controls
 
 The current test suite includes negative controls for:
