@@ -17,8 +17,11 @@ type fakeSetup struct {
 }
 type fakeRecord struct{ nonce, ct, tag string }
 type FakeStore struct {
-	setups  map[string]fakeSetup
-	records map[string]fakeRecord
+	setups   map[string]fakeSetup
+	records  map[string]fakeRecord
+	setupErr error
+	kiErr    error
+	recErr   error
 }
 func NewFakeStore() *FakeStore {
 	return &FakeStore{setups: map[string]fakeSetup{}, records: map[string]fakeRecord{}}
@@ -32,6 +35,9 @@ func (s *FakeStore) PutSetup(ctx context.Context, uid, sigPk, cidNonce, cidCt, c
 	return true, nil
 }
 func (s *FakeStore) GetSetup(ctx context.Context, uid string) (sigPk, cidNonce, cidCt, cidTag, kI string, lastTs int64, found bool, err error) {
+	if s.setupErr != nil {
+		return "", "", "", "", "", 0, false, s.setupErr
+	}
 	row, ok := s.setups[uid]
 	if !ok {
 		return "", "", "", "", "", 0, false, nil
@@ -39,6 +45,9 @@ func (s *FakeStore) GetSetup(ctx context.Context, uid string) (sigPk, cidNonce, 
 	return row.sigPk, row.cidNonce, row.cidCt, row.cidTag, row.kI, row.lastTs, true, nil
 }
 func (s *FakeStore) GetKi(ctx context.Context, uid string) (string, bool, error) {
+	if s.kiErr != nil {
+		return "", false, s.kiErr
+	}
 	row, ok := s.setups[uid]
 	if !ok {
 		return "", false, nil
@@ -53,6 +62,9 @@ func (s *FakeStore) CreateRecord(ctx context.Context, suid, cjNonce, cjCt, cjTag
 	return true, nil
 }
 func (s *FakeStore) GetRecord(ctx context.Context, suid string) (cjNonce, cjCt, cjTag string, found bool, err error) {
+	if s.recErr != nil {
+		return "", "", "", false, s.recErr
+	}
 	row, ok := s.records[suid]
 	if !ok {
 		return "", "", "", false, nil
